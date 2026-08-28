@@ -1,0 +1,22 @@
+{
+  "entity.mole.dig": {
+    "sounds": [
+      "moleverse:entity/mole/dig1",
+      "moleverse:entity/mole/dig2"
+    ],
+    "subtitle": "subtitles.moleverse.entity.mole.dig"
+  },
+  "entity.mole.sniff": {
+    "sounds": [
+      "moleverse:entity/mole/sniff1",
+      "moleverse:entity/mole/sniff2"
+    ],
+    "subtitle": "subtitles.moleverse.entity.mole.sniff"
+  },
+  "entity.mole.surface": {
+    "sounds": [
+      "moleverse:entity/mole/surface1"
+    ],
+    "subtitle": "subtitles.moleverse.entity.mole.surface"
+  }
+}
