@@ -96,7 +96,7 @@ free-form mesh.
 
 Setup on this machine:
 
-* Portable build and the MCP plugin live in `D:i_local\minecraft_modding\_tools`.
+* Portable build and the MCP plugin live in `D:\ai_local\minecraft_modding\_tools`.
 * The plugin file must be named `mcp.js` - Blockbench requires the filename to
   match the id in `Plugin.register`. Load it through File > Plugins > Load Plugin
   from File, never 'from URL': the firewall blocks Blockbench's outbound traffic.
@@ -105,7 +105,7 @@ Setup on this machine:
 * Registered at **user** scope as server `blockbench`
   (`claude mcp add blockbench --transport http http://localhost:3000/bb-mcp --scope user`).
   Project scope does not work here: Claude Code runs from the parent directory
-  `D:i_local\minecraft_modding`, so a `.mcp.json` inside the mod folder is never
+  `D:\ai_local\minecraft_modding`, so a `.mcp.json` inside the mod folder is never
   picked up and the approval prompt never appears.
 * Blockbench must be running with a project open for most tools to work.
 
@@ -124,6 +124,12 @@ format), `place_cube` (`from`/`to`/`origin`/`rotation` map one to one onto
 * **The `modded_entity` export mirrors the X axis.** A part at +X in Blockbench comes
   out at -X in Java, which is the entity's *right* in Minecraft convention. Name parts
   according to the Java result, not the Blockbench view.
+* **Animations need a coordinate conversion on export, and it is not symmetric.**
+  Rotation: negate X and Y, keep Z. Position: negate X only, keep Y, because
+  NeoForge applies `posVec` and negates Y itself when reading the JSON. Scale:
+  unchanged. Getting this wrong shows up as a model that is mirrored, floating, or
+  both. The full reasoning with the NeoForge source lines is in
+  `docs/MODEL_WORKFLOW.md` under "Coordinate conventions".
 * **`place_cube` fails without a texture** (`No texture found for "undefined"`).
   Create a texture first.
 * **`create_texture` ignores `width`/`height` when `fill_color` is used** and produces
@@ -171,6 +177,39 @@ sources - most tutorials still show the pre-1.21.9 API and will not compile:
 
 Never hand-write a file a provider produces - both copies land in the jar.
 Only the source locale is generated; `de_de.json` stays hand-written.
+
+## Poses: code, not keyframes
+
+The body angle of a pose belongs in `setupAnim`, driven by a blend factor on the
+render state. Keyframe channels are for secondary motion only - head, snout,
+limbs, tail.
+
+The mole's rearing pose started as a keyframe channel on the `root` bone and cost
+several rounds of guessing: a channel there has to survive three separate
+coordinate conversions, so a wrong result gives no hint which layer produced it.
+As a plain number in the model the value means exactly what it says, blends
+smoothly, and generalises - aiming a digging mole in an arbitrary direction is the
+same mechanism, which is why baking one animation per direction is the wrong plan.
+
+Bone pivots matter as much as the angle. `root` sits at the hips, not at the
+centre of the body, because that is what a mole rears around. With the pivot in
+the middle the corrections needed to hide the error were an order of magnitude
+larger.
+
+## Tuning visual values
+
+`/moleverse peek panel` opens a slider panel for the rearing pose. It does not
+pause the game and covers only a strip on the left, so the mole stays visible
+while a slider is dragged. "Hold pose" freezes the mole - the entity, not just its
+rendering - so a value can be judged without waiting for the timer.
+
+Build this kind of instrument rather than iterating through config files or
+guessed numbers. Anything that hides the subject while the value changes defeats
+the purpose. Once a number is settled it is baked into a constant in
+`debug/MoleDebug` and the panel stays as a check.
+
+The panel currently ships in the jar. Before a release it needs a switch or an
+exclusion from the release build.
 
 ## Conventions
 

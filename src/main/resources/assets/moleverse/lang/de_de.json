@@ -1,14 +1,16 @@
 {
   "itemGroup.moleverse.main": "Moleverse",
-
   "block.moleverse.loose_soil": "Lockere Erde",
   "item.moleverse.mole_pelt": "Maulwurfsfell",
-
   "message.moleverse.greeting": "Hallo, Maulwurf. Die Gänge warten.",
-
   "moleverse.configuration.title": "Moleverse-Konfiguration",
   "moleverse.configuration.debugLogging": "Debug-Logging",
   "moleverse.configuration.debugLogging.tooltip": "Zusätzliche Moleverse-Debug-Ausgaben ins Log schreiben.",
   "moleverse.configuration.greetPlayer": "Spieler begrüßen",
-  "moleverse.configuration.greetPlayer.tooltip": "Beim Betreten einer Welt eine Moleverse-Begrüßung senden."
+  "moleverse.configuration.greetPlayer.tooltip": "Beim Betreten einer Welt eine Moleverse-Begrüßung senden.",
+  "subtitles.moleverse.entity.mole.dig": "Maulwurf gräbt",
+  "subtitles.moleverse.entity.mole.sniff": "Maulwurf schnüffelt",
+  "subtitles.moleverse.entity.mole.surface": "Maulwurf taucht auf",
+  "item.moleverse.mole_spawn_egg": "Maulwurf-Spawn-Ei",
+  "entity.moleverse.mole": "Maulwurf"
 }

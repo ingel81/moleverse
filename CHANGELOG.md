@@ -16,6 +16,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - Localisation for en_us and de_de.
 - Development environment with JEI and Jade.
 - Licence LGPL-3.0-or-later.
+- Mole entity with model, texture, walk and rearing animations, spawn egg and drops.
+- Sound events for digging, sniffing and surfacing, with generated `sounds.json`.
+- Audio source tree under `audio/` with an ffmpeg conversion script.
+- In-game tuning panel for the rearing pose, `/moleverse peek panel`.
+- Documented Blockbench to Minecraft workflow and coordinate conventions.
 - Data generators for models, loot tables, block and item tags, and en_us.
 
 ### Changed

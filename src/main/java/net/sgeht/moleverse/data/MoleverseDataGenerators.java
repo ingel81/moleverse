@@ -38,6 +38,9 @@ public final class MoleverseDataGenerators {
         var blockTags = pack.addProvider(output -> new ModBlockTagsProvider(output, lookup));
         pack.addProvider(output -> new ModItemTagsProvider(output, lookup));
 
+        // sounds.json
+        pack.addProvider(ModSoundProvider::new);
+
         // Base localisation. Other locales stay hand-written under src/main/resources.
         pack.addProvider(output -> new ModLanguageProvider(output, "en_us"));
     }

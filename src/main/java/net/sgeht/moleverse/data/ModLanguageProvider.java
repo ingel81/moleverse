@@ -4,6 +4,7 @@ import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.registry.ModBlocks;
+import net.sgeht.moleverse.registry.ModEntities;
 import net.sgeht.moleverse.registry.ModItems;
 
 /**
@@ -24,8 +25,15 @@ public final class ModLanguageProvider extends LanguageProvider {
 
         addBlock(ModBlocks.LOOSE_SOIL, "Loose Soil");
         addItem(ModItems.MOLE_PELT, "Mole Pelt");
+        addItem(ModItems.MOLE_SPAWN_EGG, "Mole Spawn Egg");
+        addEntityType(ModEntities.MOLE, "Mole");
 
         add("message." + Moleverse.MOD_ID + ".greeting", "Hello, mole. The tunnels are waiting.");
+
+        // Subtitles. Without these, players with subtitles enabled see nothing.
+        add("subtitles." + Moleverse.MOD_ID + ".entity.mole.dig", "Mole digs");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.mole.sniff", "Mole sniffs");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.mole.surface", "Mole surfaces");
 
         add(Moleverse.MOD_ID + ".configuration.title", "Moleverse Configuration");
         add(Moleverse.MOD_ID + ".configuration.debugLogging", "Debug logging");

@@ -15,7 +15,9 @@ public final class ModLootTableProvider extends LootTableProvider {
     public ModLootTableProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
         super(output,
                 Set.of(),
-                List.of(new SubProviderEntry(ModBlockLootProvider::new, LootContextParamSets.BLOCK)),
+                List.of(
+                        new SubProviderEntry(ModBlockLootProvider::new, LootContextParamSets.BLOCK),
+                        new SubProviderEntry(ModEntityLootProvider::new, LootContextParamSets.ENTITY)),
                 registries);
     }
 }

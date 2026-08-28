@@ -8,9 +8,11 @@ Project setup, one block, one item, a creative tab, a greeting. Data generators
 for models, loot tables, tags and the source locale. Goal: `runClient` starts
 and shows Moleverse content.
 
-## 0.2 - The mole
-The mole as an entity: model, texture, animation, spawning in plains and
-forests, behaviour (burrows away, surfaces again), drops.
+## 0.2 - The mole *(in progress)*
+Done: entity, model, texture, walk and rearing animations, sounds, spawn egg,
+drops, and a tuning panel for poses.
+Open: the molehill block, burrowing and surfacing, natural spawning in plains,
+forest and taiga.
 
 ## 0.3 - Digging
 A tool or ability for carving tunnels. The `mole_diggable` tag controls what is

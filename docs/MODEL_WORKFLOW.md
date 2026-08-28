@@ -62,30 +62,56 @@ dialog blocks the Blockbench event loop, which kills the MCP connection. Its
 conversion is barely a dozen lines; replicate it in `risky_eval`, return the JSON,
 and write the file from the shell instead.
 
-Beware: the MCP tool `create_animation` negates X rotations on the way *in*. Pass
-`70` and the keyframe stores `-70`. The export itself is faithful and writes
-whatever is stored, so always check the pose in the viewport after creating an
-animation rather than trusting the number you passed. Setting a keyframe directly
-through `risky_eval` (`keyframe.set('x', value)`) bypasses the negation.
+### Coordinate conventions: the delta between Blockbench and Minecraft
 
-Playing an animation from the model class:
+This cost two wrong guesses and three test rounds. Read it before authoring or
+exporting an animation.
+
+Blockbench and Java model space differ by **two** mirrors: X is flipped
+(Blockbench +X becomes Java -X) and Y is flipped (Blockbench is Y-up, Java model
+space is Y-down). But the conversion is not applied in one place - it is spread
+across three layers, and two of them are easy to miss.
+
+**Layer 1 - the geometry exporter.** Applies the full mirror itself. Nothing to do.
+
+**Layer 2 - the MCP tool `create_animation`.** Negates X rotations on the way *in*.
+Pass `70` and the keyframe stores `-70`. `risky_eval` with
+`keyframe.set('x', value)` bypasses this and writes what you give it.
+
+**Layer 3 - NeoForge, when reading the JSON.** This is the one that gets
+overlooked. From `net.neoforged.neoforge.client.entity.animation.AnimationTarget`:
 
 ```java
-public static final AnimationHolder DIG = Model.getAnimation(Moleverse.id("mole_dig"));
-
-private final KeyframeAnimation dig;
-
-public MoleModel(ModelPart root) {
-    this.dig = DIG.get().bake(root);
-}
-
-@Override
-public void setupAnim(MoleRenderState state) {
-    super.setupAnim(state);
-    this.dig.apply(state.digAnimationState, state.ageInTicks);
-    this.dig.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 1, 1);
-}
+POSITION -> KeyframeAnimations::posVec     // posVec(x, y, z) -> (x, -y, z)
+ROTATION -> KeyframeAnimations::degreeVec  // degrees to radians only, no sign change
+SCALE    -> KeyframeAnimations::scaleVec   // value - 1
 ```
+
+So NeoForge already negates Y **for positions only**. Rotations get no sign
+handling at all, and the mirror has to come from us.
+
+That leaves exactly one rule for the export, taking Blockbench values as input:
+
+| Channel | Transform on export |
+|---|---|
+| `rotation` | negate X and Y, keep Z |
+| `position` | negate X only, **keep Y** (NeoForge negates it later) |
+| `scale` | unchanged |
+
+Getting the rotation wrong produced a mole that reared up head first into the
+ground and appeared to hover half a block above it: one wrong sign, two symptoms
+that look unrelated. Then negating Y for position as well double-mirrored it and
+moved the mole further up while trying to move it down.
+
+A practical consequence for positions: to move a part **down** in the world, the
+JSON needs a **negative** Y. In `mole_peek` the root sits at `y: -11`, which
+`posVec` turns into +11 in model space, sinking the mole's rear into the ground
+as it rears up.
+
+Units: 16 model units are one block.
+
+Verify a new animation in game once. The Blockbench viewport uses its own
+convention and will happily show a pose that renders mirrored in Minecraft.
 
 ## Why not GeckoLib
 
