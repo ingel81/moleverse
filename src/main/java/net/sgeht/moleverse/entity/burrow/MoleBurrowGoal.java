@@ -43,8 +43,20 @@ public class MoleBurrowGoal extends Goal {
     private final Mole mole;
     private final RandomSource random;
 
-    /** No trip is worked out before this tick. Carries both the cooldown and the refusal delay. */
+    /** No trip is worked out before this tick. Carries the cooldown; fright ignores it. */
     private int nextAttemptTick;
+
+    /**
+     * The short delay after a refusal, which fright does <em>not</em> ignore.
+     *
+     * <p>Kept apart from the cooldown because the two exist for opposite
+     * reasons. Skipping the cooldown is the point of fright - a mole that cannot
+     * escape because it dug five seconds ago looks broken. Skipping the refusal
+     * delay only means recomputing an answer that has not changed: a player
+     * standing next to a mole that cannot dig would make it search its whole
+     * network twice a second, for as long as they stand there.</p>
+     */
+    private int nextRetryTick;
 
     /** Last tick the mole was moving. The boredom timer counts from here. */
     private int lastMovedTick;
@@ -70,6 +82,16 @@ public class MoleBurrowGoal extends Goal {
 
     /** Whether he actually went under. A trip that never started earns no 90 second cooldown. */
     private boolean wentUnder;
+
+    /**
+     * Whether this trip actually put a mound into the world.
+     *
+     * <p>That, and not the plan, is what the long cooldown rations. A trip
+     * between two existing mounds still digs a fresh one when the route is cut
+     * short and it surfaces somewhere new - and a trip that planned a fresh dig
+     * may end up placing nothing at all.</p>
+     */
+    private boolean placedMound;
 
     /**
      * A trip demanded by {@code /moleverse mole burrow}, and the callback that
@@ -139,7 +161,8 @@ public class MoleBurrowGoal extends Goal {
         // player is walking up to, must go now - waiting out a timer is the one
         // thing it cannot do, and being unable to escape because it dug five
         // seconds ago is exactly the moment the mechanic looks broken.
-        if (!forced && !fleeingNow && now < this.nextAttemptTick) {
+        int waitUntil = fleeingNow ? this.nextRetryTick : this.nextAttemptTick;
+        if (!forced && now < waitUntil) {
             return false;
         }
 
@@ -249,9 +272,8 @@ public class MoleBurrowGoal extends Goal {
         // between mounds that already exist costs the world nothing, so a mole
         // with a network of its own can live in it instead of walking the
         // surface between rare trips.
-        boolean dugSomethingNew = this.entryIsNew || this.exitIsNew;
         int cooldown = !this.wentUnder ? BurrowConstants.REFUSAL_RETRY_DELAY
-                : dugSomethingNew ? BurrowConstants.BURROW_COOLDOWN
+                : this.placedMound ? BurrowConstants.BURROW_COOLDOWN
                 : BurrowConstants.NETWORK_TRIP_COOLDOWN;
 
         this.entry = null;
@@ -262,8 +284,10 @@ public class MoleBurrowGoal extends Goal {
         this.fleeing = false;
         this.entryIsNew = false;
         this.exitIsNew = false;
+        this.placedMound = false;
         this.lastMovedTick = this.mole.tickCount;
         this.nextAttemptTick = this.mole.tickCount + cooldown;
+        this.nextRetryTick = this.mole.tickCount;
         this.wentUnder = false;
     }
 
@@ -532,8 +556,23 @@ public class MoleBurrowGoal extends Goal {
      */
     private @Nullable Player playerTooClose(ServerLevel level) {
         double range = BurrowConstants.PLAYER_SCARE_DISTANCE;
-        Player nearest = level.getNearestPlayer(this.mole, range);
-        if (nearest == null || nearest.isCreative() || nearest.isSpectator()) {
+
+        // The flag reads backwards: true means "exclude creative". Filtering in
+        // the query rather than after it matters - asking for the nearest player
+        // and then discarding the answer would let one creative player standing
+        // closer hide every survival player behind them.
+        Player nearest = level.getNearestPlayer(
+                this.mole.getX(), this.mole.getY(), this.mole.getZ(), range, true);
+        if (nearest == null) {
+            return null;
+        }
+
+        // A player holding out food is not a threat, and a mole in love has
+        // better things to do. Without this the proximity trigger fires exactly
+        // when someone tries to use an earthworm: the burrow goal sits at
+        // priority 0 and would take the movement away from the tempt goal every
+        // single time, so the worm would look broken.
+        if (nearest.isHolding(this.mole::isFood) || this.mole.isInLove()) {
             return null;
         }
 
@@ -575,6 +614,7 @@ public class MoleBurrowGoal extends Goal {
                 return false;
             }
             BurrowLog.moundPlaced(this.mole, this.entry, support, replaced);
+            this.placedMound = true;
         } else {
             MoleMound.setOpen(level, this.entry, true);
         }
@@ -638,6 +678,7 @@ public class MoleBurrowGoal extends Goal {
         BlockState replaced = level.getBlockState(this.emergeAt);
         if (MoleMound.tryPlace(level, this.emergeAt, false)) {
             BurrowLog.moundPlaced(this.mole, this.emergeAt, support, replaced);
+            this.placedMound = true;
         } else {
             BurrowLog.recovered(this.mole, this.emergeAt.equals(this.exit)
                     ? "target mound gone and the site no longer takes one - surfaced without a mound"
@@ -705,5 +746,6 @@ public class MoleBurrowGoal extends Goal {
 
     private void delayNextAttempt() {
         this.nextAttemptTick = this.mole.tickCount + BurrowConstants.REFUSAL_RETRY_DELAY;
+        this.nextRetryTick = this.nextAttemptTick;
     }
 }
