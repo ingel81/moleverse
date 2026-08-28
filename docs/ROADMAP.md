@@ -10,9 +10,11 @@ and shows Moleverse content.
 
 ## 0.2 - The mole *(in progress)*
 Done: entity, model, texture, walk and rearing animations, sounds, spawn egg,
-drops, and a tuning panel for poses.
-Open: the molehill block, burrowing and surfacing, natural spawning in plains,
-forest and taiga.
+drops, a tuning panel for poses, the mound block in a closed and an open form,
+the dig, burrow, emerge and idle animations, and natural spawning in grassland
+and woodland.
+Open: the burrowing state machine and the mound network moles travel through -
+planned in full in `docs/MOLEHILL.md`.
 
 ## 0.3 - Digging
 A tool or ability for carving tunnels. The `mole_diggable` tag controls what is
