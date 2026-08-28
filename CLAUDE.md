@@ -102,7 +102,11 @@ Setup on this machine:
   from File, never 'from URL': the firewall blocks Blockbench's outbound traffic.
 * The MCP server runs inside Blockbench on `http://localhost:3000/bb-mcp`.
   Loopback is exempt from the firewall, so no extra rule is needed.
-* Registered in `.mcp.json` (project scope) as server `blockbench`.
+* Registered at **user** scope as server `blockbench`
+  (`claude mcp add blockbench --transport http http://localhost:3000/bb-mcp --scope user`).
+  Project scope does not work here: Claude Code runs from the parent directory
+  `D:i_local\minecraft_modding`, so a `.mcp.json` inside the mod folder is never
+  picked up and the approval prompt never appears.
 * Blockbench must be running with a project open for most tools to work.
 
 Useful tools: `create_project`, `place_cube` (takes `from`/`to`/`origin`/`rotation`,
