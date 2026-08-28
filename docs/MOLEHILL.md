@@ -407,15 +407,29 @@ namable cause.
   `RegisterCommandsEvent`.
 * `/moleverse mole log <on|off>` flips the debug logging without a config edit
   or a restart.
-* A client-side overlay draws the mounds around the player, the links between
-  them and the current route. The client has the blocks already, so the network
-  is rebuilt there with the same chaining rule and needs no packets; only entry
-  and exit ride along on the entity for the route line. It is rebuilt on a timer
-  of about ten ticks rather than per frame, and it is labelled approximate:
+* `/moleverse network <on|off>` draws the mounds around the player, the links
+  between them and the current route. The client has the blocks already, so the
+  network is rebuilt there with the same chaining rule and needs no packets. It
+  is rebuilt on a timer rather than per frame, and it is approximate on purpose:
   render distance is smaller than `NETWORK_SCAN_MAX`, so the client's picture can
   legitimately differ from the server's decision. With a chained network this is
   still the difference between following the logic and guessing at it - the same
   reasoning that produced the slider panel.
+
+Both trees share the `moleverse` root even though one is registered on the
+client and one on the server. That works because NeoForge hands a command the
+client dispatcher cannot parse on to the server.
+
+The pose commands from phase 2 remain, and are what the animations are judged
+with:
+
+```
+/moleverse peek panel                sliders for both poses, without pausing
+/moleverse dig force <true|false>    hold every mole in the digging pose
+/moleverse dig pitch <degrees>       90 is straight down
+/moleverse dig burrow                play mole_burrow once
+/moleverse dig emerge                play mole_emerge once
+```
 
 ### Done when
 

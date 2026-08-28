@@ -71,6 +71,18 @@ web almost always target older versions and are frequently wrong for this one.
 
 ## Traps already hit
 
+* `BlockBehaviour.Properties.noCollission` lost its double s in this version and
+  is now `noCollision()`. It also clears occlusion, so `noOcclusion()` next to it
+  is redundant.
+* `BlockModelGenerators.blockStateOutput` and friends are package-private in the
+  sources. They are usable only because NeoForge opens the whole class through
+  its global access transformer - no mod-side transformer needed, but do not
+  expect the same for an arbitrary vanilla field.
+* A hand-written block model needs `"parent": "minecraft:block/block"`, otherwise
+  the block item inherits no display transforms and lies flat and full-size in
+  the hand and the creative tab.
+* `entityInside` runs on both sides, but the client only simulates the local
+  player - a mob walking through a block reaches it server side only.
 * `Player` has no `sendSystemMessage`. Cast to `ServerPlayer` for chat, or use
   `displayClientMessage(Component, boolean)`.
 * In `neoforge.mods.toml`, `loaderVersion` means the version of the **javafml
@@ -198,15 +210,27 @@ larger.
 
 ## Tuning visual values
 
-`/moleverse peek panel` opens a slider panel for the rearing pose. It does not
-pause the game and covers only a strip on the left, so the mole stays visible
-while a slider is dragged. "Hold pose" freezes the mole - the entity, not just its
-rendering - so a value can be judged without waiting for the timer.
+`/moleverse peek panel` opens a slider panel for the rearing and digging poses.
+It does not pause the game and covers only a strip on the left, so the mole stays
+visible while a slider is dragged. "Hold pose" freezes the mole - the entity, not
+just its rendering - so a value can be judged without waiting for the timer.
 
 Build this kind of instrument rather than iterating through config files or
 guessed numbers. Anything that hides the subject while the value changes defeats
 the purpose. Once a number is settled it is baked into a constant in
 `debug/MoleDebug` and the panel stays as a check.
+
+The same principle produced the rest of the debug surface, listed in
+`docs/MOLEHILL.md`: `/moleverse dig burrow` and `/moleverse dig emerge` play the
+one-shot animations on demand, `/moleverse mole burrow` makes a mole take a real
+trip without waiting out its cooldown, `/moleverse network on` draws the mound
+network and the current route, and `/moleverse mole log on` turns on a log line
+for every decision the mechanic makes - above all for every refusal, because a
+mole that does not dig is the failure mode with no visible cause.
+
+Note the split: pose commands are client side (`RegisterClientCommandsEvent`),
+anything that touches behaviour is server side (`RegisterCommandsEvent`), because
+mob AI only exists there.
 
 The panel currently ships in the jar. Before a release it needs a switch or an
 exclusion from the release build.
