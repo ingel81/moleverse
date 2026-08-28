@@ -3,9 +3,11 @@ package net.sgeht.moleverse.registry;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
+import net.sgeht.moleverse.block.MoleMound;
 
 /** Every block of this mod. */
 public final class ModBlocks {
@@ -21,6 +23,22 @@ public final class ModBlocks {
             props -> props.mapColor(MapColor.DIRT)
                     .strength(0.35F)
                     .sound(SoundType.GRAVEL));
+
+    /**
+     * The heap of earth a mole leaves behind. Walked through rather than over,
+     * broken with a touch, and worth nothing when it is.
+     */
+    public static final DeferredBlock<MoleMound> MOLE_MOUND = REGISTER.registerBlock(
+            "mole_mound",
+            MoleMound::new,
+            props -> props.mapColor(MapColor.DIRT)
+                    .instabreak()
+                    .sound(SoundType.GRAVEL)
+                    .noCollision()
+                    .noOcclusion()
+                    // A piston crumbles a mound rather than pushing it, which
+                    // is what keeps them out of redstone contraptions.
+                    .pushReaction(PushReaction.DESTROY));
 
     private ModBlocks() {
     }

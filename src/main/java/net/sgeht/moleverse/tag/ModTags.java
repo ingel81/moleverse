@@ -19,6 +19,14 @@ public final class ModTags {
         /** Blocks a mole is able to dig through. */
         public static final TagKey<Block> MOLE_DIGGABLE = create("mole_diggable");
 
+        /**
+         * Blocks a mole mound may rest on. Deliberately separate from
+         * {@link #MOLE_DIGGABLE}: what a mound can sit on and what a mole can
+         * tunnel through are different questions, and they diverge as soon as
+         * stone joins the digging tag.
+         */
+        public static final TagKey<Block> MOLE_MOUND_PLACEABLE = create("mole_mound_placeable");
+
         private Blocks() {
         }
 

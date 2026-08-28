@@ -1,6 +1,7 @@
 {
   "itemGroup.moleverse.main": "Moleverse",
   "block.moleverse.loose_soil": "Lockere Erde",
+  "block.moleverse.mole_mound": "Maulwurfshügel",
   "item.moleverse.mole_pelt": "Maulwurfsfell",
   "message.moleverse.greeting": "Hallo, Maulwurf. Die Gänge warten.",
   "moleverse.configuration.title": "Moleverse-Konfiguration",

@@ -18,6 +18,9 @@ public final class ModItems {
     // --- Block items ------------------------------------------------------
     public static final DeferredItem<BlockItem> LOOSE_SOIL = REGISTER.registerSimpleBlockItem(ModBlocks.LOOSE_SOIL);
 
+    /** Mounds drop nothing, but the item exists so they can be placed by hand. */
+    public static final DeferredItem<BlockItem> MOLE_MOUND = REGISTER.registerSimpleBlockItem(ModBlocks.MOLE_MOUND);
+
     // --- Spawn eggs -------------------------------------------------------
     // The properties operator runs during item registration, not at class init.
     // Entity types are registered before items, so the type resolves by then.

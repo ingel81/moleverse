@@ -1,0 +1,53 @@
+{
+  "variants": {
+    "open=false": [
+      {
+        "model": "moleverse:block/mole_mound_a"
+      },
+      {
+        "model": "moleverse:block/mole_mound_a",
+        "y": 90
+      },
+      {
+        "model": "moleverse:block/mole_mound_a",
+        "y": 180
+      },
+      {
+        "model": "moleverse:block/mole_mound_a",
+        "y": 270
+      },
+      {
+        "model": "moleverse:block/mole_mound_b"
+      },
+      {
+        "model": "moleverse:block/mole_mound_b",
+        "y": 90
+      },
+      {
+        "model": "moleverse:block/mole_mound_b",
+        "y": 180
+      },
+      {
+        "model": "moleverse:block/mole_mound_b",
+        "y": 270
+      }
+    ],
+    "open=true": [
+      {
+        "model": "moleverse:block/mole_mound_open"
+      },
+      {
+        "model": "moleverse:block/mole_mound_open",
+        "y": 90
+      },
+      {
+        "model": "moleverse:block/mole_mound_open",
+        "y": 180
+      },
+      {
+        "model": "moleverse:block/mole_mound_open",
+        "y": 270
+      }
+    ]
+  }
+}

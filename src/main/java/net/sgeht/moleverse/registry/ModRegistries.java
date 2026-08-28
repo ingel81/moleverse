@@ -21,5 +21,7 @@ public final class ModRegistries {
         ModItems.REGISTER.register(modBus);
         ModSounds.REGISTER.register(modBus);
         ModCreativeTabs.REGISTER.register(modBus);
+        // After blocks: a point of interest names the blockstates it matches.
+        ModPoi.REGISTER.register(modBus);
     }
 }

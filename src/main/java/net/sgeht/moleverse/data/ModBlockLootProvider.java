@@ -23,6 +23,9 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
     @Override
     protected void generate() {
         dropSelf(ModBlocks.LOOSE_SOIL.get());
+
+        // Displaced earth, not a resource. Breaking a mound gives nothing.
+        add(ModBlocks.MOLE_MOUND.get(), noDrop());
     }
 
     @Override

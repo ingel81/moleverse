@@ -24,6 +24,7 @@ public final class ModLanguageProvider extends LanguageProvider {
         add("itemGroup." + Moleverse.MOD_ID + ".main", "Moleverse");
 
         addBlock(ModBlocks.LOOSE_SOIL, "Loose Soil");
+        addBlock(ModBlocks.MOLE_MOUND, "Mole Mound");
         addItem(ModItems.MOLE_PELT, "Mole Pelt");
         addItem(ModItems.MOLE_SPAWN_EGG, "Mole Spawn Egg");
         addEntityType(ModEntities.MOLE, "Mole");
