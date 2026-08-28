@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Nullable;
@@ -189,16 +190,30 @@ public final class MoundNetwork {
             return null;
         }
         if (threat == null) {
-            return candidates.get(random.nextInt(candidates.size()));
+            // Weighted towards the far side of the network rather than picked
+            // evenly. Time in the tunnels is the point of having them, and an
+            // even pick keeps choosing the neighbour two mounds over.
+            return weightedPick(random, candidates, mound -> mound.distSqr(entry));
         }
 
-        // Weight by squared distance from the threat: still random, but a mound
-        // twice as far away is four times as likely. A flat "take the farthest"
-        // would make every escape from the same spot identical.
+        // Fleeing: weight by distance from the threat instead, so the escape
+        // leads away from it rather than merely far.
+        return weightedPick(random, candidates, mound -> mound.getCenter().distanceToSqr(threat));
+    }
+
+    /**
+     * Picks one candidate at random, weighted by the given measure.
+     *
+     * <p>Squared distances make a good weight here: a mound twice as far is four
+     * times as likely, which is decisive without being deterministic. Taking the
+     * farthest outright would make every trip from the same spot identical.</p>
+     */
+    private static BlockPos weightedPick(RandomSource random, List<BlockPos> candidates,
+            ToDoubleFunction<BlockPos> weight) {
         double total = 0.0;
         double[] weights = new double[candidates.size()];
         for (int i = 0; i < candidates.size(); i++) {
-            weights[i] = Math.max(1.0, candidates.get(i).getCenter().distanceToSqr(threat));
+            weights[i] = Math.max(1.0, weight.applyAsDouble(candidates.get(i)));
             total += weights[i];
         }
 

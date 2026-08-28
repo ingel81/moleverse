@@ -73,12 +73,13 @@ public final class BurrowConstants {
      * Chance that a mole digs somewhere new even though its network offers a
      * perfectly good exit.
      *
-     * <p>Without it a territory stops growing the moment it has two usable
-     * mounds: the exit search prefers what already exists, so it would always
-     * find one and never break new ground. This is how a mole colonises a
-     * meadow over time rather than pacing between the same two holes.</p>
+     * <p>High, because extending the network is what a mole is <em>for</em>.
+     * Preferring existing mounds would freeze a territory at two holes; the
+     * density cap is what stops this from filling a meadow, and it does that
+     * job at the site rather than here. What is left of the network preference
+     * is a mole that still uses its tunnels when there is nowhere new to go.</p>
      */
-    public static final float EXPLORE_CHANCE = 0.25F;
+    public static final float EXPLORE_CHANCE = 0.6F;
 
     /**
      * The same while fleeing, and far higher.
