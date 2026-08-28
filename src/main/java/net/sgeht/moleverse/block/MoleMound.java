@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
@@ -21,6 +22,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.sgeht.moleverse.registry.ModBlocks;
 import net.sgeht.moleverse.tag.ModTags;
 
 /**
@@ -57,6 +59,55 @@ public class MoleMound extends Block {
     public MoleMound(BlockBehaviour.Properties properties) {
         super(properties);
         this.registerDefaultState(this.defaultBlockState().setValue(OPEN, false));
+    }
+
+    // --- what the burrowing mechanic needs from the block ---------------------
+
+    /**
+     * Whether a mound could go into this position right now.
+     *
+     * <p>The cover test is {@link BlockState#canBeReplaced()}, not "is it air".
+     * Short grass, ferns and flowers are not air, and rejecting them would reject
+     * nearly every meadow a mole lives in - the mole would simply never dig. The
+     * fluid is asked separately because water is replaceable too and a mound
+     * under water is not a mound.</p>
+     */
+    public static boolean canPlaceAt(LevelReader level, BlockPos pos) {
+        BlockState cover = level.getBlockState(pos);
+        return cover.canBeReplaced()
+                && cover.getFluidState().isEmpty()
+                && level.getBlockState(pos.below()).is(ModTags.Blocks.MOLE_MOUND_PLACEABLE);
+    }
+
+    /** True when this position already holds a mound, whatever its shaft is doing. */
+    public static boolean isMound(LevelReader level, BlockPos pos) {
+        return level.getBlockState(pos).is(ModBlocks.MOLE_MOUND.get());
+    }
+
+    /**
+     * Puts a mound in, swallowing whatever plant was growing there. No drop: the
+     * mole pushed earth over it, it was not harvested.
+     *
+     * @return false when the site does not take one, in which case nothing changed
+     */
+    public static boolean tryPlace(ServerLevel level, BlockPos pos, boolean open) {
+        if (!canPlaceAt(level, pos)) {
+            return false;
+        }
+        BlockState mound = ModBlocks.MOLE_MOUND.get().defaultBlockState().setValue(OPEN, open);
+        return level.setBlock(pos, mound, Block.UPDATE_ALL);
+    }
+
+    /**
+     * Opens or closes the shaft of an existing mound. Does nothing when the mound
+     * is gone - breaking the one a mole went down is allowed and must not strand
+     * the caller.
+     */
+    public static void setOpen(ServerLevel level, BlockPos pos, boolean open) {
+        BlockState state = level.getBlockState(pos);
+        if (state.is(ModBlocks.MOLE_MOUND.get()) && state.getValue(OPEN) != open) {
+            level.setBlock(pos, state.setValue(OPEN, open), Block.UPDATE_ALL);
+        }
     }
 
     @Override
@@ -99,8 +150,11 @@ public class MoleMound extends Block {
     /**
      * Walking through a mound kicks up loose soil.
      *
-     * <p>Client side only: this hook runs on both sides, and spawning the
-     * particles on each would double every puff.</p>
+     * <p>Spawned from the server, not the client. This hook does run on both
+     * sides, but only for entities the client simulates itself - which is the
+     * local player and nothing else. Mobs are moved by position updates rather
+     * than by {@code move()}, so a mole trotting through its own mound would
+     * raise no dust at all if this were client side.</p>
      */
     @Override
     protected void entityInside(
@@ -109,25 +163,29 @@ public class MoleMound extends Block {
             BlockPos pos,
             Entity entity,
             InsideBlockEffectApplier effectApplier,
-            boolean flag) {
-        if (!level.isClientSide()) {
+            boolean intersects) {
+        if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
 
         // Standing in a mound should not smoke; only movement disturbs it.
         boolean moving = entity.xOld != entity.getX() || entity.zOld != entity.getZ();
-        if (!moving || level.getRandom().nextFloat() > DUST_CHANCE) {
+        if (!moving || serverLevel.getRandom().nextFloat() > DUST_CHANCE) {
             return;
         }
 
-        RandomSource random = level.getRandom();
-        level.addParticle(
-                new BlockParticleOption(ParticleTypes.BLOCK, state),
-                entity.getX() + (random.nextDouble() - 0.5) * 0.4,
+        // The three-argument option lets the particle pick its texture from the
+        // model at that position, which matters for the open variant: its shaft
+        // floor carries a second, darker texture.
+        serverLevel.sendParticles(
+                new BlockParticleOption(ParticleTypes.BLOCK, state, pos),
+                entity.getX(),
                 pos.getY() + 0.15,
-                entity.getZ() + (random.nextDouble() - 0.5) * 0.4,
-                (random.nextDouble() - 0.5) * 0.08,
-                0.05,
-                (random.nextDouble() - 0.5) * 0.08);
+                entity.getZ(),
+                3,
+                0.2,
+                0.02,
+                0.2,
+                0.02);
     }
 }

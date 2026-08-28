@@ -2,9 +2,14 @@ package net.sgeht.moleverse.entity;
 
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.AnimationState;
 import net.minecraft.world.entity.EntityType;
@@ -19,37 +24,45 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.debug.MoleDebug;
+import net.sgeht.moleverse.entity.burrow.BurrowConstants;
+import net.sgeht.moleverse.entity.burrow.BurrowLog;
+import net.sgeht.moleverse.entity.burrow.BurrowState;
+import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
+import net.sgeht.moleverse.entity.burrow.MoundNetwork;
 import net.sgeht.moleverse.registry.ModSounds;
 
 /**
  * The mole. Small, passive, close to the ground.
  *
- * <p>Behaviour is deliberately plain for now: flee, wander, look around. The one
- * thing that already sets it apart is the rearing pose it falls into when it
- * stands still.</p>
+ * <p>Two things set it apart. The rearing pose it falls into when it stands
+ * still, and the burrowing trip it makes when it is bored or frightened. The
+ * trip itself is run by {@link MoleBurrowGoal}; what lives here is the state it
+ * publishes, the physical side effects of being inside the ground, and the
+ * recovery that undoes them if a trip is ever cut short by something other than
+ * the goal.</p>
  *
- * <p>That pose is split in two. The secondary motion - head sweeping, snout
- * twitching, paws shifting - comes from the {@code mole_peek} keyframe animation
- * and is driven by {@link #peekAnimationState}. The body angle itself is
- * <em>not</em> a keyframe channel but a plain number, {@link #peekAmount},
+ * <p>The rearing pose is split in two. The secondary motion - head sweeping,
+ * snout twitching, paws shifting - comes from the {@code mole_peek} keyframe
+ * animation and is driven by {@link #peekAnimationState}. The body angle itself
+ * is <em>not</em> a keyframe channel but a plain number, {@link #peekAmount},
  * applied to the root part in the model. Keyframing the root meant fighting
  * three separate coordinate conversions at once; a single blend factor is
  * explicit, tunable at runtime and reusable for aiming a digging mole in any
- * direction later.</p>
+ * direction, which is exactly what {@link #digAmount} then does.</p>
  *
- * <p>The digging animations exist but the behaviour behind them does not. What
- * drives them here is a <strong>debug harness</strong> - {@link MoleDebug#forceDig}
- * for the sustained dig pose and two play counters for the one-shots - marked as
- * such at every method. Phase 3 of {@code docs/MOLEHILL.md} replaces all of it
- * with the burrowing state machine, which starts and stops the very same
- * animation states from its state changes. Nothing in the harness is meant to
- * survive that; the blend factors and the animation states are.</p>
- *
- * <p>Taming, tunnel digging and surfacing with finds are the plan for later
- * versions; see {@code docs/MOLE_DESIGN.md}.</p>
+ * <p>Taming and surfacing with finds are the plan for later versions; see
+ * {@code docs/MOLE_DESIGN.md}.</p>
  */
 public class Mole extends Animal {
+
+    /**
+     * What the mole is doing about digging. Mirrored to the client as a byte
+     * because rendering picks its animations and both body angles from it.
+     */
+    private static final EntityDataAccessor<Byte> DATA_BURROW_STATE =
+            SynchedEntityData.defineId(Mole.class, EntityDataSerializers.BYTE);
 
     /** Ticks a mole must stand still before it rears up to look around. */
     private static final int PEEK_DELAY = 70;
@@ -59,9 +72,6 @@ public class Mole extends Animal {
 
     /** How long the mole holds the reared pose, in ticks. */
     private static final int PEEK_HOLD = 120;
-
-    /** Squared horizontal speed below which the mole counts as standing still. */
-    private static final double STILL_THRESHOLD = 1.0E-5;
 
     /** Fraction of the remaining distance the blend factor covers per tick. */
     private static final float PEEK_BLEND_SPEED = 0.12F;
@@ -74,12 +84,6 @@ public class Mole extends Animal {
      */
     private static final float DIG_BLEND_SPEED = 0.2F;
 
-    /** Length of {@code mole_burrow} in ticks. Matches the exported 1.2 s. */
-    private static final int BURROW_TICKS = 24;
-
-    /** Length of {@code mole_emerge} in ticks. Matches the exported 0.8 s. */
-    private static final int EMERGE_TICKS = 16;
-
     public final AnimationState peekAnimationState = new AnimationState();
 
     /** Ambient loop. Started once and never stopped; the model fades it by speed. */
@@ -88,10 +92,10 @@ public class Mole extends Animal {
     /** Alternating paws scooping. Loops while digging; where it digs is a body angle, not a channel. */
     public final AnimationState digAnimationState = new AnimationState();
 
-    /** Diving in. Plays once, {@value #BURROW_TICKS} ticks long. */
+    /** Diving in. Plays once, as long as {@code BURROWING} lasts. */
     public final AnimationState burrowAnimationState = new AnimationState();
 
-    /** Coming back up. Plays once, {@value #EMERGE_TICKS} ticks long. */
+    /** Coming back up. Plays once, as long as {@code EMERGING} lasts. */
     public final AnimationState emergeAnimationState = new AnimationState();
 
     private int peekCooldown = PEEK_DELAY;
@@ -105,13 +109,19 @@ public class Mole extends Animal {
     private float digAmount;
     private float digAmountLast;
 
-    // DEBUG ONLY, see the class comment. The counters start at whatever the
-    // panel is showing, so a mole that spawns later does not replay the last
-    // request; they run on both sides because the hold is a server decision.
+    /** Last burrow state the client reacted to, so a change can start or stop an animation. */
+    private BurrowState lastAnimatedState = BurrowState.WANDERING;
+
+    // DEBUG ONLY. What is left of the phase-2 harness: /moleverse dig burrow and
+    // /moleverse dig emerge still preview the two one-shots on a standing mole,
+    // which is how they were judged and how they stay checkable. Client side
+    // only now, and it stands aside whenever the state machine is running -
+    // holding the mole still and chaining emerge into the rearing pose are the
+    // state machine's job.
     private int burrowRequestSeen = MoleDebug.burrowRequest;
     private int emergeRequestSeen = MoleDebug.emergeRequest;
-    private int burrowTicksLeft;
-    private int emergeTicksLeft;
+    private int previewBurrowTicks;
+    private int previewEmergeTicks;
 
     public Mole(EntityType<? extends Mole> type, Level level) {
         super(type, level);
@@ -125,26 +135,166 @@ public class Mole extends Animal {
     }
 
     @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_BURROW_STATE, BurrowState.WANDERING.id());
+    }
+
+    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
+        // Priority 0 and uninterruptable: once a mole is in the ground, nothing
+        // else may claim its movement. It only holds MOVE and LOOK, so FloatGoal
+        // above (JUMP) still works when he is swimming rather than digging.
+        this.goalSelector.addGoal(0, new MoleBurrowGoal(this));
         this.goalSelector.addGoal(1, new PanicGoal(this, 1.6));
         this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }
 
+    // --- burrowing ------------------------------------------------------------
+
+    public BurrowState getBurrowState() {
+        return BurrowState.byId(this.entityData.get(DATA_BURROW_STATE));
+    }
+
+    /**
+     * The one way the state changes, so no transition can slip past the log.
+     *
+     * @param reason short phrase for the debug log, in the mechanic's own words
+     */
+    public void setBurrowState(BurrowState state, String reason) {
+        BurrowState previous = this.getBurrowState();
+        if (previous == state) {
+            return;
+        }
+        this.entityData.set(DATA_BURROW_STATE, state.id());
+        BurrowLog.stateChange(this, previous, state, reason);
+    }
+
+    /**
+     * Damage immunity while a trip is under way.
+     *
+     * <p>Deliberately decided from the state and never through
+     * {@code setInvulnerable}: that flag is written to NBT, so a chunk unload
+     * halfway down a shaft would serialise a mole that is invulnerable for good.
+     * The state is not saved, so it cannot outlive the trip.</p>
+     */
+    @Override
+    public boolean isInvulnerableTo(ServerLevel level, DamageSource damageSource) {
+        return this.getBurrowState().isDamageImmune() || super.isInvulnerableTo(level, damageSource);
+    }
+
+    /**
+     * Turns the mole into something that can be inside the ground: no collision,
+     * nothing to see, and no gravity pulling it off the route.
+     *
+     * <p>{@code noPhysics} is a plain field with no setter, and it also switches
+     * off suffocation, which is the other half of what makes this work.</p>
+     */
+    public void beginUnderground() {
+        this.noPhysics = true;
+        this.setInvisible(true);
+        // Gravity is switched off rather than cancelled every tick, because
+        // travel() has already applied it by the time the goal runs. It is one
+        // of the flags that survive to NBT, hence the clearing on load below.
+        this.setNoGravity(true);
+        this.setDeltaMovement(Vec3.ZERO);
+        this.getNavigation().stop();
+    }
+
+    /** Undoes {@link #beginUnderground}. Safe to call on a mole that never dug. */
+    public void endUnderground() {
+        this.noPhysics = false;
+        this.setInvisible(false);
+        this.setNoGravity(false);
+    }
+
+    /**
+     * Being underground outranks the effect list.
+     *
+     * <p>Vanilla recomputes the invisibility flag from the active mob effects
+     * whenever one of them changes, and "none left" means visible. A regeneration
+     * running out mid-trip would otherwise pop a travelling mole into view.</p>
+     */
+    @Override
+    protected void updateInvisibilityStatus() {
+        if (this.getBurrowState().isBelowGround()) {
+            this.setInvisible(true);
+            return;
+        }
+        super.updateInvisibilityStatus();
+    }
+
+    /**
+     * While he is inside the ground the route moves him, and nothing else may.
+     *
+     * <p>Stopping the navigation is not enough on its own: the move control ticks
+     * <em>after</em> the goals in the same server tick and would still steer
+     * towards whatever it was last told, and gravity and fluid drag would be
+     * applied on top. Skipping the whole method is the only place that catches
+     * all of it.</p>
+     */
+    @Override
+    public void travel(Vec3 travelVector) {
+        if (this.getBurrowState().isBelowGround()) {
+            this.setDeltaMovement(Vec3.ZERO);
+            return;
+        }
+        super.travel(travelVector);
+    }
+
+    /** Lifts the mole to the first free spot above the ground at its own coordinates. */
+    public void pushToSurface(ServerLevel level) {
+        BlockPos surface = MoundNetwork.surfaceAt(level, this.getBlockX(), this.getBlockZ());
+        this.snapTo(surface.getBottomCenter());
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    /**
+     * Recovery. Runs on every load, including a plain chunk reload, not only a
+     * world restart.
+     *
+     * <p>The burrow state is not saved, so a mole always comes back
+     * {@code WANDERING}. What can survive a trip is the mess it leaves: a saved
+     * {@code NoGravity} flag and a position two blocks inside solid ground. Both
+     * are undone here, because a mole embedded in the terrain never gets out on
+     * its own.</p>
+     */
+    @Override
+    public void onAddedToLevel() {
+        super.onAddedToLevel();
+        if (!(this.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        this.setBurrowState(BurrowState.WANDERING, "loaded");
+        this.endUnderground();
+
+        // No chunk guard: this hook runs once the entity has entered the level's
+        // ticking list, which is after its own chunk is there.
+        BlockPos here = this.blockPosition();
+        if (level.getBlockState(here).isSolid()) {
+            BurrowLog.recovered(this, "loaded inside solid ground");
+            this.pushToSurface(level);
+        }
+    }
+
+    // --- ticking --------------------------------------------------------------
+
     @Override
     public void tick() {
         super.tick();
 
-        this.updateDebugOneShots();
-
-        // The poses are cosmetic, so they are driven client side only.
         if (this.level().isClientSide()) {
+            // The poses are cosmetic, so they are driven client side only.
             this.idleAnimationState.startIfStopped(this.tickCount);
+            this.updateBurrowAnimations();
+            this.updateAnimationPreview();
             this.updatePeek();
             this.updateDigAim();
-        } else if (MoleDebug.forcePeek || MoleDebug.forceDig || this.playingOneShot()) {
+        } else if ((MoleDebug.forcePeek || MoleDebug.forceDig) && !this.getBurrowState().isBusy()) {
             this.holdStillForTuning();
         }
     }
@@ -159,51 +309,88 @@ public class Mole extends Animal {
     }
 
     /**
-     * DEBUG ONLY. The entire phase-2 test harness for the two one-shot
-     * animations: {@link MoleDebug} counts requests, every mole plays each new
-     * one once. Phase 3 deletes this and starts the same states from
-     * {@code BURROWING} and {@code EMERGING} instead.
+     * Starts and stops the two one-shot animations from the synched state.
      *
-     * <p>Runs on both sides. The animation states are a client visual, but the
-     * countdown also tells {@link #tick()} to pin the mole while an animation is
-     * playing, and that is a server decision.</p>
+     * <p>Driven from a remembered state rather than from
+     * {@code onSyncedDataUpdated}, because that hook does not fire for the value
+     * a client receives when it starts tracking an entity - a mole that walks
+     * into view halfway through its burrow animation would otherwise never play
+     * it. Comparing here covers both cases with one mechanism.</p>
+     *
+     * <p>Stopping matters as much as starting: a non-looping keyframe animation
+     * holds its last frame for good, so the state that follows one has to end
+     * it or the mole freezes nose-down.</p>
      */
-    private void updateDebugOneShots() {
+    private void updateBurrowAnimations() {
+        BurrowState state = this.getBurrowState();
+        if (state == this.lastAnimatedState) {
+            return;
+        }
+
+        BurrowState previous = this.lastAnimatedState;
+        this.lastAnimatedState = state;
+
+        if (previous == BurrowState.BURROWING) {
+            this.burrowAnimationState.stop();
+        } else if (previous == BurrowState.EMERGING) {
+            this.emergeAnimationState.stop();
+        }
+
+        switch (state) {
+            case BURROWING -> this.burrowAnimationState.start(this.tickCount);
+            case EMERGING -> this.emergeAnimationState.start(this.tickCount);
+            case WANDERING -> {
+                if (previous == BurrowState.EMERGING) {
+                    // mole_emerge ends exactly where the rearing pose sits, and
+                    // peekAmount is already most of the way to 1 by then. Handing
+                    // straight over to a real peek keeps him up there looking
+                    // around instead of sinking the moment the animation stops.
+                    this.peekAnimationState.start(this.tickCount);
+                    this.peekCooldown = PEEK_INTERVAL;
+                    this.peekTicksLeft = PEEK_HOLD;
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    /**
+     * DEBUG ONLY. Plays {@code mole_burrow} or {@code mole_emerge} once on
+     * request from {@code /moleverse dig burrow|emerge}, so the animations stay
+     * checkable on a mole that is standing about.
+     *
+     * <p>{@link MoleDebug} counts requests rather than raising a flag, so every
+     * mole in the world sees the same one and none of them consumes it for the
+     * others. It steps aside while a real trip is running.</p>
+     */
+    private void updateAnimationPreview() {
+        if (this.getBurrowState().isBusy()) {
+            return;
+        }
+
         if (MoleDebug.burrowRequest != this.burrowRequestSeen) {
             this.burrowRequestSeen = MoleDebug.burrowRequest;
             this.burrowAnimationState.start(this.tickCount);
-            this.burrowTicksLeft = BURROW_TICKS;
-        } else if (this.burrowTicksLeft > 0 && --this.burrowTicksLeft == 0) {
-            // A non-looping keyframe animation holds its last frame for good,
-            // so something has to stop it or the mole freezes nose-down.
+            this.previewBurrowTicks = BurrowConstants.BURROW_TICKS;
+        } else if (this.previewBurrowTicks > 0 && --this.previewBurrowTicks == 0) {
             this.burrowAnimationState.stop();
         }
 
         if (MoleDebug.emergeRequest != this.emergeRequestSeen) {
             this.emergeRequestSeen = MoleDebug.emergeRequest;
             this.emergeAnimationState.start(this.tickCount);
-            this.emergeTicksLeft = EMERGE_TICKS;
-        } else if (this.emergeTicksLeft > 0 && --this.emergeTicksLeft == 0) {
+            this.previewEmergeTicks = BurrowConstants.EMERGE_TICKS;
+        } else if (this.previewEmergeTicks > 0 && --this.previewEmergeTicks == 0) {
             this.emergeAnimationState.stop();
         }
     }
 
-    /** True while a debug-triggered one-shot animation is still playing. */
-    private boolean playingOneShot() {
-        return this.burrowTicksLeft > 0 || this.emergeTicksLeft > 0;
-    }
-
-    /**
-     * Blend factor for the dig aim, plus the dig cycle that goes with it.
-     *
-     * <p>Only the condition is the debug harness. The blend below is the real
-     * mechanism: phase 3 keeps it and feeds it from its state enum instead of
-     * from {@link MoleDebug#forceDig}.</p>
-     */
+    /** Blend factor for the dig aim, plus the dig cycle that goes with it. */
     private void updateDigAim() {
         this.digAmountLast = this.digAmount;
 
-        boolean digging = MoleDebug.forceDig;
+        boolean digging = MoleDebug.forceDig || this.getBurrowState().isDigging();
         this.digAmount = Mth.lerp(DIG_BLEND_SPEED, this.digAmount, digging ? 1.0F : 0.0F);
 
         // Kept scooping while the body angle blends back out, so the paws do not
@@ -216,25 +403,48 @@ public class Mole extends Animal {
 
         boolean wantsToPeek = this.decideWhetherToPeek();
 
-        if (wantsToPeek) {
+        if (this.isEmerging()) {
+            // Linear, not the usual ease. mole_emerge is authored against a
+            // fully reared body, so the blend has to arrive at exactly 1 as the
+            // animation ends; easing towards it covers only 0.87 in sixteen
+            // ticks and then sags - the very jump this handoff exists to avoid.
+            this.peekAmount = Math.min(1.0F, this.peekAmount + 1.0F / BurrowConstants.EMERGE_TICKS);
+        } else if (wantsToPeek) {
             this.peekAmount = Mth.lerp(PEEK_BLEND_SPEED, this.peekAmount, 1.0F);
         } else {
             this.peekAmount = Mth.lerp(PEEK_BLEND_SPEED, this.peekAmount, 0.0F);
         }
     }
 
+    /** True while the mole is surfacing, whether for real or for a debug preview. */
+    private boolean isEmerging() {
+        return this.getBurrowState() == BurrowState.EMERGING || this.previewEmergeTicks > 0;
+    }
+
     private boolean decideWhetherToPeek() {
         // mole_emerge is authored to end in the rearing pose, and that pose is
-        // not part of the animation - it is this blend factor. Driving it while
-        // the mole surfaces is the handoff phase 3 makes from EMERGING; without
-        // it the animation and the pose do not chain, they jump. The peek
-        // keyframes stay out of the way meanwhile: emerge has its own head and
-        // paw motion.
-        if (this.emergeTicksLeft > 0) {
+        // not part of the animation - it is this blend factor. Driving it to 1
+        // while the mole surfaces is the handoff; without it the animation and
+        // the pose do not chain, they jump. The peek keyframes stay out of the
+        // way meanwhile: emerge has its own head and paw motion.
+        if (this.isEmerging()) {
+            // mole_emerge drives the head, snout and paws itself. Leaving the
+            // peek keyframes running would fight it on exactly those bones, and
+            // a mole that was mid-peek when it surfaced is the common case, not
+            // the rare one.
+            this.peekAnimationState.stop();
             return true;
         }
 
-        boolean moving = this.getDeltaMovement().horizontalDistanceSqr() > STILL_THRESHOLD;
+        // Nothing to rear up with while he is inside the ground.
+        if (this.getBurrowState().isBusy()) {
+            this.peekAnimationState.stop();
+            this.peekCooldown = PEEK_DELAY;
+            this.peekTicksLeft = 0;
+            return false;
+        }
+
+        boolean moving = this.getDeltaMovement().horizontalDistanceSqr() > BurrowConstants.STILL_THRESHOLD;
 
         if (moving) {
             this.peekAnimationState.stop();
@@ -283,8 +493,9 @@ public class Mole extends Animal {
         return null;
     }
 
+    /** Silent while inside the ground - a sniff from two blocks down gives him away. */
     @Override
     protected @Nullable SoundEvent getAmbientSound() {
-        return ModSounds.MOLE_SNIFF.get();
+        return this.getBurrowState().isBelowGround() ? null : ModSounds.MOLE_SNIFF.get();
     }
 }

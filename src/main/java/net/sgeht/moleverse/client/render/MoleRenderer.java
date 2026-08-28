@@ -36,8 +36,11 @@ public class MoleRenderer extends MobRenderer<Mole, MoleRenderState, MoleModel> 
 
         state.digAmount = entity.getDigAmount(partialTick);
 
-        // Phase 2 aims every mole from the slider panel at once. Phase 3 puts
-        // the two angles on the entity, where they differ per mole and per tick.
+        // Still read from the tuning values, and deliberately so: every mole in
+        // phase 3 dives straight down, and MoleDebug already holds that settled
+        // number as its default. Putting a constant on the entity to look
+        // per-mole would be a pretence. The angles start differing per mole in
+        // 0.3, when a tunnel is carved at an angle rather than dropped into.
         state.digPitchDegrees = MoleDebug.digPitchDegrees;
         state.digYawDegrees = MoleDebug.digYawDegrees;
 

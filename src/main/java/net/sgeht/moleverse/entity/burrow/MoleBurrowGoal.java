@@ -1,0 +1,544 @@
+package net.sgeht.moleverse.entity.burrow;
+
+import java.util.EnumSet;
+
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.entity.Mole;
+import net.sgeht.moleverse.registry.ModSounds;
+import net.sgeht.moleverse.tag.ModTags;
+
+/**
+ * The burrowing state machine.
+ *
+ * <p>It is a {@link Goal} rather than a free-standing controller for one reason:
+ * a goal can claim {@code MOVE} and {@code LOOK} and thereby shut the strolling
+ * and looking goals up for the duration. A controller running beside them would
+ * spend the whole trip fighting a {@code WaterAvoidingRandomStrollGoal} that
+ * keeps re-issuing a path. It sits at priority 0 and declares itself
+ * uninterruptable, so once a mole is in the ground nothing takes him out of it
+ * but this class.</p>
+ *
+ * <p>Where the mounds are and how the path between them is checked are two other
+ * concerns and live in {@link MoundNetwork} and {@link BurrowRoute}. What is left
+ * here is the sequence: when to want it, what to refuse, and what to do at each
+ * step.</p>
+ */
+public class MoleBurrowGoal extends Goal {
+
+    private final Mole mole;
+    private final RandomSource random;
+
+    /** No trip is worked out before this tick. Carries both the cooldown and the refusal delay. */
+    private int nextAttemptTick;
+
+    /** Last tick the mole was moving. The boredom timer counts from here. */
+    private int lastMovedTick;
+
+    /** Start of the current state, for the two animation lengths and the approach timeout. */
+    private int stateEnteredTick;
+
+    private int travelStartTick;
+
+    private @Nullable BlockPos entry;
+    private boolean entryIsNew;
+    private @Nullable BlockPos exit;
+    private boolean exitIsNew;
+
+    /** Where he actually came up. Equals {@link #exit} unless the route was cut short. */
+    private @Nullable BlockPos emergeAt;
+
+    /** The mound whose shaft stands open, remembered so it is closed again exactly once. */
+    private @Nullable BlockPos openedMound;
+
+    private @Nullable BurrowRoute route;
+    private boolean fleeing;
+
+    /** Whether he actually went under. A trip that never started earns no 90 second cooldown. */
+    private boolean wentUnder;
+
+    public MoleBurrowGoal(Mole mole) {
+        this.mole = mole;
+        this.random = mole.getRandom();
+        this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+    }
+
+    @Override
+    public boolean requiresUpdateEveryTick() {
+        // The route is advanced by a fraction of a block per tick and checked
+        // before every step. Half of that at half the rate is not the same thing.
+        return true;
+    }
+
+    @Override
+    public boolean isInterruptable() {
+        return false;
+    }
+
+    @Override
+    public boolean canUse() {
+        if (this.mole.getBurrowState().isBusy()) {
+            return false;
+        }
+        if (!(this.mole.level() instanceof ServerLevel level)) {
+            return false;
+        }
+
+        int now = this.mole.tickCount;
+        if (this.mole.getDeltaMovement().horizontalDistanceSqr() > BurrowConstants.STILL_THRESHOLD) {
+            this.lastMovedTick = now;
+        }
+        if (now < this.nextAttemptTick) {
+            return false;
+        }
+
+        LivingEntity threat = this.mole.getLastHurtByMob();
+        boolean fleeingNow = threat != null
+                && now - this.mole.getLastHurtByMobTimestamp() <= BurrowConstants.FLEE_MEMORY;
+        boolean bored = now - this.lastMovedTick >= BurrowConstants.BURROW_IDLE_DELAY;
+        if (!fleeingNow && !bored) {
+            return false;
+        }
+
+        BlockPos origin = this.mole.blockPosition();
+        BlockState ground = level.getBlockState(origin.below());
+        boolean diggable = ground.is(ModTags.Blocks.MOLE_DIGGABLE);
+        BurrowLog.wanted(this.mole, fleeingNow ? "flee" : "bored", ground, diggable);
+
+        if (!this.passesGuards(diggable)) {
+            this.delayNextAttempt();
+            return false;
+        }
+        if (!this.planTrip(level, origin, fleeingNow ? threat.position() : null)) {
+            this.delayNextAttempt();
+            return false;
+        }
+
+        this.fleeing = fleeingNow;
+        return true;
+    }
+
+    @Override
+    public boolean canContinueToUse() {
+        // The machine ends itself by going back to WANDERING; stop() then cleans up.
+        return this.mole.getBurrowState().isBusy();
+    }
+
+    @Override
+    public void start() {
+        this.mole.getNavigation().stop();
+
+        boolean atTheEntry = this.entryIsNew
+                || this.mole.position().distanceToSqr(this.entry.getCenter())
+                        <= BurrowConstants.ENTRY_REACH_DISTANCE * BurrowConstants.ENTRY_REACH_DISTANCE;
+
+        if (atTheEntry) {
+            this.beginBurrowing("digging in where he stands");
+            return;
+        }
+
+        this.mole.setBurrowState(BurrowState.APPROACHING,
+                this.fleeing ? "fleeing to a known mound" : "walking to a known mound");
+        this.stateEnteredTick = this.mole.tickCount;
+        this.mole.getNavigation().moveTo(
+                this.entry.getX() + 0.5, this.entry.getY(), this.entry.getZ() + 0.5,
+                this.fleeing ? BurrowConstants.FLEE_APPROACH_SPEED : BurrowConstants.APPROACH_SPEED);
+    }
+
+    @Override
+    public void tick() {
+        if (!(this.mole.level() instanceof ServerLevel level)) {
+            return;
+        }
+        switch (this.mole.getBurrowState()) {
+            case APPROACHING -> this.tickApproaching(level);
+            case BURROWING -> this.tickBurrowing(level);
+            case UNDERGROUND -> this.tickUnderground(level);
+            case EMERGING -> this.tickEmerging(level);
+            case WANDERING -> {
+                // Finished this tick; canContinueToUse ends the goal next round.
+            }
+        }
+    }
+
+    /**
+     * The single place a mole is put back together, so a forced end leaves the
+     * same state behind as a clean one.
+     */
+    @Override
+    public void stop() {
+        BurrowState state = this.mole.getBurrowState();
+
+        if (this.mole.level() instanceof ServerLevel level) {
+            if (state.isBelowGround()) {
+                // Only reachable when something removed the goal mid-trip. He is
+                // still inside solid ground at this point, so he goes up first.
+                BurrowLog.recovered(this.mole, "trip stopped while underground");
+                this.mole.pushToSurface(level);
+            }
+            this.closeOpenedMound(level);
+        }
+
+        this.mole.endUnderground();
+        if (state.isBusy()) {
+            this.mole.setBurrowState(BurrowState.WANDERING, "goal stopped");
+        }
+
+        this.entry = null;
+        this.exit = null;
+        this.emergeAt = null;
+        this.openedMound = null;
+        this.route = null;
+        this.fleeing = false;
+        this.lastMovedTick = this.mole.tickCount;
+        this.nextAttemptTick = this.mole.tickCount
+                + (this.wentUnder ? BurrowConstants.BURROW_COOLDOWN : BurrowConstants.REFUSAL_RETRY_DELAY);
+        this.wentUnder = false;
+    }
+
+    // --- deciding -------------------------------------------------------------
+
+    /**
+     * The cheap conditions, each closing a case that is otherwise undefined.
+     * Every {@code Mob} is {@code Leashable} in this version, so a leashed mole
+     * burrowing sixty-four blocks is reachable by accident rather than by design.
+     */
+    private boolean passesGuards(boolean diggable) {
+        String refusal = null;
+        if (this.mole.isBaby()) {
+            refusal = "baby - a juvenile only follows its mother down";
+        } else if (this.mole.isLeashed()) {
+            refusal = "leashed";
+        } else if (this.mole.isPassenger()) {
+            refusal = "riding something";
+        } else if (this.mole.isVehicle()) {
+            refusal = "carrying a passenger";
+        } else if (!this.mole.onGround()) {
+            refusal = "not on the ground";
+        } else if (this.mole.isInWater()) {
+            refusal = "in water";
+        } else if (!diggable) {
+            refusal = "ground is not diggable";
+        }
+
+        if (refusal == null) {
+            return true;
+        }
+        BurrowLog.refused(this.mole, refusal);
+        return false;
+    }
+
+    private boolean planTrip(ServerLevel level, BlockPos origin, @Nullable Vec3 threat) {
+        MoundNetwork.Scan scan = MoundNetwork.scan(level, origin);
+        BurrowLog.scanFinished(this.mole, scan.mounds().size(), scan.densityCapReached());
+
+        BlockPos nearest = scan.nearest();
+        if (nearest != null) {
+            // Reusing a mound is what keeps an established mole in its own network
+            // instead of carving new holes everywhere, and it adds nothing to the
+            // density count - which is why the cap is not asked here.
+            this.entry = nearest;
+            this.entryIsNew = false;
+        } else if (!MoleMound.canPlaceAt(level, origin)) {
+            BurrowLog.refused(this.mole, "no room for a mound where he stands");
+            return false;
+        } else {
+            this.entry = origin;
+            this.entryIsNew = true;
+        }
+
+        MoundNetwork.Members network = MoundNetwork.build(level, this.entry);
+        BurrowLog.networkBuilt(this.mole, network.mounds().size(), network.chainDepth(), network.farthest());
+
+        return this.chooseExitAndRoute(level, network, threat, scan.densityCapReached());
+    }
+
+    private boolean chooseExitAndRoute(ServerLevel level, MoundNetwork.Members network, @Nullable Vec3 threat,
+            boolean crowded) {
+        BlockPos chosen = MoundNetwork.chooseExit(this.random, network, this.entry, threat);
+        if (chosen != null) {
+            this.exit = chosen;
+            this.exitIsNew = false;
+        } else {
+            this.exit = MoundNetwork.findFreshSite(level, this.random, this.entry);
+            if (this.exit == null) {
+                // The crowded case: mounds all around but every one of them too
+                // close to be worth the trip, and no room for a fifth anywhere in
+                // reach. He wanders off and tries again from somewhere else,
+                // which is what spreads a territory out instead of stacking it.
+                BurrowLog.refused(this.mole, (crowded ? "density cap reached: " : "no valid exit: ")
+                        + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE
+                        + " blocks and no fresh site was free");
+                return false;
+            }
+            this.exitIsNew = true;
+        }
+
+        this.route = BurrowRoute.between(level, this.entry, this.exit);
+        BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, this.exitIsNew,
+                this.route.length(), this.route.waypointCount());
+        return true;
+    }
+
+    // --- the states -----------------------------------------------------------
+
+    private void tickApproaching(ServerLevel level) {
+        double reachSqr = BurrowConstants.ENTRY_REACH_DISTANCE * BurrowConstants.ENTRY_REACH_DISTANCE;
+        if (this.mole.position().distanceToSqr(this.entry.getCenter()) <= reachSqr) {
+            this.beginBurrowing("reached the entry mound");
+            return;
+        }
+
+        int waited = this.mole.tickCount - this.stateEnteredTick;
+        boolean timedOut = waited >= BurrowConstants.APPROACH_TIMEOUT;
+        // The navigation needs a tick or two to produce a path before "done"
+        // means anything; asking immediately reads as an exhausted path.
+        boolean pathGone = waited > 4 && this.mole.getNavigation().isDone();
+        if (!timedOut && !pathGone) {
+            return;
+        }
+
+        BurrowLog.refused(this.mole, timedOut
+                ? "approach timed out - digging here instead"
+                : "path to the entry mound exhausted - digging here instead");
+
+        if (this.digHereInstead(level)) {
+            this.beginBurrowing("gave up approaching");
+        } else {
+            this.abort("gave up approaching and there is nothing to dig here either");
+        }
+    }
+
+    /**
+     * Turns a failed approach into a dig on the spot. The exit has to be checked
+     * again: the mole is now somewhere else, and an exit that was far enough from
+     * the old entry can easily be next door to this one.
+     */
+    private boolean digHereInstead(ServerLevel level) {
+        BlockPos here = this.mole.blockPosition();
+        if (!MoundNetwork.hasRoomForMound(level, here) || !MoleMound.canPlaceAt(level, here)) {
+            return false;
+        }
+
+        int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;
+        if (this.exit.distSqr(here) < minSqr) {
+            return false;
+        }
+
+        this.entry = here;
+        this.entryIsNew = true;
+        this.route = BurrowRoute.between(level, this.entry, this.exit);
+        return true;
+    }
+
+    private void tickBurrowing(ServerLevel level) {
+        this.holdStill();
+        if (this.mole.tickCount - this.stateEnteredTick < BurrowConstants.BURROW_TICKS) {
+            return;
+        }
+
+        if (!this.openEntryMound(level)) {
+            this.abort("the entry no longer takes a mound");
+            return;
+        }
+
+        // One loud scoop where he goes in. The muffled ones follow him along the
+        // surface; this is the last one heard from close up.
+        level.playSound(null, this.entry.getX() + 0.5, this.entry.getY(), this.entry.getZ() + 0.5,
+                ModSounds.MOLE_DIG.get(), SoundSource.NEUTRAL, 1.0F, 1.0F);
+
+        this.aimAlongRoute();
+        this.mole.beginUnderground();
+        this.mole.snapTo(this.route.position());
+        this.travelStartTick = this.mole.tickCount;
+        this.wentUnder = true;
+        this.mole.setBurrowState(BurrowState.UNDERGROUND, "burrow animation finished");
+    }
+
+    private void tickUnderground(ServerLevel level) {
+        BurrowRoute.Progress progress = this.route.advance(level);
+
+        // Even after a failure this is the last valid point, which is where he
+        // is supposed to end up.
+        this.mole.snapTo(this.route.position());
+        this.surfaceTrace(level);
+
+        switch (progress) {
+            case TRAVELLING -> {
+            }
+            case ARRIVED -> this.beginEmerging(level, "route finished");
+            case NOT_ENTITY_TICKING -> {
+                BurrowLog.recovered(this.mole, "waypoint not entity-ticking");
+                this.beginEmerging(level, "route left the ticking area");
+            }
+            case NOT_SOLID -> {
+                BurrowLog.recovered(this.mole, "waypoint not solid");
+                this.beginEmerging(level, "route ran into open air");
+            }
+            case LIQUID -> {
+                BurrowLog.recovered(this.mole, "liquid on the route");
+                this.beginEmerging(level, "route ran into liquid");
+            }
+        }
+    }
+
+    private void tickEmerging(ServerLevel level) {
+        this.holdStill();
+        if (this.mole.tickCount - this.stateEnteredTick < BurrowConstants.EMERGE_TICKS) {
+            return;
+        }
+
+        this.placeExitMound(level);
+        level.playSound(null, this.mole.getX(), this.mole.getY(), this.mole.getZ(),
+                ModSounds.MOLE_SURFACE.get(), SoundSource.NEUTRAL, 1.0F, 1.0F);
+        this.mole.setBurrowState(BurrowState.WANDERING, "emerge animation finished");
+    }
+
+    // --- steps ----------------------------------------------------------------
+
+    private void beginBurrowing(String reason) {
+        this.mole.getNavigation().stop();
+        this.mole.setBurrowState(BurrowState.BURROWING, reason);
+        this.stateEnteredTick = this.mole.tickCount;
+    }
+
+    private void beginEmerging(ServerLevel level, String reason) {
+        BurrowLog.travelFinished(this.mole, this.mole.tickCount - this.travelStartTick,
+                this.route.travelled(), this.route.estimatedTicks());
+
+        Vec3 at = this.route.position();
+        this.emergeAt = MoundNetwork.surfaceAt(level, Mth.floor(at.x), Mth.floor(at.z));
+
+        // Out of the ground before physics are handed back, otherwise the first
+        // tick above ground is spent being squeezed out of a block.
+        this.mole.endUnderground();
+        this.mole.snapTo(this.emergeAt.getBottomCenter());
+        this.mole.setDeltaMovement(Vec3.ZERO);
+
+        this.mole.setBurrowState(BurrowState.EMERGING, reason);
+        this.stateEnteredTick = this.mole.tickCount;
+    }
+
+    /** Opens the shaft he goes down, digging the mound first when there is none yet. */
+    private boolean openEntryMound(ServerLevel level) {
+        if (!MoleMound.isMound(level, this.entry)) {
+            BlockState support = level.getBlockState(this.entry.below());
+            BlockState replaced = level.getBlockState(this.entry);
+            if (!MoleMound.tryPlace(level, this.entry, true)) {
+                return false;
+            }
+            BurrowLog.moundPlaced(this.mole, this.entry, support, replaced);
+        } else {
+            MoleMound.setOpen(level, this.entry, true);
+        }
+
+        this.openedMound = this.entry;
+        return true;
+    }
+
+    private void closeOpenedMound(ServerLevel level) {
+        if (this.openedMound != null) {
+            MoleMound.setOpen(level, this.openedMound, false);
+        }
+    }
+
+    /**
+     * The second mound of the trip, at wherever he actually came up.
+     *
+     * <p>Placing one only holds where it is still legal - the support may have
+     * been mined away and water may have flowed in while he was down there. A
+     * mole that surfaces without a mound is a much better outcome than one that
+     * refuses to surface.</p>
+     */
+    private void placeExitMound(ServerLevel level) {
+        if (MoleMound.isMound(level, this.emergeAt)) {
+            // The reused exit is still standing. Nothing to dig, only to shut.
+            MoleMound.setOpen(level, this.emergeAt, false);
+            return;
+        }
+
+        BlockState support = level.getBlockState(this.emergeAt.below());
+        BlockState replaced = level.getBlockState(this.emergeAt);
+        if (MoleMound.tryPlace(level, this.emergeAt, false)) {
+            BurrowLog.moundPlaced(this.mole, this.emergeAt, support, replaced);
+        } else {
+            BurrowLog.recovered(this.mole, this.emergeAt.equals(this.exit)
+                    ? "target mound gone and the site no longer takes one - surfaced without a mound"
+                    : "surfaced early where no mound fits");
+        }
+    }
+
+    /** Ends the trip without a dig. The goal stops on the next tick and cleans up. */
+    private void abort(String why) {
+        BurrowLog.refused(this.mole, why);
+        this.mole.setBurrowState(BurrowState.WANDERING, "aborted");
+    }
+
+    private void holdStill() {
+        this.mole.getNavigation().stop();
+        // Vertical movement is left alone so gravity still settles him on the ground.
+        this.mole.setDeltaMovement(this.mole.getDeltaMovement().multiply(0.0, 1.0, 0.0));
+    }
+
+    /**
+     * Points the mole along the route before he goes in. The whole body turns,
+     * which is why the dig animation needs no yaw of its own.
+     */
+    private void aimAlongRoute() {
+        double dx = this.exit.getX() - this.entry.getX();
+        double dz = this.exit.getZ() - this.entry.getZ();
+        if (dx == 0.0 && dz == 0.0) {
+            return;
+        }
+        float yaw = (float) (Mth.atan2(dz, dx) * 180.0F / (float) Math.PI) - 90.0F;
+        this.mole.setYRot(yaw);
+        this.mole.setYHeadRot(yaw);
+        this.mole.yBodyRot = yaw;
+    }
+
+    /**
+     * Dust and a muffled scoop on the ground above him. This is the only thing a
+     * player sees of the trip, so it is emitted from the surface over his current
+     * position rather than from the entity, which is two blocks down.
+     */
+    private void surfaceTrace(ServerLevel level) {
+        boolean dust = this.mole.tickCount % BurrowConstants.DUST_INTERVAL == 0;
+        boolean scoop = this.mole.tickCount % BurrowConstants.DIG_SOUND_INTERVAL == 0;
+        if (!dust && !scoop) {
+            return;
+        }
+
+        Vec3 at = this.route.position();
+        BlockPos surface = MoundNetwork.surfaceAt(level, Mth.floor(at.x), Mth.floor(at.z));
+        BlockPos ground = surface.below();
+
+        if (dust) {
+            level.sendParticles(
+                    new BlockParticleOption(ParticleTypes.BLOCK, level.getBlockState(ground), ground),
+                    surface.getX() + 0.5, surface.getY() + 0.1, surface.getZ() + 0.5,
+                    3, 0.2, 0.0, 0.2, 0.02);
+        }
+
+        if (scoop) {
+            level.playSound(null, surface.getX() + 0.5, surface.getY(), surface.getZ() + 0.5,
+                    ModSounds.MOLE_DIG.get(), SoundSource.NEUTRAL,
+                    BurrowConstants.DIG_SOUND_VOLUME, BurrowConstants.DIG_SOUND_PITCH);
+        }
+    }
+
+    private void delayNextAttempt() {
+        this.nextAttemptTick = this.mole.tickCount + BurrowConstants.REFUSAL_RETRY_DELAY;
+    }
+}
