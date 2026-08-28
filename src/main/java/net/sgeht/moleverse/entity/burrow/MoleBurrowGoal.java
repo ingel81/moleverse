@@ -471,17 +471,19 @@ public class MoleBurrowGoal extends Goal {
                 this.route.travelled(), this.route.estimatedTicks());
 
         Vec3 at = this.route.position();
-        BlockPos surfaced = MoundNetwork.surfaceAt(level, Mth.floor(at.x), Mth.floor(at.z));
+        int x = Mth.floor(at.x);
+        int z = Mth.floor(at.z);
+        BlockPos surfaced = MoundNetwork.surfaceAt(level, x, z);
 
-        // A route that climbs into a hollow building stops inside it, and the
-        // heightmap of a column under a roof is the roof. Surfacing there puts
-        // the mole on top of someone's house. When the ground above is that far
-        // from where the mole actually is, go back to the entry instead - it is
-        // the one position known to be open sky and known to take a mound.
-        int overhead = surfaced.getY() - Mth.floor(at.y);
-        if (overhead > BurrowConstants.ROUTE_DEPTH + 2) {
+        // A hill the route climbed into and a roof both put the heightmap far
+        // above the mole; only one of them has a room in between, and surfacing
+        // through a room means standing on someone's house. Walking the column
+        // is what tells them apart. Distance alone cannot: the route deliberately
+        // climbs slower than rising ground does, so on any slope the gap grows
+        // with the length of the trip and would condemn every uphill journey.
+        if (!isSolidColumn(level, x, z, Mth.floor(at.y) + 1, surfaced.getY())) {
             BurrowLog.recovered(this.mole, "ground above is built over - returning to the entry");
-            surfaced = this.entry;
+            surfaced = MoundNetwork.surfaceAt(level, this.entry.getX(), this.entry.getZ());
         }
 
         this.emergeAt = surfaced;
@@ -494,6 +496,22 @@ public class MoleBurrowGoal extends Goal {
 
         this.mole.setBurrowState(BurrowState.EMERGING, reason);
         this.stateEnteredTick = this.mole.tickCount;
+    }
+
+    /**
+     * Whether everything between two heights in one column is solid ground.
+     *
+     * <p>About fifteen block reads, once per trip. It is the cavity that makes
+     * surfacing wrong, not the height.</p>
+     */
+    private static boolean isSolidColumn(ServerLevel level, int x, int z, int fromY, int toY) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = fromY; y < toY; y++) {
+            if (!level.getBlockState(cursor.set(x, y, z)).isSolid()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Opens the shaft he goes down, digging the mound first when there is none yet. */
