@@ -53,6 +53,19 @@ File > Plugins > Load Plugin from File. Never "from URL" - the firewall blocks
 Blockbench's outbound traffic - and never rename the file, because Blockbench
 requires the filename to match the id in `Plugin.register`.
 
+Two things the plugin does on load: it flips `Formats.modded_entity.animation_mode`
+to true, which is what makes the Animate tab usable for this format at all, and it
+adds the action `export_animation_to_json` under File > Export.
+
+Do not trigger that action over MCP. It opens a native save dialog, and a modal
+dialog blocks the Blockbench event loop, which kills the MCP connection. Its
+conversion is barely a dozen lines; replicate it in `risky_eval`, return the JSON,
+and write the file from the shell instead.
+
+Beware: Blockbench flips the sign of X rotations for this format on the way out,
+the same mirroring the geometry export applies. Verify a rotation in game before
+trusting its sign.
+
 Playing an animation from the model class:
 
 ```java
