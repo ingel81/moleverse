@@ -479,6 +479,32 @@ watching them:
   meadow looking stamped. Whether twelve variants are enough only shows with a
   dozen of them on the ground.
 
+## Known and left alone
+
+Three review rounds produced fifteen findings; all the ones that could change or
+damage the world are fixed. These are the survivors, kept here rather than in a
+tracker because they are small and because knowing they were seen is worth more
+than fixing them:
+
+* The **entry** mound is chosen from the point-of-interest index without the
+  reachability filter the exit gets. Worst case is a trip that aborts on its
+  first tick.
+* `onAddedToLevel` can force a chunk load when it closes a shaft far from where
+  the mole surfaced. A performance edge, once per load.
+* A mole that changes dimension carries its open-shaft position along. Closing
+  it is a no-op in the wrong world, and a mole underground cannot enter a portal
+  anyway - `noPhysics` switches portal handling off.
+* The escort goal checks its guards when it starts, not every tick. Leashing a
+  juvenile mid-trip does not stop it following.
+* An abort directly under a tree trunk would surface the mole on top of the
+  tree: the trunk is a solid column, so the cavity test passes. It needs the
+  abort to land on that one column, which the normal loop does not do.
+
+One thing is **unverified** rather than accepted: whether NeoForge routes the
+mixed mod-bus and game-bus handlers in `MoleverseClient` correctly by itself.
+The annotation could not be found in either source archive. If the network
+overlay draws nothing in game, look there first.
+
 ## Deliberately deferred
 
 * **Real tunnels.** Excavated, walkable passages belong to 0.3 Digging. The
