@@ -12,6 +12,9 @@ dimension of their own.
   reason into the subject or leave it out. Conventional Commits prefixes
   (`feat:`, `fix:`, `chore:`, `ci:`, `docs:`, `refactor:`) are used.
 * **No `Co-Authored-By` trailers for Claude**, and no session links in commits.
+* **Do not watch CI runs.** The local build is the signal that matters. Only
+  look at GitHub Actions when something actually depends on it, such as a
+  release build or a failure someone reports.
 * Git identity is configured per repository, not globally:
   `ingel81 <ingel81@users.noreply.github.com>`.
 
@@ -83,6 +86,29 @@ web almost always target older versions and are frequently wrong for this one.
 * Windows does not carry an executable bit, so `gradlew` landed in the index as
   `100644` and the Linux CI runner failed with `./gradlew: Permission denied`.
   Fixed with `git update-index --chmod=+x gradlew`.
+
+## Tooling: Blockbench
+
+Entity, block and item models are authored in Blockbench, not by hand.
+Blender is only for concept studies and promotional renders - Minecraft entity
+models are axis-aligned cuboids in a bone hierarchy and cannot come from a
+free-form mesh.
+
+Setup on this machine:
+
+* Portable build and the MCP plugin live in `D:i_local\minecraft_modding\_tools`.
+* The plugin file must be named `mcp.js` - Blockbench requires the filename to
+  match the id in `Plugin.register`. Load it through File > Plugins > Load Plugin
+  from File, never 'from URL': the firewall blocks Blockbench's outbound traffic.
+* The MCP server runs inside Blockbench on `http://localhost:3000/bb-mcp`.
+  Loopback is exempt from the firewall, so no extra rule is needed.
+* Registered in `.mcp.json` (project scope) as server `blockbench`.
+* Blockbench must be running with a project open for most tools to work.
+
+Useful tools: `create_project`, `place_cube` (takes `from`/`to`/`origin`/`rotation`,
+which map one to one onto `CubeListBuilder`), `add_group` for bones,
+`create_texture` plus the painting tools, `set_camera_angle` and
+`capture_screenshot` to review the result, `export_model` to write to disk.
 
 ## Data generation
 
