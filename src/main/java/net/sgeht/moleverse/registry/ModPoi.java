@@ -34,8 +34,16 @@ public final class ModPoi {
      */
     private static final int MAX_TICKETS = 1;
 
-    /** Distance a mole may be from the mound and still count as arrived. */
-    private static final int VALID_RANGE = 32;
+    /**
+     * How far from the mound a path may stop and still count as reaching it.
+     * Vanilla uses 1 for everything except the village bell.
+     *
+     * <p>Not an arrival radius, which is what it looks like: the value is only
+     * ever passed to {@code Navigation.createPath(positions, range)}. Anything
+     * near the mole's own search radius would mean every mound counts as already
+     * reached, and a mole would dig where it stands instead of walking over.</p>
+     */
+    private static final int VALID_RANGE = 1;
 
     public static final DeferredHolder<PoiType, PoiType> MOLE_MOUND = REGISTER.register(
             "mole_mound",

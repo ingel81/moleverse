@@ -782,8 +782,11 @@ The classes that actually exist:
 | `PropertyDispatch<V>` | `net.minecraft.client.data.models.blockstates` | |
 | `BlockModelGenerators` | `net.minecraft.client.data.models` | static helpers |
 
-There is **no `withYRot` mutator method to call by hand** — use the ready-made
-constants.
+`Variant` carries its own mutators — `withXRot`, `withYRot`, `withZRot`,
+`withUvLock`, `withModel`, `withState`
+(`net/minecraft/client/renderer/block/model/Variant.java:30-54`) — alongside the
+one-argument constructor `Variant(Identifier)` (`:26`). Either those or the
+ready-made `VariantMutator` constants work; `ModModelProvider` uses the former.
 
 ```java
 // BlockModelGenerators — static helpers

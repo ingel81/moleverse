@@ -34,8 +34,8 @@ public final class ModBlocks {
             props -> props.mapColor(MapColor.DIRT)
                     .instabreak()
                     .sound(SoundType.GRAVEL)
+                    // noCollision clears occlusion along with the collision box.
                     .noCollision()
-                    .noOcclusion()
                     // A piston crumbles a mound rather than pushing it, which
                     // is what keeps them out of redstone contraptions.
                     .pushReaction(PushReaction.DESTROY));

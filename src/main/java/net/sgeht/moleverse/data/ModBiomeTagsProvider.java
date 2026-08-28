@@ -28,7 +28,7 @@ public final class ModBiomeTagsProvider extends KeyTagProvider<Biome> {
     @Override
     protected void addTags(HolderLookup.Provider registries) {
         // Grassland and woodland with soft ground. Deliberately not the whole
-        // overworld: a mole on a mountainside or in a desert has nothing to dig.
+        // overworld: bare rock, sand and snow give a mole nothing to dig.
         tag(ModTags.Biomes.SPAWNS_MOLES)
                 .add(Biomes.PLAINS)
                 .add(Biomes.SUNFLOWER_PLAINS)
