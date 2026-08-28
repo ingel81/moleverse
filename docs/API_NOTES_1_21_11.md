@@ -1305,3 +1305,183 @@ for a multiplayer debug overlay. On the integrated server they are (the
 collector is installed in `processPacketsAndTick`); a dedicated server installs
 none, and `GameTestServer` explicitly sets `GizmoCollector.NOOP`
 (`net/minecraft/gametest/framework/GameTestServer.java:166`).
+
+---
+
+## A23 goals: priority, flags and tick rate
+
+```java
+public abstract class Goal {
+    public abstract boolean canUse();
+    public boolean canContinueToUse()        { return this.canUse(); }
+    public boolean isInterruptable()         { return true; }
+    public void start()  {}
+    public void stop()   {}
+    public void tick()   {}
+    public boolean requiresUpdateEveryTick() { return false; }
+    public void setFlags(EnumSet<Goal.Flag> flagSet);
+    public static enum Flag { MOVE, LOOK, JUMP, TARGET; }
+}
+```
+source: `net/minecraft/world/entity/ai/goal/Goal.java`
+
+```java
+public void addGoal(int priority, Goal goal)          // GoalSelector.java:35 — LOWER number wins
+public void tick()                                    // :77  full re-evaluation
+public void tickRunningGoals(boolean tickAllRunning)  // :106
+```
+
+```java
+// WrappedGoal.java:23 — the whole pre-emption rule
+public boolean canBeReplacedBy(WrappedGoal other) {
+    return this.isInterruptable() && other.getPriority() < this.getPriority();
+}
+```
+
+So a goal that must not be pre-empted overrides `isInterruptable()` to `false`,
+and a goal that must lock the others out claims their flags. Two goals at the
+same priority never displace each other; insertion order decides who got the
+flag first. `FloatGoal` claims **only** `JUMP` (`FloatGoal.java:12`), so a goal
+claiming `MOVE`/`LOOK` can sit beside it at the same priority.
+
+**Tick rate.** `Mob.serverAiStep` (`Mob.java:705`, `final`) alternates:
+
+```java
+int i = this.tickCount + this.getId();
+if (i % 2 != 0 && this.tickCount > 1) { ... goalSelector.tickRunningGoals(false); }
+else                                  { ... goalSelector.tick(); }
+```
+
+`canUse()` and `canContinueToUse()` are therefore only asked on roughly every
+**second** tick. `tick()` runs every tick only when
+`requiresUpdateEveryTick()` returns `true`.
+
+**Order inside one server tick** (`Mob.serverAiStep`, :705-753):
+sensing → targetSelector → goalSelector → `navigation.tick()` →
+`customServerAiStep(ServerLevel)` (:746) → `moveControl.tick()` → `lookControl`
+→ `jumpControl`. Then `LivingEntity.aiStep` calls `travel(...)`
+(`LivingEntity.java:3148`).
+
+Consequence: **stopping the navigation from a goal does not stop the mob.**
+`MoveControl.tick()` runs afterwards and still steers towards its last wanted
+position, and `travel` applies gravity on top. To pin a mob completely, override
+`travel`.
+
+`Mob.updateControlFlags()` (:350) re-asserts the MOVE/JUMP/LOOK *control* flags
+every 5 ticks from `Mob.tick()`, so `goalSelector.setControlFlag(...)` is not a
+reliable place to disable goals from outside.
+
+---
+
+## A24 moving an entity by hand
+
+```java
+// LivingEntity — public and overridable; Squid, Camel, Allay, Ghast all override it
+public void travel(Vec3 travelVector)                 // LivingEntity.java:2462
+
+// Entity — position without physics
+public void setPos(double x, double y, double z)      // Entity.java:460
+public void snapTo(Vec3 pos)                          // :1705
+public void snapTo(double x, double y, double z)      // :1709
+public void snapTo(double x, double y, double z, float yRot, float xRot)  // :1721
+public void setDeltaMovement(Vec3 deltaMovement)      // :3897
+public final int getBlockX() / getBlockY() / getBlockZ()  // :3913 / :3929 / …
+```
+
+`snapTo` also calls `setOldPosAndRot()` and `reapplyPosition()`, so the client
+does not interpolate through the gap — that is what you want when teleporting an
+entity along a path each tick.
+
+Yaw from a direction, exactly as `MoveControl.java:98` writes it:
+
+```java
+float yaw = (float)(Mth.atan2(dz, dx) * 180.0F / (float)Math.PI) - 90.0F;
+this.setYRot(yaw); this.setYHeadRot(yaw); this.yBodyRot = yaw;   // yBodyRot: LivingEntity.java:231
+```
+
+**Flags that persist to NBT** — the same trap as `Invulnerable` (A10):
+
+| flag | saved where |
+|---|---|
+| `Invulnerable` | `Entity.saveWithoutId` :2029 — always |
+| `NoGravity` | `Entity.saveWithoutId` — `if (this.isNoGravity())` |
+| `NoAI` | `Mob.addAdditionalSaveData` :389, read :411 |
+
+`noPhysics` (`Entity.java:232`, public field) and the `Invisible` shared flag are
+**not** saved. Invisibility has a different problem instead:
+
+```java
+protected void updateInvisibilityStatus()             // LivingEntity.java:909
+// called only from updateDirtyEffects() (:903), i.e. when effectsDirty is set
+```
+
+It does `setInvisible(this.hasEffect(INVISIBILITY))`, so a mob effect expiring
+silently clears a hand-set invisibility. Override the method to hold it.
+
+---
+
+## A25 blockstate predicates and the heightmap
+
+```java
+// BlockBehaviour.BlockStateBase
+public boolean canBeReplaced()          // :898  — grass/ferns/flowers/air: true. Not deprecated.
+public boolean isSolid()                // :602  — @Deprecated, but the only "is this solid" there is
+public boolean blocksMotion()           // :596  — @Deprecated; isSolid() minus cobweb/bamboo sapling
+public boolean isAir()                  // :640
+public FluidState getFluidState()       // :954  — .isEmpty() (FluidState.java:49) for "no liquid"
+```
+
+`canBeReplaced()` is the right cover test for "may something be planted here":
+short grass and flowers are not air, and testing for air rejects nearly every
+meadow.
+
+```java
+// LevelReader
+int getHeight(Heightmap.Types type, int x, int z)     // :32  — the first FREE y
+default int getHeight(Heightmap.Types type, BlockPos pos)      // :34
+default BlockPos getHeightmapPos(Heightmap.Types type, BlockPos pos)  // :85
+// LevelHeightAccessor
+int getMinY()                                          // :9
+```
+
+`MOTION_BLOCKING_NO_LEAVES` (`Heightmap.java:150`) is the one for "ground level":
+its predicate is `blocksMotion() || !fluid.isEmpty()`, so grass on top of dirt
+gives the y **of the grass**, which is where a replaceable cover block sits. The
+topmost solid block is `getHeight(...) - 1`.
+
+---
+
+## A26 odds and ends used by the burrowing mechanic
+
+```java
+// LivingEntity — the flee trigger
+public @Nullable LivingEntity getLastHurtByMob()      // :628
+public int getLastHurtByMobTimestamp()                // :641  — set to this.tickCount at :663
+
+// Level — the sound overload that takes a raw SoundEvent
+public void playSound(@Nullable Entity entity, double x, double y, double z,
+                      SoundEvent sound, SoundSource source, float volume, float pitch)  // Level.java:468
+
+// Mth
+public static int nextInt(RandomSource random, int minimum, int maximum)   // :209 — INCLUSIVE
+public static double atan2(double y, double x)                             // :489
+public static int floor(double value)                                      // :76
+
+// BlockPos
+public static BlockPos containing(double x, double y, double z)   // :95
+public Vec3 getCenter()                                           // :136
+public Vec3 getBottomCenter()                                     // :140
+public BlockPos atY(int y)                                        // :248
+
+// Registry — registry name for a log line
+@Nullable Identifier getKey(T value)                              // Registry.java:64
+// BuiltInRegistries.BLOCK is a DefaultedRegistry, whose getKey is @NonNull (DefaultedRegistry.java:9)
+```
+
+`PoiRecord` stores `pos.immutable()` (`PoiRecord.java:20`), so the positions
+coming out of `PoiManager` are safe as `HashSet` / `HashMap` keys.
+
+`PoiManager.ensureLoadedAndValid(LevelReader, BlockPos, int)` (:263) **force-loads
+chunks** (`getChunk(x, z, ChunkStatus.EMPTY)`). Its only caller in the whole tree
+is `PortalForcer.java:45`; villager AI never calls it. Do not add it to a routine
+POI search — let the query see the loaded sections only.

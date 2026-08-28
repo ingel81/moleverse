@@ -1,12 +1,23 @@
 # Mole mounds and burrowing
 
-Status: **decided, not implemented.** Settled in a planning round on 2026-08-28
-and revised the same day after a design review. This document replaces the
-"Burrowing and molehills" section of `docs/MOLE_DESIGN.md`, which was a
-proposal; that section is reduced to a pointer here when phase 1 lands.
+Status: **built.** Decided in a planning round on 2026-08-28, revised the same
+day after a design review, and implemented across four phases on the same day.
+This document replaces the "Burrowing and molehills" section of
+`docs/MOLE_DESIGN.md`, which was the proposal it grew out of.
 
-Work is split into four phases, each ending in its own commit and each testable
-on its own. Nothing is built ahead of its phase.
+| Phase | Commit | State |
+|---|---|---|
+| 1 - the block | `9d061c6` | Built. Verified in a running client: no missing models or textures, twelve blockstate variants |
+| 2 - animations | `57f81b1` | Built. All six entity animations load |
+| 3 - the mechanic | `b0f9c6a` | Built |
+| 4 - natural spawning | `d849d2c` | Built. Biome tag and modifier generated |
+
+Two review rounds ran against the code, one after phases 1, 2 and 4 and one
+against the mechanic. Their findings are folded in; see "Still to judge by eye"
+for what a machine could not check.
+
+The plan below is kept in the present tense as the description of what the
+feature does, not as a to-do list.
 
 ## The short version
 
