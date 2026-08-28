@@ -3,6 +3,7 @@ package net.sgeht.moleverse.tag;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.sgeht.moleverse.Moleverse;
 
@@ -32,6 +33,18 @@ public final class ModTags {
 
         private static TagKey<Block> create(String path) {
             return TagKey.create(Registries.BLOCK, Moleverse.id(path));
+        }
+    }
+
+    public static final class Biomes {
+        /** Biomes moles spawn in naturally. */
+        public static final TagKey<Biome> SPAWNS_MOLES = create("spawns_moles");
+
+        private Biomes() {
+        }
+
+        private static TagKey<Biome> create(String path) {
+            return TagKey.create(Registries.BIOME, Moleverse.id(path));
         }
     }
 

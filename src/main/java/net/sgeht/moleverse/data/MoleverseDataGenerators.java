@@ -1,9 +1,14 @@
 package net.sgeht.moleverse.data;
 
+import java.util.Set;
+
+import net.minecraft.core.RegistrySetBuilder;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.sgeht.moleverse.Moleverse;
 
 /**
@@ -37,6 +42,15 @@ public final class MoleverseDataGenerators {
         // Tags. Item tags may need the block tag contents later, so keep the handle.
         var blockTags = pack.addProvider(output -> new ModBlockTagsProvider(output, lookup));
         pack.addProvider(output -> new ModItemTagsProvider(output, lookup));
+        pack.addProvider(output -> new ModBiomeTagsProvider(output, lookup));
+
+        // Datapack registries: the biome modifier that makes moles spawn.
+        pack.addProvider(output -> new DatapackBuiltinEntriesProvider(
+                output,
+                lookup,
+                new RegistrySetBuilder()
+                        .add(NeoForgeRegistries.Keys.BIOME_MODIFIERS, ModBiomeModifiers::bootstrap),
+                Set.of(Moleverse.MOD_ID)));
 
         // sounds.json
         pack.addProvider(ModSoundProvider::new);

@@ -1,0 +1,10 @@
+{
+  "type": "neoforge:add_spawns",
+  "biomes": "#moleverse:spawns_moles",
+  "spawners": {
+    "type": "moleverse:mole",
+    "maxCount": 2,
+    "minCount": 1,
+    "weight": 3
+  }
+}
