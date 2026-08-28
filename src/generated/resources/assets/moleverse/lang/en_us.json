@@ -1,11 +1,16 @@
 {
   "block.moleverse.loose_soil": "Loose Soil",
+  "entity.moleverse.mole": "Mole",
   "item.moleverse.mole_pelt": "Mole Pelt",
+  "item.moleverse.mole_spawn_egg": "Mole Spawn Egg",
   "itemGroup.moleverse.main": "Moleverse",
   "message.moleverse.greeting": "Hello, mole. The tunnels are waiting.",
   "moleverse.configuration.debugLogging": "Debug logging",
   "moleverse.configuration.debugLogging.tooltip": "Write additional Moleverse debug output to the log.",
   "moleverse.configuration.greetPlayer": "Greet player",
   "moleverse.configuration.greetPlayer.tooltip": "Greet the player with a Moleverse message when they join a world.",
-  "moleverse.configuration.title": "Moleverse Configuration"
+  "moleverse.configuration.title": "Moleverse Configuration",
+  "subtitles.moleverse.entity.mole.dig": "Mole digs",
+  "subtitles.moleverse.entity.mole.sniff": "Mole sniffs",
+  "subtitles.moleverse.entity.mole.surface": "Mole surfaces"
 }

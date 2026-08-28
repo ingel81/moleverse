@@ -27,6 +27,7 @@ public final class ModCreativeTabs {
                     .displayItems((params, output) -> {
                         output.accept(ModItems.MOLE_PELT.get());
                         output.accept(ModItems.LOOSE_SOIL.get());
+                        output.accept(ModItems.MOLE_SPAWN_EGG.get());
                     })
                     .build());
 

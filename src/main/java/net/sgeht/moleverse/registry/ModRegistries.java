@@ -15,10 +15,11 @@ public final class ModRegistries {
 
     public static void register(IEventBus modBus) {
         // Blocks before items, so that block items can resolve their blocks.
+        // Entity types before items as well, so spawn eggs can resolve their type.
         ModBlocks.REGISTER.register(modBus);
+        ModEntities.REGISTER.register(modBus);
         ModItems.REGISTER.register(modBus);
         ModSounds.REGISTER.register(modBus);
-        ModEntities.REGISTER.register(modBus);
         ModCreativeTabs.REGISTER.register(modBus);
     }
 }
