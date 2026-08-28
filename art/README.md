@@ -12,6 +12,8 @@ The matching texture lives at
 `src/main/resources/assets/moleverse/textures/entity/mole.png` (64x32) and *is*
 shipped.
 
+See `../docs/MODEL_WORKFLOW.md` for the full workflow.
+
 ## Why the export is not used verbatim
 
 Blockbench emits a class header for "Minecraft version 1.17 or later", which no

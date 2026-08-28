@@ -134,12 +134,16 @@ format), `place_cube` (`from`/`to`/`origin`/`rotation` map one to one onto
   Pack the layout by hand: in box UV mode a cube occupies `2*(depth+width)` by
   `depth+height` pixels, and `uv_offset` is its top-left corner.
 
-### Where the files live
+### Export path
 
-Blockbench projects and raw exports go to `art/`, outside every source set.
-Entity textures belong in `src/main/resources/assets/moleverse/textures/entity/`.
-Only the geometry from an export is used; the surrounding class is written by hand
-against the current API (see `art/README.md`).
+Blockbench's Modded Entity exporter only has templates up to Minecraft 1.17, so its
+Java output does not compile against 1.21.11. Take only the `createBodyLayer()` body
+from it and hand-write the class frame. Animations come from the
+`animation_to_json` plugin into `assets/moleverse/neoforge/animations/entity/`,
+using NeoForge's built-in keyframe system rather than GeckoLib.
+
+The full procedure, including the reasoning and the registration snippets, is in
+`docs/MODEL_WORKFLOW.md`. Read it before touching `art/`.
 
 ## Data generation
 
