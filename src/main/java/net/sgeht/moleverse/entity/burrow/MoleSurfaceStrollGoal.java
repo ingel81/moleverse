@@ -30,12 +30,15 @@ public class MoleSurfaceStrollGoal extends WaterAvoidingRandomStrollGoal {
 
     @Override
     public boolean canUse() {
-        return this.hasNowhereToBe() && super.canUse();
+        // Base goal first. It only wants to start a walk on about one
+        // evaluation in a hundred and twenty, and asking it first is what
+        // keeps the mound lookup behind that same odds.
+        return super.canUse() && this.hasNowhereToBe();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return this.hasNowhereToBe() && super.canContinueToUse();
+        return super.canContinueToUse() && this.hasNowhereToBe();
     }
 
     /**
@@ -48,8 +51,11 @@ public class MoleSurfaceStrollGoal extends WaterAvoidingRandomStrollGoal {
      * indefinitely. Walking off is precisely the answer in that case, and it is
      * what spreads a territory outward instead of stacking it in one spot.</p>
      *
-     * <p>Cheap: one point-of-interest count, and only while the base goal would
-     * otherwise be starting or continuing a walk.</p>
+     * <p>Asked only after the base goal has already decided it wants to walk,
+     * which it does on roughly one evaluation in a hundred and twenty. The
+     * lookup itself is not cheap - it sweeps twenty-five chunk columns - so the
+     * order of those two conditions is the difference between a query every
+     * other tick and one every few seconds.</p>
      */
     private boolean hasNowhereToBe() {
         if (!(this.mole.level() instanceof ServerLevel level)) {
@@ -61,6 +67,6 @@ public class MoleSurfaceStrollGoal extends WaterAvoidingRandomStrollGoal {
             return true;
         }
 
-        return MoundNetwork.scan(level, this.mole.blockPosition()).nearest() == null;
+        return !MoundNetwork.anyMoundNear(level, this.mole.blockPosition());
     }
 }

@@ -29,8 +29,15 @@ public final class BurrowConstants {
     /** Longest distance of a freshly dug trip. */
     public static final int NEW_TRAVEL_MAX = 16;
 
-    /** An exit closer to the entry than this is not worth the trip. */
-    public static final int MIN_EXIT_DISTANCE = 8;
+    /**
+     * An exit closer to the entry than this is not worth the trip.
+     *
+     * <p>Deliberately larger than {@link #PLAYER_SCARE_DISTANCE}: the shortest
+     * permitted escape has to actually leave the danger behind. At equal values
+     * a fleeing mole could surface inside the radius it just fled, and would
+     * dive again on arrival, for as long as the player stood there.</p>
+     */
+    public static final int MIN_EXIT_DISTANCE = 12;
 
     /** Two mounds count as connected up to this gap, and the chain continues from there. */
     public static final int NETWORK_LINK_MAX = 16;
@@ -103,6 +110,15 @@ public final class BurrowConstants {
      * distance, gone up close. It needs no damage first.</p>
      */
     public static final double PLAYER_SCARE_DISTANCE = 8.0;
+
+    /**
+     * How far a mole notices an offered earthworm.
+     *
+     * <p>Vanilla's tempt range, which is what actually makes it walk over. The
+     * calm it brings has to reach at least as far, or it would set off towards
+     * the worm and dig itself away halfway there.</p>
+     */
+    public static final double FOOD_NOTICE_DISTANCE = 10.0;
 
     /**
      * The same for a player who is sneaking, as a fraction of the above.

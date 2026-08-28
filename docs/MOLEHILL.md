@@ -51,7 +51,7 @@ field of mounds.
 | Player interaction | None beyond breaking it |
 | Player-placed mounds | Count fully: they join the network and the density cap. Luring a mole, extending its network and putting it off digging are all things worth trying |
 | Farmland | Stays in the tag. A mound in the wheat is exactly what real gardeners curse about, and it blocks one planting spot until knocked away |
-| Burrow triggers | A player coming close, being struck, and a boredom timer. Fright ignores the cooldown - a mole that cannot escape because it dug five seconds ago is the moment the mechanic looks broken |
+| Burrow triggers | A player coming close, being struck, a boredom timer, and `/moleverse mole burrow`. Fright ignores the cooldown - a mole that cannot escape because it dug five seconds ago is the moment the mechanic looks broken |
 | Shyness | Under 8 blocks a mole dives for cover. Sneaking closes that to under 3, which makes crouching the only way to watch one rather than watch it leave. Creative and spectator players scare nobody |
 | Drop | Loose soil always, and an earthworm from about every fifth mound - the reason to dig a mound open rather than knock it flat |
 | Earthworm | What a mole is actually after. Moles follow it, eat it, and breed for it, which is the only route to a juvenile other than a spawn egg |
@@ -84,16 +84,25 @@ there is something to watch.
 SEARCH_RADIUS         16 blocks    how far a mole looks for existing mounds
 MAX_MOUNDS_IN_RADIUS   4           above this, no new mound is created
 NEW_TRAVEL_RANGE       8-16 blocks distance of a freshly dug trip
-MIN_EXIT_DISTANCE      8 blocks    an exit closer than this is not worth the trip
+MIN_EXIT_DISTANCE     12 blocks    an exit closer than this is not worth the trip,
+                                   and must exceed the scare distance or a flight
+                                   would surface inside the radius it fled
 NETWORK_LINK_MAX      16 blocks    two mounds count as connected up to this gap
 NETWORK_SCAN_MAX      64 blocks    hard bound on how far a chain is followed
 UNDERGROUND_SPEED      3 blocks/s  travel speed below the surface
-BURROW_COOLDOWN       90 s         earliest a mole digs a NEW hole again
-NETWORK_TRIP_COOLDOWN  8 s         earliest it goes back down an existing one
-SURFACE_DWELL          4 s         how long it stays up before wanting back down
-EXPLORE_CHANCE         25%         chance of digging somewhere new anyway, so the network grows
+NEW_HOLE_COOLDOWN     60 s         earliest a mole breaks ground for a NEW hole.
+                                   Travelling the existing network is not rationed
+                                   at all - that is what a mole does all day
+SURFACE_DWELL          2-8 s       how long it stays up, drawn fresh each time so
+                                   it does not surface on a metronome
+REFUSAL_RETRY_DELAY    3 s         after a refusal, before planning again
+EXPLORE_CHANCE        60%          preference for new ground when digging is allowed
+FLEE_EXPLORE_CHANCE   75%          the same while fleeing - a known hole beside the
+                                   pursuer is no escape
 PLAYER_SCARE_DISTANCE  8 blocks    a player nearer than this sends it under
 SNEAK_SCARE_FACTOR     1/3         how much of that a crouching player gets
+FOOD_NOTICE_DISTANCE  10 blocks    how far an offered earthworm calms it - wider than
+                                   the scare radius, or it would dig away mid-approach
 APPROACH_TIMEOUT       5 s         give up walking to an entry mound and dig here
 ```
 
@@ -304,9 +313,13 @@ hands over to the rearing pose without a jump.
    be connected underground, so distance does not matter here.
 4. With no network, pick a random surface point `NEW_TRAVEL_RANGE` away and
    place a mound on arrival.
-5. If the density cap is reached and no mound is in range, do not dig. Wander
-   away from the crowded spot first and try again later. This is what spreads a
-   territory out instead of stacking it.
+5. A fresh site is still tried when the area is crowded - the cap is asked again
+   at each candidate, which is the only place it can judge whether another hole
+   belongs there. When nothing is left, the trip is refused and the mole walks
+   off to try from somewhere else. That refusal is the only thing that puts an
+   established mole back on the surface: strolling is switched off while it has
+   mounds within reach, so its default is to be in the network or looking out of
+   it.
 
 Rules on the exit, all of which have a failure mode behind them:
 

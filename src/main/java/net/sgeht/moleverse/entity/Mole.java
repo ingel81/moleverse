@@ -148,6 +148,9 @@ public class Mole extends Animal {
      */
     private @Nullable MoleBurrowGoal burrowGoal;
 
+    /** Kept for the same reason as the burrow goal: a refusal has to be able to move it on. */
+    private @Nullable MoleSurfaceStrollGoal surfaceStroll;
+
     /**
      * The mound this mole has left standing open, or null.
      *
@@ -198,12 +201,27 @@ public class Mole extends Animal {
         // Strolling only while it has no burrow to be in. Tempting, breeding and
         // following a parent are separate goals and keep working regardless - an
         // earthworm can still walk a mole across a meadow.
-        this.goalSelector.addGoal(4, new MoleSurfaceStrollGoal(this, 0.8));
+        this.surfaceStroll = new MoleSurfaceStrollGoal(this, 0.8);
+        this.goalSelector.addGoal(4, this.surfaceStroll);
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }
 
     // --- burrowing ------------------------------------------------------------
+
+    /**
+     * Sends the mole off on a walk at the next opportunity.
+     *
+     * <p>Called when a trip is refused. The strolling goal otherwise waits for
+     * its own dice, which take about a dozen seconds - long enough for the mole
+     * to re-plan the same impossible trip four times over while standing still
+     * on the mound that caused the refusal.</p>
+     */
+    public void wanderNow() {
+        if (this.surfaceStroll != null) {
+            this.surfaceStroll.trigger();
+        }
+    }
 
     /** Null on the client, and only ever read by {@code /moleverse mole burrow}. */
     public @Nullable MoleBurrowGoal getBurrowGoal() {

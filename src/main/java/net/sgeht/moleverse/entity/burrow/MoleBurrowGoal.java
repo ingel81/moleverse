@@ -191,21 +191,25 @@ public class MoleBurrowGoal extends Goal {
         boolean struck = hurtBy != null
                 && now - this.mole.getLastHurtByMobTimestamp() <= BurrowConstants.FLEE_MEMORY;
 
-        // One lookup, three answers. The flag reads backwards: true means
-        // "exclude creative". Filtering in the query rather than after it
-        // matters - one creative player standing closer would otherwise hide
-        // every survival player behind them.
-        Player nearest = level.getNearestPlayer(
+        // Two lookups, because they ask different questions. Fright ignores
+        // creative players; an offered worm does not, or someone in creative
+        // could call a mole over and never be allowed to calm it - which is
+        // exactly how this gets tested. The food radius is the wider one, so
+        // the mole is not scared away halfway through walking to the worm.
+        Player scary = level.getNearestPlayer(
                 this.mole.getX(), this.mole.getY(), this.mole.getZ(),
                 BurrowConstants.PLAYER_SCARE_DISTANCE, true);
+        Player offering = level.getNearestPlayer(
+                this.mole.getX(), this.mole.getY(), this.mole.getZ(),
+                BurrowConstants.FOOD_NOTICE_DISTANCE, false);
 
         // A mole called over by a worm, or one that has just been fed, is not
         // frightened and not bored either - it is waiting. Digging out from
         // under the player's hand is the same failure as diving from the worm.
         boolean settled = this.mole.isInLove()
-                || (nearest != null && nearest.isHolding(this.mole::isFood));
+                || (offering != null && offering.isHolding(this.mole::isFood));
 
-        Player tooClose = settled ? null : this.withinScareRange(nearest);
+        Player tooClose = settled ? null : this.withinScareRange(scary);
         LivingEntity threat = struck ? hurtBy : tooClose;
         boolean fleeingNow = threat != null;
 
@@ -320,11 +324,6 @@ public class MoleBurrowGoal extends Goal {
             this.mole.setBurrowState(BurrowState.WANDERING, "goal stopped");
         }
 
-        // Two different cooldowns, because two different things happened. Digging
-        // a fresh hole added a mound to the world and is rationed. Travelling
-        // between mounds that already exist costs the world nothing, so a mole
-        // with a network of its own can live in it instead of walking the
-        // surface between rare trips.
         this.dwellTicks = Mth.nextInt(this.random,
                 BurrowConstants.SURFACE_DWELL_MIN, BurrowConstants.SURFACE_DWELL_MAX);
 
@@ -342,14 +341,23 @@ public class MoleBurrowGoal extends Goal {
         this.entryIsNew = false;
         this.exitIsNew = false;
         this.placedMound = false;
+        // Cleared here as well as on a successful plan. Left standing, it keeps
+        // the strolling goal switched on for the whole of the next trip and the
+        // stay above ground after it - which is the mole wandering the meadow
+        // again, the very thing the goal was written to stop.
+        this.refusing = false;
         this.surfacedTick = this.mole.tickCount;
         this.nextAttemptTick = this.mole.tickCount + cooldown;
         // Only a trip that really happened clears the retry throttle. An
         // attempt that started and then failed - a mound it could not walk to,
         // a site that stopped taking one - would otherwise loop at full speed
         // for as long as a player stands nearby.
+        // Even an escape earns the shortest pause. Without it a player standing
+        // between two mounds makes the mole surface and dive on the same tick,
+        // over and over - the escape is what suppresses the randomised stay, so
+        // it has to bring its own floor.
         this.nextRetryTick = this.mole.tickCount
-                + (this.wentUnder ? 0 : BurrowConstants.REFUSAL_RETRY_DELAY);
+                + (this.wentUnder ? BurrowConstants.SURFACE_DWELL_MIN : BurrowConstants.REFUSAL_RETRY_DELAY);
         this.wentUnder = false;
     }
 
@@ -391,6 +399,11 @@ public class MoleBurrowGoal extends Goal {
      */
     private void refuse(String why) {
         this.refusing = true;
+        // Ask the stroll goal to set off now. On its own it decides to walk on
+        // about one evaluation in a hundred and twenty, so the mole would stand
+        // there re-planning the same impossible trip for a dozen seconds before
+        // anything could change.
+        this.mole.wanderNow();
         BurrowLog.refused(this.mole, why);
         this.report("refused - " + why);
     }
@@ -513,7 +526,10 @@ public class MoleBurrowGoal extends Goal {
             return;
         }
 
-        this.refuse(timedOut
+        // Logged, but deliberately not through refuse(): the mole is about to
+        // dig, so marking it as turned down would send it wandering off after a
+        // perfectly successful trip.
+        BurrowLog.recovered(this.mole, timedOut
                 ? "approach timed out - digging here instead"
                 : "path to the entry mound exhausted - digging here instead");
 
@@ -530,6 +546,13 @@ public class MoleBurrowGoal extends Goal {
      * the old entry can easily be next door to this one.
      */
     private boolean digHereInstead(ServerLevel level) {
+        // Rationed like any other fresh hole. Without this an approach that
+        // times out digs one in the middle of the cooldown, and a mole that
+        // keeps failing to reach its mounds would dig its way across a meadow.
+        if (this.mole.tickCount < this.nextNewHoleTick) {
+            return false;
+        }
+
         BlockPos here = this.mole.blockPosition();
         if (!MoundNetwork.hasRoomForMound(level, here) || !MoleMound.canPlaceAt(level, here)) {
             return false;
@@ -830,6 +853,10 @@ public class MoleBurrowGoal extends Goal {
 
     private void delayNextAttempt() {
         this.nextAttemptTick = this.mole.tickCount + BurrowConstants.REFUSAL_RETRY_DELAY;
-        this.nextRetryTick = this.nextAttemptTick;
+        // Fright waits a shorter beat. The refusal delay is there to stop a
+        // pointless search repeating; being hit is new information, and a mole
+        // that ignores a blow for three seconds because it stepped off a ledge
+        // reads as broken.
+        this.nextRetryTick = this.mole.tickCount + BurrowConstants.SURFACE_DWELL_MIN;
     }
 }

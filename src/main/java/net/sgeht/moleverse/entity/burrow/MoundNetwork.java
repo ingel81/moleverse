@@ -79,6 +79,19 @@ public final class MoundNetwork {
     }
 
     /**
+     * Whether any mound is within the search radius.
+     *
+     * <p>Separate from {@link #scan} because the answer to "is there one" needs
+     * neither the list nor the sort that goes with it, and this is asked far
+     * more often than a trip is planned.</p>
+     */
+    public static boolean anyMoundNear(ServerLevel level, BlockPos origin) {
+        return level.getPoiManager().getInRange(
+                IS_MOUND, origin, BurrowConstants.SEARCH_RADIUS, PoiManager.Occupancy.ANY)
+                .findAny().isPresent();
+    }
+
+    /**
      * The density cap, asked at the site where a new mound would actually go
      * rather than where the mole happens to stand. That is the only place it can
      * do any work: reusing an existing mound adds nothing to the count.
