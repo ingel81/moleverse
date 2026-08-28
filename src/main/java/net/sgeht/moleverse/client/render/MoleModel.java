@@ -27,11 +27,25 @@ public class MoleModel extends EntityModel<MoleRenderState> {
 
     public static final ModelLayerLocation LAYER = new ModelLayerLocation(Moleverse.id("mole"), "main");
 
+    /**
+     * Turns walk speed into the walk cycle's amplitude. Shared with the idle
+     * loop, which fades out along the same curve so the two cross over cleanly.
+     */
+    private static final float WALK_SPEED_SCALE = 2.5F;
+
     private static final AnimationHolder WALK = getAnimation(Moleverse.id("mole_walk"));
     private static final AnimationHolder PEEK = getAnimation(Moleverse.id("mole_peek"));
+    private static final AnimationHolder IDLE = getAnimation(Moleverse.id("mole_idle"));
+    private static final AnimationHolder DIG = getAnimation(Moleverse.id("mole_dig"));
+    private static final AnimationHolder BURROW = getAnimation(Moleverse.id("mole_burrow"));
+    private static final AnimationHolder EMERGE = getAnimation(Moleverse.id("mole_emerge"));
 
     private final KeyframeAnimation walk;
     private final KeyframeAnimation peek;
+    private final KeyframeAnimation idle;
+    private final KeyframeAnimation dig;
+    private final KeyframeAnimation burrow;
+    private final KeyframeAnimation emerge;
 
     /**
      * The bone every other part hangs from. Rotating it aims the whole mole,
@@ -45,6 +59,10 @@ public class MoleModel extends EntityModel<MoleRenderState> {
         this.moleRoot = root.getChild("root");
         this.walk = WALK.get().bake(root);
         this.peek = PEEK.get().bake(root);
+        this.idle = IDLE.get().bake(root);
+        this.dig = DIG.get().bake(root);
+        this.burrow = BURROW.get().bake(root);
+        this.emerge = EMERGE.get().bake(root);
     }
 
     @Override
@@ -52,13 +70,70 @@ public class MoleModel extends EntityModel<MoleRenderState> {
         // Resets every part to its rest pose. Everything below is additive.
         super.setupAnim(state);
 
-        this.walk.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.0F, 2.5F);
+        this.walk.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.0F, WALK_SPEED_SCALE);
+        this.applyIdle(state);
+
+        this.dig.apply(state.digAnimationState, state.ageInTicks);
+        this.burrow.apply(state.burrowAnimationState, state.ageInTicks);
+        this.emerge.apply(state.emergeAnimationState, state.ageInTicks);
 
         // Secondary motion of the rearing pose: head sweep, snout twitch, paws.
         // The body angle deliberately is not part of this animation.
         this.peek.apply(state.peekAnimationState, state.ageInTicks);
 
+        // Both body angles come last. None of the keyframe animations above has
+        // a channel on the root, so the two neither disturb nor are disturbed by
+        // anything else - the order between them and the keyframes is free.
+        this.applyDigAim(state.digAmount, state.digPitchDegrees, state.digYawDegrees);
         this.applyPeekPose(state.peekAmount);
+    }
+
+    /**
+     * Breathing, snout twitch, ear flick - the motion that keeps a standing
+     * mole from looking like a prop.
+     *
+     * <p>Faded out by walking speed rather than switched off, along the same
+     * curve the walk cycle fades in on, so the two cross over instead of the
+     * mole snapping out of a half-taken breath the moment it sets off. The
+     * amplitude scale is only reachable through the raw
+     * {@link KeyframeAnimation#apply(long, float)}, which is why the time is
+     * passed explicitly here.</p>
+     */
+    private void applyIdle(MoleRenderState state) {
+        float amount = 1.0F - Math.min(state.walkAnimationSpeed * WALK_SPEED_SCALE, 1.0F);
+        if (amount <= 0.001F || !state.idleAnimationState.isStarted()) {
+            return;
+        }
+
+        this.idle.apply(state.idleAnimationState.getTimeInMillis(state.ageInTicks), amount);
+    }
+
+    /**
+     * Aims the whole mole by a fraction of the given angles.
+     *
+     * <p>The same reasoning as {@link #applyPeekPose}, and the reason the dig
+     * cycle is authored level and direction-neutral: a keyframe channel on the
+     * root has to survive three coordinate conversions, and one baked animation
+     * per direction would be needed on top of that. As two numbers here, one
+     * cycle serves digging straight down, digging at an angle and horizontal
+     * tunnelling alike.</p>
+     *
+     * <p>Yaw is an offset from the body's facing, not a world angle - the model
+     * is already in entity space by the time this runs. No positional correction
+     * belongs here: the root pivot sits at the hips, so the mole swings its nose
+     * into the ground and leaves its hindquarters where they are.</p>
+     *
+     * @param amount 0 while level, 1 while fully aimed
+     * @param pitchDegrees positive lowers the nose, 90 is straight down
+     * @param yawDegrees deviation from the body's facing
+     */
+    private void applyDigAim(float amount, float pitchDegrees, float yawDegrees) {
+        if (amount <= 0.001F) {
+            return;
+        }
+
+        this.moleRoot.xRot += amount * (float) Math.toRadians(pitchDegrees);
+        this.moleRoot.yRot += amount * (float) Math.toRadians(yawDegrees);
     }
 
     /**

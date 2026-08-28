@@ -33,6 +33,18 @@ public class MoleRenderer extends MobRenderer<Mole, MoleRenderState, MoleModel> 
             state.peekAmount = entity.getPeekAmount(partialTick);
         }
         state.peekAnimationState.copyFrom(entity.peekAnimationState);
+
+        state.digAmount = entity.getDigAmount(partialTick);
+
+        // Phase 2 aims every mole from the slider panel at once. Phase 3 puts
+        // the two angles on the entity, where they differ per mole and per tick.
+        state.digPitchDegrees = MoleDebug.digPitchDegrees;
+        state.digYawDegrees = MoleDebug.digYawDegrees;
+
+        state.idleAnimationState.copyFrom(entity.idleAnimationState);
+        state.digAnimationState.copyFrom(entity.digAnimationState);
+        state.burrowAnimationState.copyFrom(entity.burrowAnimationState);
+        state.emergeAnimationState.copyFrom(entity.emergeAnimationState);
     }
 
     @Override

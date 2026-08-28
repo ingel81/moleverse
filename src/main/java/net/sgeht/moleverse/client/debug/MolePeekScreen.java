@@ -9,7 +9,10 @@ import net.minecraft.util.Mth;
 import net.sgeht.moleverse.debug.MoleDebug;
 
 /**
- * Tuning panel for the mole's rearing pose.
+ * Tuning panel for the mole's poses: the rearing one it is named after, and the
+ * dig aim that points the direction-neutral digging cycle somewhere. The two
+ * one-shot animations are played from here as well, which is the only way to see
+ * them before the burrowing state machine exists.
  *
  * <p>A narrow strip on the left, so the mole stays visible while a slider is
  * being dragged. That is the whole point: the numbers only mean something next
@@ -23,44 +26,72 @@ public class MolePeekScreen extends Screen {
 
     private static final int PANEL_WIDTH = 150;
     private static final int MARGIN = 8;
-    private static final int ROW_HEIGHT = 24;
+    private static final int ROW_HEIGHT = 22;
     private static final int WIDGET_HEIGHT = 20;
+    private static final int GAP = 4;
 
     public MolePeekScreen() {
-        super(Component.literal("Mole pose"));
+        super(Component.literal("Mole poses"));
     }
 
     @Override
     protected void init() {
         int x = MARGIN;
         int y = MARGIN + 16;
+        int full = PANEL_WIDTH - 2 * MARGIN;
+        int half = (full - GAP) / 2;
 
-        addRenderableWidget(new TuningSlider(x, y, "Pitch", -180.0F, 180.0F,
+        addRenderableWidget(new TuningSlider(x, y, "Peek pitch", -180.0F, 180.0F,
                 MoleDebug.peekPitchDegrees, v -> MoleDebug.peekPitchDegrees = v));
         y += ROW_HEIGHT;
 
-        addRenderableWidget(new TuningSlider(x, y, "Offset Y", -32.0F, 32.0F,
+        addRenderableWidget(new TuningSlider(x, y, "Peek Y", -32.0F, 32.0F,
                 MoleDebug.peekOffsetY, v -> MoleDebug.peekOffsetY = v));
         y += ROW_HEIGHT;
 
-        addRenderableWidget(new TuningSlider(x, y, "Offset Z", -32.0F, 32.0F,
+        addRenderableWidget(new TuningSlider(x, y, "Peek Z", -32.0F, 32.0F,
                 MoleDebug.peekOffsetZ, v -> MoleDebug.peekOffsetZ = v));
         y += ROW_HEIGHT;
 
-        addRenderableWidget(Button.builder(forceLabel(), button -> {
+        addRenderableWidget(Button.builder(peekLabel(), button -> {
             MoleDebug.forcePeek = !MoleDebug.forcePeek;
-            button.setMessage(forceLabel());
-        }).bounds(x, y, PANEL_WIDTH - 2 * MARGIN, WIDGET_HEIGHT).build());
+            button.setMessage(peekLabel());
+        }).bounds(x, y, full, WIDGET_HEIGHT).build());
+        y += ROW_HEIGHT;
+
+        addRenderableWidget(new TuningSlider(x, y, "Dig pitch", -180.0F, 180.0F,
+                MoleDebug.digPitchDegrees, v -> MoleDebug.digPitchDegrees = v));
+        y += ROW_HEIGHT;
+
+        addRenderableWidget(new TuningSlider(x, y, "Dig yaw", -180.0F, 180.0F,
+                MoleDebug.digYawDegrees, v -> MoleDebug.digYawDegrees = v));
+        y += ROW_HEIGHT;
+
+        addRenderableWidget(Button.builder(digLabel(), button -> {
+            MoleDebug.forceDig = !MoleDebug.forceDig;
+            button.setMessage(digLabel());
+        }).bounds(x, y, full, WIDGET_HEIGHT).build());
+        y += ROW_HEIGHT;
+
+        // Side by side: two one-shots are worth one row, not two.
+        addRenderableWidget(Button.builder(Component.literal("Burrow"), button -> MoleDebug.playBurrow())
+                .bounds(x, y, half, WIDGET_HEIGHT).build());
+        addRenderableWidget(Button.builder(Component.literal("Emerge"), button -> MoleDebug.playEmerge())
+                .bounds(x + half + GAP, y, half, WIDGET_HEIGHT).build());
         y += ROW_HEIGHT;
 
         addRenderableWidget(Button.builder(Component.literal("Reset"), button -> {
             MoleDebug.reset();
             rebuildWidgets();
-        }).bounds(x, y, PANEL_WIDTH - 2 * MARGIN, WIDGET_HEIGHT).build());
+        }).bounds(x, y, full, WIDGET_HEIGHT).build());
     }
 
-    private static Component forceLabel() {
-        return Component.literal("Hold pose: " + (MoleDebug.forcePeek ? "on" : "off"));
+    private static Component peekLabel() {
+        return Component.literal("Hold peek: " + (MoleDebug.forcePeek ? "on" : "off"));
+    }
+
+    private static Component digLabel() {
+        return Component.literal("Hold dig: " + (MoleDebug.forceDig ? "on" : "off"));
     }
 
     /** Panel background only. Dimming the world would hide what is being tuned. */
