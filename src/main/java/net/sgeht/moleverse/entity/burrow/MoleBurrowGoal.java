@@ -153,7 +153,22 @@ public class MoleBurrowGoal extends Goal {
         LivingEntity hurtBy = this.mole.getLastHurtByMob();
         boolean struck = hurtBy != null
                 && now - this.mole.getLastHurtByMobTimestamp() <= BurrowConstants.FLEE_MEMORY;
-        Player tooClose = this.playerTooClose(level);
+
+        // One lookup, three answers. The flag reads backwards: true means
+        // "exclude creative". Filtering in the query rather than after it
+        // matters - one creative player standing closer would otherwise hide
+        // every survival player behind them.
+        Player nearest = level.getNearestPlayer(
+                this.mole.getX(), this.mole.getY(), this.mole.getZ(),
+                BurrowConstants.PLAYER_SCARE_DISTANCE, true);
+
+        // A mole called over by a worm, or one that has just been fed, is not
+        // frightened and not bored either - it is waiting. Digging out from
+        // under the player's hand is the same failure as diving from the worm.
+        boolean settled = this.mole.isInLove()
+                || (nearest != null && nearest.isHolding(this.mole::isFood));
+
+        Player tooClose = settled ? null : this.withinScareRange(nearest);
         LivingEntity threat = struck ? hurtBy : tooClose;
         boolean fleeingNow = threat != null;
 
@@ -166,7 +181,7 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
-        boolean bored = now - this.lastMovedTick >= BurrowConstants.BURROW_IDLE_DELAY;
+        boolean bored = !settled && now - this.lastMovedTick >= BurrowConstants.BURROW_IDLE_DELAY;
         if (!forced && !fleeingNow && !bored) {
             return false;
         }
@@ -287,7 +302,12 @@ public class MoleBurrowGoal extends Goal {
         this.placedMound = false;
         this.lastMovedTick = this.mole.tickCount;
         this.nextAttemptTick = this.mole.tickCount + cooldown;
-        this.nextRetryTick = this.mole.tickCount;
+        // Only a trip that really happened clears the retry throttle. An
+        // attempt that started and then failed - a mound it could not walk to,
+        // a site that stopped taking one - would otherwise loop at full speed
+        // for as long as a player stands nearby.
+        this.nextRetryTick = this.mole.tickCount
+                + (this.wentUnder ? 0 : BurrowConstants.REFUSAL_RETRY_DELAY);
         this.wentUnder = false;
     }
 
@@ -548,36 +568,18 @@ public class MoleBurrowGoal extends Goal {
     }
 
     /**
-     * The player who has come close enough to send the mole underground, if any.
+     * Whether this player is near enough to send the mole under.
      *
      * <p>Sneaking buys a great deal of ground - it is the only way to watch a
-     * mole rather than watch it leave. A player in creative or spectator mode
-     * scares nobody, so a mound field can be inspected without emptying it.</p>
+     * mole rather than watch it leave.</p>
      */
-    private @Nullable Player playerTooClose(ServerLevel level) {
+    private @Nullable Player withinScareRange(@Nullable Player player) {
+        if (player == null) {
+            return null;
+        }
         double range = BurrowConstants.PLAYER_SCARE_DISTANCE;
-
-        // The flag reads backwards: true means "exclude creative". Filtering in
-        // the query rather than after it matters - asking for the nearest player
-        // and then discarding the answer would let one creative player standing
-        // closer hide every survival player behind them.
-        Player nearest = level.getNearestPlayer(
-                this.mole.getX(), this.mole.getY(), this.mole.getZ(), range, true);
-        if (nearest == null) {
-            return null;
-        }
-
-        // A player holding out food is not a threat, and a mole in love has
-        // better things to do. Without this the proximity trigger fires exactly
-        // when someone tries to use an earthworm: the burrow goal sits at
-        // priority 0 and would take the movement away from the tempt goal every
-        // single time, so the worm would look broken.
-        if (nearest.isHolding(this.mole::isFood) || this.mole.isInLove()) {
-            return null;
-        }
-
-        double scare = nearest.isCrouching() ? range * BurrowConstants.SNEAK_SCARE_FACTOR : range;
-        return this.mole.distanceToSqr(nearest) <= scare * scare ? nearest : null;
+        double scare = player.isCrouching() ? range * BurrowConstants.SNEAK_SCARE_FACTOR : range;
+        return this.mole.distanceToSqr(player) <= scare * scare ? player : null;
     }
 
     /**
