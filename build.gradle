@@ -46,6 +46,18 @@ repositories {
         url = 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
     }
+    // FTB. Nicht auf Modrinth, FTB betreibt ein eigenes Maven.
+    maven {
+        name = 'FTB'
+        url = 'https://maven.ftb.dev/releases'
+        content { includeGroup 'dev.ftb.mods' }
+    }
+    // Architectury: Grundlage der FTB-Mods, wird transitiv gezogen.
+    maven {
+        name = 'Architectury'
+        url = 'https://maven.architectury.dev/'
+        content { includeGroup 'dev.architectury' }
+    }
 }
 
 neoForge {
@@ -63,6 +75,11 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Oeffnet die Welt beim Betreten automatisch fuer LAN und schaltet
+            // Cheats ein. Nur hier gesetzt, ein ausgeliefertes Spiel sieht die
+            // Property nie. Port 0 = freien Port waehlen lassen.
+            systemProperty 'moleverse.devPublish', 'true'
+            systemProperty 'moleverse.devPublishPort', '0'
         }
 
         server {
@@ -116,6 +133,17 @@ dependencies {
     // --- Jade (Block-/Entity-Tooltips, Waila-Nachfolger) ------------------
     // Reines Dev-Komfortwerkzeug, keine Compile-Abhaengigkeit.
     localRuntime "maven.modrinth:jade:${jade_version_id}"
+
+    // --- FTB Ultimine und Essentials -------------------------------------
+    // Ultimine: ganze Adern/Flaechen auf einmal abbauen (Taste gedrueckt halten).
+    // Essentials: /home, /tpa, /back und aehnliche Serverbefehle.
+    // FTB Library ist die gemeinsame Grundlage. Sie steht hier trotzdem
+    // ausdruecklich, damit die Version an einer Stelle festgelegt ist -
+    // transitiv kaemen sonst FTB Ranks und Architectury in eigenen Versionen
+    // mit, was beim naechsten Update still auseinanderlaeuft.
+    localRuntime "dev.ftb.mods:ftb-library-neoforge:${ftb_version}"
+    localRuntime "dev.ftb.mods:ftb-ultimine-neoforge:${ftb_version}"
+    localRuntime "dev.ftb.mods:ftb-essentials-neoforge:${ftb_version}"
 }
 
 // ---------------------------------------------------------------------------
