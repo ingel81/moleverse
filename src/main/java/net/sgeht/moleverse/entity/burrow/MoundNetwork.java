@@ -217,12 +217,26 @@ public final class MoundNetwork {
      * {@link BurrowConstants#NEW_TRAVEL_MAX} blocks away that could take a new
      * mound. Used when the entry has no network to travel through.
      *
+     * <p>With a threat given, the direction is not free: the site is looked for
+     * in the half of the compass pointing away from it. Digging a fresh escape
+     * hole towards the thing being escaped from would be worse than using a
+     * known mound.</p>
+     *
+     * @param threat what to dig away from, or {@code null} to search all round
      * @return the position the mound would occupy, or {@code null} after
      *         {@link BurrowConstants#FRESH_SITE_ATTEMPTS} unusable tries
      */
-    public static @Nullable BlockPos findFreshSite(ServerLevel level, RandomSource random, BlockPos entry) {
+    public static @Nullable BlockPos findFreshSite(ServerLevel level, RandomSource random, BlockPos entry,
+            @Nullable Vec3 threat) {
+        // Straight away from the threat, with the search spread over the half
+        // circle centred on that bearing.
+        double awayFrom = threat == null ? 0.0
+                : Math.atan2(entry.getZ() + 0.5 - threat.z, entry.getX() + 0.5 - threat.x);
+
         for (int attempt = 0; attempt < BurrowConstants.FRESH_SITE_ATTEMPTS; attempt++) {
-            double angle = random.nextDouble() * Math.PI * 2.0;
+            double angle = threat == null
+                    ? random.nextDouble() * Math.PI * 2.0
+                    : awayFrom + (random.nextDouble() - 0.5) * Math.PI;
             double distance = Mth.nextInt(random, BurrowConstants.NEW_TRAVEL_MIN, BurrowConstants.NEW_TRAVEL_MAX);
             int x = entry.getX() + (int) Math.round(Math.cos(angle) * distance);
             int z = entry.getZ() + (int) Math.round(Math.sin(angle) * distance);

@@ -396,10 +396,16 @@ public class MoleBurrowGoal extends Goal {
         // Now and then, strike out for somewhere new even though the network has
         // an exit to offer. Preferring what exists is right most of the time -
         // it is what stops a meadow filling with holes - but always preferring
-        // it means a territory freezes at two mounds and never grows again. Not
-        // while fleeing: an escape is no time to go exploring.
-        boolean explore = threat == null && !crowded
-                && this.random.nextFloat() < BurrowConstants.EXPLORE_CHANCE;
+        // it means a territory freezes at two mounds and never grows again.
+        //
+        // Under threat that goes the other way round, and mostly new ground
+        // wins: bolting to a hole the pursuer is standing beside is no escape,
+        // and a mole chased between two known mounds is a mole that never got
+        // away. Only the density cap still says no.
+        float chance = threat != null
+                ? BurrowConstants.FLEE_EXPLORE_CHANCE
+                : BurrowConstants.EXPLORE_CHANCE;
+        boolean explore = !crowded && this.random.nextFloat() < chance;
 
         BlockPos chosen = explore
                 ? null
@@ -408,7 +414,7 @@ public class MoleBurrowGoal extends Goal {
             this.exit = chosen;
             this.exitIsNew = false;
         } else {
-            this.exit = MoundNetwork.findFreshSite(level, this.random, this.entry);
+            this.exit = MoundNetwork.findFreshSite(level, this.random, this.entry, threat);
 
             // Exploring is a preference, not a demand. If no fresh site is free,
             // fall back to the network rather than refusing a trip that was

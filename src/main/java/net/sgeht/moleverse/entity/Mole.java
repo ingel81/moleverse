@@ -24,7 +24,6 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
-import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -39,6 +38,7 @@ import net.sgeht.moleverse.entity.burrow.BurrowLog;
 import net.sgeht.moleverse.entity.burrow.BurrowState;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
 import net.sgeht.moleverse.entity.burrow.MoleFollowMotherGoal;
+import net.sgeht.moleverse.entity.burrow.MoleSurfaceStrollGoal;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
 import net.sgeht.moleverse.registry.ModEntities;
 import net.sgeht.moleverse.registry.ModItems;
@@ -195,7 +195,10 @@ public class Mole extends Animal {
         // thing that outranks a mole's wish to be under it.
         this.goalSelector.addGoal(3, new TemptGoal(this, 1.1, stack -> stack.is(ModItems.EARTHWORM.get()), false));
         this.goalSelector.addGoal(3, new FollowParentGoal(this, 1.1));
-        this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8));
+        // Strolling only while it has no burrow to be in. Tempting, breeding and
+        // following a parent are separate goals and keep working regardless - an
+        // earthworm can still walk a mole across a meadow.
+        this.goalSelector.addGoal(4, new MoleSurfaceStrollGoal(this, 0.8));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }

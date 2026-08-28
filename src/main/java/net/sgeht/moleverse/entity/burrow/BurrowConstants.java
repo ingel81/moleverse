@@ -57,7 +57,7 @@ public final class BurrowConstants {
      * it rather than trotting about on the surface; above ground it only surfaces,
      * looks around and goes back under.</p>
      */
-    public static final int NETWORK_TRIP_COOLDOWN = 8 * TICKS_PER_SECOND;
+    public static final int NETWORK_TRIP_COOLDOWN = 2 * TICKS_PER_SECOND;
 
     /**
      * How long a mole stays above ground before it wants to be under it again.
@@ -67,7 +67,7 @@ public final class BurrowConstants {
      * left it strolling about indefinitely. Above ground is where it looks
      * around and gets its bearings; the network is where it lives.</p>
      */
-    public static final int SURFACE_DWELL = 4 * TICKS_PER_SECOND;
+    public static final int SURFACE_DWELL = 2 * TICKS_PER_SECOND;
 
     /**
      * Chance that a mole digs somewhere new even though its network offers a
@@ -79,6 +79,16 @@ public final class BurrowConstants {
      * meadow over time rather than pacing between the same two holes.</p>
      */
     public static final float EXPLORE_CHANCE = 0.25F;
+
+    /**
+     * The same while fleeing, and far higher.
+     *
+     * <p>Running to a hole the pursuer is already standing next to is no escape.
+     * Breaking new ground away from the threat is, which makes flight the one
+     * moment a mole should be most willing to dig somewhere new - the opposite
+     * of what this code first assumed.</p>
+     */
+    public static final float FLEE_EXPLORE_CHANCE = 0.75F;
 
     /**
      * How close a player may come before a mole dives for cover.
