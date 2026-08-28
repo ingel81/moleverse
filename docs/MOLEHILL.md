@@ -12,9 +12,14 @@ This document replaces the "Burrowing and molehills" section of
 | 3 - the mechanic | `b0f9c6a` | Built |
 | 4 - natural spawning | `d849d2c` | Built. Biome tag and modifier generated |
 
-Two review rounds ran against the code, one after phases 1, 2 and 4 and one
-against the mechanic. Their findings are folded in; see "Still to judge by eye"
-for what a machine could not check.
+Three review rounds ran against the code - one after phases 1, 2 and 4, one
+against the mechanic, and one against the fixes those produced. All fifteen
+findings are folded in; the ones deliberately left alone are listed under "Known
+and left alone".
+
+A round of tuning followed the first play test, and it is where the earthworm
+came from: the mole needed a reason to be underground more than on top of it,
+and the player needed a reason to open a mound rather than flatten it.
 
 The plan below is kept in the present tense as the description of what the
 feature does, not as a to-do list.
@@ -38,7 +43,6 @@ field of mounds.
 | Texture | `art/mole_mound.png`: crumbly, freshly turned earth, darker and coarser than vanilla dirt. `art/mole_mound_shaft.png` for the floor of the open shaft |
 | Collision | None. Walked through, not over |
 | Hardness | Instant break |
-| Drop | Nothing |
 | Block item | Exists and sits in the Moleverse creative tab, for placing by hand |
 | Variants | A boolean `open` property. Closed picks at random between two shapes, open uses the crater; each with four Y rotations |
 | Support | Only on `moleverse:mole_mound_placeable`; breaks when that block goes away, like a carpet |
@@ -47,7 +51,10 @@ field of mounds.
 | Player interaction | None beyond breaking it |
 | Player-placed mounds | Count fully: they join the network and the density cap. Luring a mole, extending its network and putting it off digging are all things worth trying |
 | Farmland | Stays in the tag. A mound in the wheat is exactly what real gardeners curse about, and it blocks one planting spot until knocked away |
-| Burrow triggers | Fleeing from a threat, and a boredom timer |
+| Burrow triggers | A player coming close, being struck, and a boredom timer. Fright ignores the cooldown - a mole that cannot escape because it dug five seconds ago is the moment the mechanic looks broken |
+| Shyness | Under 8 blocks a mole dives for cover. Sneaking closes that to under 3, which makes crouching the only way to watch one rather than watch it leave. Creative and spectator players scare nobody |
+| Drop | Loose soil always, and an earthworm from about every fifth mound - the reason to dig a mound open rather than knock it flat |
+| Earthworm | What a mole is actually after. Moles follow it, eat it, and breed for it, which is the only route to a juvenile other than a spawn egg |
 | Underground travel | The entity stays alive, turns invisible, loses collision and moves under the surface |
 | Mounds per trip | Two: entry and exit |
 | New-dig distance | 8 to 16 blocks |
@@ -81,8 +88,11 @@ MIN_EXIT_DISTANCE      8 blocks    an exit closer than this is not worth the tri
 NETWORK_LINK_MAX      16 blocks    two mounds count as connected up to this gap
 NETWORK_SCAN_MAX      64 blocks    hard bound on how far a chain is followed
 UNDERGROUND_SPEED      3 blocks/s  travel speed below the surface
-BURROW_COOLDOWN       90 s         earliest a mole wants to dig again
-BURROW_IDLE_DELAY      6 s         standing still this long counts as bored
+BURROW_COOLDOWN       90 s         earliest a mole digs a NEW hole again
+NETWORK_TRIP_COOLDOWN  8 s         earliest it goes back down an existing one
+BURROW_IDLE_DELAY      3 s         standing still this long counts as bored
+PLAYER_SCARE_DISTANCE  8 blocks    a player nearer than this sends it under
+SNEAK_SCARE_FACTOR     1/3         how much of that a crouching player gets
 APPROACH_TIMEOUT       5 s         give up walking to an entry mound and dig here
 ```
 
