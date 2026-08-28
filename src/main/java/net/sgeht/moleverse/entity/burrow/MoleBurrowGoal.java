@@ -471,7 +471,20 @@ public class MoleBurrowGoal extends Goal {
                 this.route.travelled(), this.route.estimatedTicks());
 
         Vec3 at = this.route.position();
-        this.emergeAt = MoundNetwork.surfaceAt(level, Mth.floor(at.x), Mth.floor(at.z));
+        BlockPos surfaced = MoundNetwork.surfaceAt(level, Mth.floor(at.x), Mth.floor(at.z));
+
+        // A route that climbs into a hollow building stops inside it, and the
+        // heightmap of a column under a roof is the roof. Surfacing there puts
+        // the mole on top of someone's house. When the ground above is that far
+        // from where the mole actually is, go back to the entry instead - it is
+        // the one position known to be open sky and known to take a mound.
+        int overhead = surfaced.getY() - Mth.floor(at.y);
+        if (overhead > BurrowConstants.ROUTE_DEPTH + 2) {
+            BurrowLog.recovered(this.mole, "ground above is built over - returning to the entry");
+            surfaced = this.entry;
+        }
+
+        this.emergeAt = surfaced;
 
         // Out of the ground before physics are handed back, otherwise the first
         // tick above ground is spent being squeezed out of a block.
@@ -549,12 +562,13 @@ public class MoleBurrowGoal extends Goal {
             return;
         }
 
-        // Both other paths that place a mound honour the minimum distance; this
-        // one is reached when a trip is cut short, which is exactly when the two
-        // mounds would end up on top of each other. Two heaps a stride apart
-        // read as a mistake, not as a tunnel.
+        // Only when the trip was cut short. A mole that arrived where it meant
+        // to has earned its mound even if rounding the site onto block
+        // coordinates pulled it a few centimetres inside the minimum - checking
+        // the successful case too would silently deny roughly one dig in thirty
+        // its second mound, and the log would read like normal behaviour.
         int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;
-        if (this.emergeAt.distSqr(this.entry) < minSqr) {
+        if (!this.emergeAt.equals(this.exit) && this.emergeAt.distSqr(this.entry) < minSqr) {
             BurrowLog.recovered(this.mole, "surfaced too close to the entry - no second mound");
             return;
         }

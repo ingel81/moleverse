@@ -228,6 +228,16 @@ public final class MoundNetwork {
             int z = entry.getZ() + (int) Math.round(Math.sin(angle) * distance);
 
             BlockPos site = surfaceAt(level, x, z);
+
+            // Rounding onto block coordinates pulls the point inward, and at the
+            // shortest distance it lands under the minimum often enough to
+            // matter. Checking the rounded result is what makes
+            // MIN_EXIT_DISTANCE mean what the plan says it means.
+            int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;
+            if (site.distSqr(entry) < minSqr) {
+                continue;
+            }
+
             if (hasRoomForMound(level, site) && MoleMound.canPlaceAt(level, site)) {
                 return site;
             }
