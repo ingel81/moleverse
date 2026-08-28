@@ -6,7 +6,13 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.sgeht.moleverse.registry.ModBlocks;
+import net.sgeht.moleverse.registry.ModItems;
 
 /**
  * Loot tables for this mod's blocks.
@@ -20,12 +26,24 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
         super(Set.of(), FeatureFlags.REGISTRY.allFlags(), registries);
     }
 
+    /** Roughly every fifth mound has a worm in it. */
+    private static final float EARTHWORM_CHANCE = 0.2F;
+
     @Override
     protected void generate() {
         dropSelf(ModBlocks.LOOSE_SOIL.get());
 
-        // Displaced earth, not a resource. Breaking a mound gives nothing.
-        add(ModBlocks.MOLE_MOUND.get(), noDrop());
+        // A mound gives back the earth a mole pushed up, and now and then what
+        // the mole was after in the first place. That second pool is the reason
+        // to dig a mound open rather than walk past it.
+        add(ModBlocks.MOLE_MOUND.get(), block -> LootTable.lootTable()
+                .withPool(applyExplosionCondition(block, LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1.0F))
+                        .add(LootItem.lootTableItem(ModBlocks.LOOSE_SOIL.get()))))
+                .withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1.0F))
+                        .when(LootItemRandomChanceCondition.randomChance(EARTHWORM_CHANCE))
+                        .add(LootItem.lootTableItem(ModItems.EARTHWORM.get()))));
     }
 
     @Override

@@ -26,6 +26,7 @@ public final class ModCreativeTabs {
                     .icon(() -> ModItems.MOLE_PELT.get().getDefaultInstance())
                     .displayItems((params, output) -> {
                         output.accept(ModItems.MOLE_PELT.get());
+                        output.accept(ModItems.EARTHWORM.get());
                         output.accept(ModItems.LOOSE_SOIL.get());
                         output.accept(ModItems.MOLE_MOUND.get());
                         output.accept(ModItems.MOLE_SPAWN_EGG.get());

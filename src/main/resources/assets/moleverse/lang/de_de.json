@@ -3,6 +3,7 @@
   "block.moleverse.loose_soil": "Lockere Erde",
   "block.moleverse.mole_mound": "Maulwurfshügel",
   "item.moleverse.mole_pelt": "Maulwurfsfell",
+  "item.moleverse.earthworm": "Regenwurm",
   "message.moleverse.greeting": "Hallo, Maulwurf. Die Gänge warten.",
   "moleverse.configuration.title": "Moleverse-Konfiguration",
   "moleverse.configuration.debugLogging": "Debug-Logging",

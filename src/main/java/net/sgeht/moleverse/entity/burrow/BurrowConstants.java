@@ -41,11 +41,43 @@ public final class BurrowConstants {
     /** Travel speed below the surface: 3 blocks per second. */
     public static final double UNDERGROUND_SPEED_PER_TICK = 3.0 / TICKS_PER_SECOND;
 
-    /** Earliest a mole wants to dig again after a trip. */
+    /**
+     * Earliest a mole digs a <em>new</em> hole after a trip.
+     *
+     * <p>Long on purpose: every new hole is another mound in the world, and this
+     * is the rate at which a territory grows.</p>
+     */
     public static final int BURROW_COOLDOWN = 90 * TICKS_PER_SECOND;
 
+    /**
+     * Earliest a mole goes back down a hole that already exists.
+     *
+     * <p>Short, because using the network costs the world nothing - no new mound
+     * appears. A mole with a network of its own should spend most of its life in
+     * it rather than trotting about on the surface; above ground it only surfaces,
+     * looks around and goes back under.</p>
+     */
+    public static final int NETWORK_TRIP_COOLDOWN = 8 * TICKS_PER_SECOND;
+
     /** Standing still this long counts as bored. */
-    public static final int BURROW_IDLE_DELAY = 6 * TICKS_PER_SECOND;
+    public static final int BURROW_IDLE_DELAY = 3 * TICKS_PER_SECOND;
+
+    /**
+     * How close a player may come before a mole dives for cover.
+     *
+     * <p>This is the mole's whole relationship with the player: seen from a
+     * distance, gone up close. It needs no damage first.</p>
+     */
+    public static final double PLAYER_SCARE_DISTANCE = 8.0;
+
+    /**
+     * The same for a player who is sneaking, as a fraction of the above.
+     *
+     * <p>Sneaking is the way to get near a mole at all, so the difference has to
+     * be worth the walk: a third of the distance means someone crouching gets
+     * close enough to watch one, and someone strolling never does.</p>
+     */
+    public static final double SNEAK_SCARE_FACTOR = 1.0 / 3.0;
 
     /** Give up walking to an entry mound after this long and dig where he stands. */
     public static final int APPROACH_TIMEOUT = 5 * TICKS_PER_SECOND;

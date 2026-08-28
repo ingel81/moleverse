@@ -15,6 +15,12 @@ public final class ModItems {
     /** Mole pelt: the first drop material, later a crafting base. */
     public static final DeferredItem<Item> MOLE_PELT = REGISTER.registerSimpleItem("mole_pelt");
 
+    /**
+     * Earthworm: what a mole is actually after, and the reason to dig a mound
+     * open rather than knock it flat. Moles will follow and breed for one.
+     */
+    public static final DeferredItem<Item> EARTHWORM = REGISTER.registerSimpleItem("earthworm");
+
     // --- Block items ------------------------------------------------------
     public static final DeferredItem<BlockItem> LOOSE_SOIL = REGISTER.registerSimpleBlockItem(ModBlocks.LOOSE_SOIL);
 

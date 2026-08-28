@@ -40,6 +40,7 @@ public final class ModModelProvider extends ModelProvider {
         registerMoleMound(blockModels);
 
         itemModels.generateFlatItem(ModItems.MOLE_PELT.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
 
         // Spawn eggs carry their own texture in this version rather than the
         // old two-layer tinted template, so a flat item model is all it needs.

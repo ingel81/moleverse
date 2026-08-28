@@ -13,13 +13,17 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.AnimationState;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
@@ -36,6 +40,8 @@ import net.sgeht.moleverse.entity.burrow.BurrowState;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
 import net.sgeht.moleverse.entity.burrow.MoleFollowMotherGoal;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
+import net.sgeht.moleverse.registry.ModEntities;
+import net.sgeht.moleverse.registry.ModItems;
 import net.sgeht.moleverse.registry.ModSounds;
 
 /**
@@ -184,6 +190,11 @@ public class Mole extends Animal {
         // refuses every adult.
         this.goalSelector.addGoal(0, new MoleFollowMotherGoal(this));
         this.goalSelector.addGoal(1, new PanicGoal(this, 1.6));
+        this.goalSelector.addGoal(2, new BreedGoal(this, 1.0));
+        // An earthworm is worth staying above ground for, which is the only
+        // thing that outranks a mole's wish to be under it.
+        this.goalSelector.addGoal(3, new TemptGoal(this, 1.1, stack -> stack.is(ModItems.EARTHWORM.get()), false));
+        this.goalSelector.addGoal(3, new FollowParentGoal(this, 1.1));
         this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
@@ -598,17 +609,20 @@ public class Mole extends Animal {
     }
 
     /**
-     * Nothing tempts a mole yet. Once there is a food item worth digging for,
-     * this decides what it is and unlocks breeding along with it.
+     * The one thing a mole will come out of the ground for.
+     *
+     * <p>This is also what unlocks breeding, and with it the only way to get a
+     * juvenile other than a spawn egg - the behaviour for one has been waiting
+     * in {@code MoleFollowMotherGoal} since before there was a way to make one.</p>
      */
     @Override
     public boolean isFood(ItemStack stack) {
-        return false;
+        return stack.is(ModItems.EARTHWORM.get());
     }
 
     @Override
     public @Nullable AgeableMob getBreedOffspring(ServerLevel level, AgeableMob otherParent) {
-        return null;
+        return ModEntities.MOLE.get().create(level, EntitySpawnReason.BREEDING);
     }
 
     /** Silent while inside the ground - a sniff from two blocks down gives him away. */

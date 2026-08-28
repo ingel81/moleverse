@@ -14,6 +14,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
@@ -126,13 +127,22 @@ public class MoleBurrowGoal extends Goal {
         }
 
         boolean forced = this.forcedBy != null;
-        if (!forced && now < this.nextAttemptTick) {
+
+        LivingEntity hurtBy = this.mole.getLastHurtByMob();
+        boolean struck = hurtBy != null
+                && now - this.mole.getLastHurtByMobTimestamp() <= BurrowConstants.FLEE_MEMORY;
+        Player tooClose = this.playerTooClose(level);
+        LivingEntity threat = struck ? hurtBy : tooClose;
+        boolean fleeingNow = threat != null;
+
+        // Fright ignores the cooldown. A mole that has just been hit, or that a
+        // player is walking up to, must go now - waiting out a timer is the one
+        // thing it cannot do, and being unable to escape because it dug five
+        // seconds ago is exactly the moment the mechanic looks broken.
+        if (!forced && !fleeingNow && now < this.nextAttemptTick) {
             return false;
         }
 
-        LivingEntity threat = this.mole.getLastHurtByMob();
-        boolean fleeingNow = threat != null
-                && now - this.mole.getLastHurtByMobTimestamp() <= BurrowConstants.FLEE_MEMORY;
         boolean bored = now - this.lastMovedTick >= BurrowConstants.BURROW_IDLE_DELAY;
         if (!forced && !fleeingNow && !bored) {
             return false;
@@ -150,7 +160,11 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
-        BurrowLog.wanted(this.mole, forced ? "commanded" : fleeingNow ? "flee" : "bored", ground, diggable);
+        String why = forced ? "commanded"
+                : struck ? "flee"
+                : tooClose != null ? "player too close"
+                : "bored";
+        BurrowLog.wanted(this.mole, why, ground, diggable);
 
         if (!this.planTrip(level, origin, fleeingNow ? threat.position() : null)) {
             this.delayNextAttempt();
@@ -230,15 +244,26 @@ public class MoleBurrowGoal extends Goal {
             this.mole.setBurrowState(BurrowState.WANDERING, "goal stopped");
         }
 
+        // Two different cooldowns, because two different things happened. Digging
+        // a fresh hole added a mound to the world and is rationed. Travelling
+        // between mounds that already exist costs the world nothing, so a mole
+        // with a network of its own can live in it instead of walking the
+        // surface between rare trips.
+        boolean dugSomethingNew = this.entryIsNew || this.exitIsNew;
+        int cooldown = !this.wentUnder ? BurrowConstants.REFUSAL_RETRY_DELAY
+                : dugSomethingNew ? BurrowConstants.BURROW_COOLDOWN
+                : BurrowConstants.NETWORK_TRIP_COOLDOWN;
+
         this.entry = null;
         this.exit = null;
         this.emergeAt = null;
         this.openedMound = null;
         this.route = null;
         this.fleeing = false;
+        this.entryIsNew = false;
+        this.exitIsNew = false;
         this.lastMovedTick = this.mole.tickCount;
-        this.nextAttemptTick = this.mole.tickCount
-                + (this.wentUnder ? BurrowConstants.BURROW_COOLDOWN : BurrowConstants.REFUSAL_RETRY_DELAY);
+        this.nextAttemptTick = this.mole.tickCount + cooldown;
         this.wentUnder = false;
     }
 
@@ -496,6 +521,24 @@ public class MoleBurrowGoal extends Goal {
 
         this.mole.setBurrowState(BurrowState.EMERGING, reason);
         this.stateEnteredTick = this.mole.tickCount;
+    }
+
+    /**
+     * The player who has come close enough to send the mole underground, if any.
+     *
+     * <p>Sneaking buys a great deal of ground - it is the only way to watch a
+     * mole rather than watch it leave. A player in creative or spectator mode
+     * scares nobody, so a mound field can be inspected without emptying it.</p>
+     */
+    private @Nullable Player playerTooClose(ServerLevel level) {
+        double range = BurrowConstants.PLAYER_SCARE_DISTANCE;
+        Player nearest = level.getNearestPlayer(this.mole, range);
+        if (nearest == null || nearest.isCreative() || nearest.isSpectator()) {
+            return null;
+        }
+
+        double scare = nearest.isCrouching() ? range * BurrowConstants.SNEAK_SCARE_FACTOR : range;
+        return this.mole.distanceToSqr(nearest) <= scare * scare ? nearest : null;
     }
 
     /**
