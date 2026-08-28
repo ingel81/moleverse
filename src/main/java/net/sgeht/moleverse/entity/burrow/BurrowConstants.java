@@ -86,6 +86,15 @@ public final class BurrowConstants {
     /** Distance at which the mole counts as having reached the entry mound. */
     public static final double ENTRY_REACH_DISTANCE = 1.5;
 
+    /**
+     * How close a juvenile has to be when an adult dives to be taken along.
+     *
+     * <p>Small on purpose: a baby that is off across the meadow has no business
+     * being teleported into a tunnel it never walked to. It stays above ground
+     * and waits, which is the documented fallback anyway.</p>
+     */
+    public static final double BABY_FOLLOW_RADIUS = 4.0;
+
     /** Squared horizontal speed below which a mole counts as standing still. */
     public static final double STILL_THRESHOLD = 1.0E-5;
 

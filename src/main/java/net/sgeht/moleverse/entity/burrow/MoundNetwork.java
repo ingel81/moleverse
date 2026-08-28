@@ -36,10 +36,12 @@ import net.sgeht.moleverse.registry.ModPoi;
  * the index only answers "where are they" quickly.</p>
  *
  * <p>The index is not force-loaded ({@code PoiManager.ensureLoadedAndValid}
- * pulls chunks in, and only the nether portal search in vanilla does that). A
- * chain therefore stops at the edge of the loaded world, which is the right
- * answer anyway: a mound in an unloaded chunk is a bad exit, because the route
- * check would refuse to travel there in the first place.</p>
+ * pulls chunks in, and only the nether portal search in vanilla does that).
+ * That does <em>not</em> mean the answers are limited to loaded chunks: the
+ * lookup reads the point-of-interest file straight from disk when a section is
+ * cold, so it happily reports mounds in terrain nobody is standing in. Exits are
+ * therefore filtered by {@link #canTravelTo} - travelling to one of those would
+ * stop dead at the first waypoint outside the ticking area.</p>
  */
 public final class MoundNetwork {
 
@@ -115,8 +117,11 @@ public final class MoundNetwork {
             depth++;
             boolean grew = false;
 
-            for (int i = 0; i < ring; i++) {
+            for (int i = 0; i < ring && members.size() < BurrowConstants.NETWORK_MAX_MEMBERS; i++) {
                 BlockPos node = frontier.poll();
+                // Each node costs a point-of-interest query over 5x5 chunks, so
+                // polling the rest of the ring once the network is full is the
+                // most expensive way available of learning nothing.
                 for (BlockPos neighbour : moundsWithin(level, node, BurrowConstants.NETWORK_LINK_MAX)) {
                     if (members.size() >= BurrowConstants.NETWORK_MAX_MEMBERS) {
                         break;
@@ -157,12 +162,24 @@ public final class MoundNetwork {
      * @return an existing mound to surface at, or {@code null} when the network
      *         holds none that is far enough away
      */
-    public static @Nullable BlockPos chooseExit(RandomSource random, Members network, BlockPos entry,
-            @Nullable Vec3 threat) {
+    /**
+     * Whether a mound is somewhere a mole could actually arrive.
+     *
+     * <p>The index answers from disk, so it names mounds in terrain that is not
+     * being ticked. A trip to one of those ends at the first waypoint outside
+     * the ticking area, and the mole surfaces there instead - halfway to
+     * nowhere, with a mound to show for it.</p>
+     */
+    private static boolean canTravelTo(ServerLevel level, BlockPos mound) {
+        return level.isPositionEntityTicking(mound);
+    }
+
+    public static @Nullable BlockPos chooseExit(ServerLevel level, RandomSource random, Members network,
+            BlockPos entry, @Nullable Vec3 threat) {
         int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;
         List<BlockPos> candidates = new ArrayList<>();
         for (BlockPos mound : network.mounds()) {
-            if (!mound.equals(entry) && mound.distSqr(entry) >= minSqr) {
+            if (!mound.equals(entry) && mound.distSqr(entry) >= minSqr && canTravelTo(level, mound)) {
                 candidates.add(mound);
             }
         }

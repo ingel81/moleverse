@@ -28,6 +28,8 @@ import net.sgeht.moleverse.debug.MoleDebug;
  * /moleverse dig yaw &lt;degrees&gt;          dig direction, relative to the body's facing
  * /moleverse dig burrow                 play mole_burrow once on every mole
  * /moleverse dig emerge                 play mole_emerge once on every mole
+ *
+ * /moleverse network &lt;on|off&gt;     draw the mounds, their links and any mole's path
  * </pre>
  *
  * <p>{@code panel}, {@code show} and {@code reset} cover both poses. They stay
@@ -35,7 +37,10 @@ import net.sgeht.moleverse.debug.MoleDebug;
  * keeps working.</p>
  *
  * <p>Registered through {@code RegisterClientCommandsEvent}, so it runs entirely
- * on the client and needs no server, no permissions and no config file.</p>
+ * on the client and needs no server, no permissions and no config file. The
+ * server-side {@code /moleverse mole ...} tree shares this root and still
+ * reaches the server: NeoForge passes on anything the client dispatcher parses
+ * as an unknown argument.</p>
  */
 public final class MoleDebugCommand {
 
@@ -111,7 +116,12 @@ public final class MoleDebugCommand {
                                 .executes(ctx -> {
                                     MoleDebug.playEmerge();
                                     return message(ctx.getSource(), "playing mole_emerge");
-                                }))));
+                                })))
+                .then(Commands.literal("network")
+                        .then(Commands.literal("on")
+                                .executes(ctx -> message(ctx.getSource(), MoleNetworkOverlay.toggle(true))))
+                        .then(Commands.literal("off")
+                                .executes(ctx -> message(ctx.getSource(), MoleNetworkOverlay.toggle(false))))));
     }
 
     private static int report(CommandSourceStack source) {

@@ -1,6 +1,7 @@
 package net.sgeht.moleverse.entity.burrow;
 
 import java.util.EnumSet;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -69,6 +70,16 @@ public class MoleBurrowGoal extends Goal {
     /** Whether he actually went under. A trip that never started earns no 90 second cooldown. */
     private boolean wentUnder;
 
+    /**
+     * A trip demanded by {@code /moleverse mole burrow}, and the callback that
+     * tells whoever typed it what came of it.
+     *
+     * <p>It is a callback rather than a return value because the decision is not
+     * made when the command runs: {@link #canUse()} is asked by the goal selector
+     * on its own schedule, roughly every second server tick.</p>
+     */
+    private @Nullable Consumer<String> forcedBy;
+
     public MoleBurrowGoal(Mole mole) {
         this.mole = mole;
         this.random = mole.getRandom();
@@ -87,6 +98,19 @@ public class MoleBurrowGoal extends Goal {
         return false;
     }
 
+    /**
+     * DEBUG. Makes the next decision skip the cooldown and the boredom timer.
+     *
+     * <p>The guards and the search are deliberately left in place. They are what
+     * a refusal is made of, and handing that reason back is half the point of the
+     * command - a mole that will not dig is the failure mode worth looking at.</p>
+     *
+     * @param report called once, on the server thread, with what happened
+     */
+    public void forceBurrow(Consumer<String> report) {
+        this.forcedBy = report;
+    }
+
     @Override
     public boolean canUse() {
         if (this.mole.getBurrowState().isBusy()) {
@@ -100,7 +124,9 @@ public class MoleBurrowGoal extends Goal {
         if (this.mole.getDeltaMovement().horizontalDistanceSqr() > BurrowConstants.STILL_THRESHOLD) {
             this.lastMovedTick = now;
         }
-        if (now < this.nextAttemptTick) {
+
+        boolean forced = this.forcedBy != null;
+        if (!forced && now < this.nextAttemptTick) {
             return false;
         }
 
@@ -108,25 +134,33 @@ public class MoleBurrowGoal extends Goal {
         boolean fleeingNow = threat != null
                 && now - this.mole.getLastHurtByMobTimestamp() <= BurrowConstants.FLEE_MEMORY;
         boolean bored = now - this.lastMovedTick >= BurrowConstants.BURROW_IDLE_DELAY;
-        if (!fleeingNow && !bored) {
+        if (!forced && !fleeingNow && !bored) {
             return false;
         }
 
         BlockPos origin = this.mole.blockPosition();
         BlockState ground = level.getBlockState(origin.below());
         boolean diggable = ground.is(ModTags.Blocks.MOLE_DIGGABLE);
-        BurrowLog.wanted(this.mole, fleeingNow ? "flee" : "bored", ground, diggable);
 
+        // Guards before the log line, not after: a baby or a leashed mole fails
+        // them on every attempt for as long as it lives, and logging the wish
+        // first would bury every real refusal under that noise.
         if (!this.passesGuards(diggable)) {
             this.delayNextAttempt();
             return false;
         }
+
+        BurrowLog.wanted(this.mole, forced ? "commanded" : fleeingNow ? "flee" : "bored", ground, diggable);
+
         if (!this.planTrip(level, origin, fleeingNow ? threat.position() : null)) {
             this.delayNextAttempt();
             return false;
         }
 
         this.fleeing = fleeingNow;
+        this.report("digging in, entry " + (this.entryIsNew ? "fresh" : "reused")
+                + ", exit " + (this.exitIsNew ? "fresh" : "reused")
+                + ", " + Math.round(this.route.length()) + " blocks to travel");
         return true;
     }
 
@@ -236,8 +270,26 @@ public class MoleBurrowGoal extends Goal {
         if (refusal == null) {
             return true;
         }
-        BurrowLog.refused(this.mole, refusal);
+        this.refuse(refusal);
         return false;
+    }
+
+    /**
+     * Every refusal goes through here: into the log always, and back to a waiting
+     * {@code /moleverse mole burrow} once.
+     */
+    private void refuse(String why) {
+        BurrowLog.refused(this.mole, why);
+        this.report("refused - " + why);
+    }
+
+    /** Answers a forced attempt at most once. Does nothing when nobody asked. */
+    private void report(String what) {
+        Consumer<String> waiting = this.forcedBy;
+        if (waiting != null) {
+            this.forcedBy = null;
+            waiting.accept(what);
+        }
     }
 
     private boolean planTrip(ServerLevel level, BlockPos origin, @Nullable Vec3 threat) {
@@ -252,7 +304,7 @@ public class MoleBurrowGoal extends Goal {
             this.entry = nearest;
             this.entryIsNew = false;
         } else if (!MoleMound.canPlaceAt(level, origin)) {
-            BurrowLog.refused(this.mole, "no room for a mound where he stands");
+            this.refuse("no room for a mound where he stands");
             return false;
         } else {
             this.entry = origin;
@@ -267,7 +319,7 @@ public class MoleBurrowGoal extends Goal {
 
     private boolean chooseExitAndRoute(ServerLevel level, MoundNetwork.Members network, @Nullable Vec3 threat,
             boolean crowded) {
-        BlockPos chosen = MoundNetwork.chooseExit(this.random, network, this.entry, threat);
+        BlockPos chosen = MoundNetwork.chooseExit(level, this.random, network, this.entry, threat);
         if (chosen != null) {
             this.exit = chosen;
             this.exitIsNew = false;
@@ -278,7 +330,7 @@ public class MoleBurrowGoal extends Goal {
                 // close to be worth the trip, and no room for a fifth anywhere in
                 // reach. He wanders off and tries again from somewhere else,
                 // which is what spreads a territory out instead of stacking it.
-                BurrowLog.refused(this.mole, (crowded ? "density cap reached: " : "no valid exit: ")
+                this.refuse((crowded ? "density cap reached: " : "no valid exit: ")
                         + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE
                         + " blocks and no fresh site was free");
                 return false;
@@ -310,7 +362,7 @@ public class MoleBurrowGoal extends Goal {
             return;
         }
 
-        BurrowLog.refused(this.mole, timedOut
+        this.refuse(timedOut
                 ? "approach timed out - digging here instead"
                 : "path to the entry mound exhausted - digging here instead");
 
@@ -445,6 +497,10 @@ public class MoleBurrowGoal extends Goal {
         }
 
         this.openedMound = this.entry;
+        // The entity keeps its own copy because the goal is thrown away when the
+        // chunk unloads, and a shaft left open is a change to the world that has
+        // to be undone even if this trip never finishes.
+        this.mole.setOpenShaft(this.entry);
         return true;
     }
 
@@ -452,6 +508,10 @@ public class MoleBurrowGoal extends Goal {
         if (this.openedMound != null) {
             MoleMound.setOpen(level, this.openedMound, false);
         }
+        // Also clears the entity's copy, which is what survives a save. Done
+        // unconditionally: if the goal was rebuilt after a reload it holds no
+        // position, but the mole may still be carrying one.
+        this.mole.setOpenShaft(null);
     }
 
     /**
@@ -469,6 +529,17 @@ public class MoleBurrowGoal extends Goal {
             return;
         }
 
+        // The density cap has to hold here too, not only when a fresh site is
+        // picked. A trip that ends early - a wall in the way, a chunk that
+        // stopped ticking - surfaces the mole a stride from where it went in,
+        // and without this check every one of those drops another mound beside
+        // the entry until the whole area is capped and the mole refuses to dig
+        // at all. Coming up without a mound is the better failure.
+        if (!MoundNetwork.hasRoomForMound(level, this.emergeAt)) {
+            BurrowLog.recovered(this.mole, "surfaced where the mounds are already too dense - none placed");
+            return;
+        }
+
         BlockState support = level.getBlockState(this.emergeAt.below());
         BlockState replaced = level.getBlockState(this.emergeAt);
         if (MoleMound.tryPlace(level, this.emergeAt, false)) {
@@ -482,7 +553,7 @@ public class MoleBurrowGoal extends Goal {
 
     /** Ends the trip without a dig. The goal stops on the next tick and cleans up. */
     private void abort(String why) {
-        BurrowLog.refused(this.mole, why);
+        this.refuse(why);
         this.mole.setBurrowState(BurrowState.WANDERING, "aborted");
     }
 

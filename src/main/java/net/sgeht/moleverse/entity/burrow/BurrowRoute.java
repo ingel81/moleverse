@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -67,9 +68,17 @@ public final class BurrowRoute {
     }
 
     /**
+     * How far the route may rise or fall between two waypoints. One block per
+     * two horizontal blocks is a slope a burrow can plausibly hold, and it is
+     * what keeps the line between waypoints inside the ground.
+     */
+    private static final double MAX_DEPTH_STEP = 1.0;
+
+    /**
      * Samples the straight line between the two mounds every
      * {@link BurrowConstants#WAYPOINT_SPACING} blocks and drops each sample to
-     * its own local depth.
+     * its own local depth, following the terrain rather than whatever is
+     * standing on it.
      */
     public static BurrowRoute between(ServerLevel level, BlockPos entry, BlockPos exit) {
         Vec3 from = entry.getCenter();
@@ -78,11 +87,24 @@ public final class BurrowRoute {
         int steps = Math.max(1, (int) Math.ceil(horizontal / BurrowConstants.WAYPOINT_SPACING));
 
         List<Vec3> points = new ArrayList<>(steps + 1);
+        double previous = Double.NaN;
         for (int i = 0; i <= steps; i++) {
             double t = (double) i / steps;
             double x = from.x + (to.x - from.x) * t;
             double z = from.z + (to.z - from.z) * t;
-            points.add(new Vec3(x, depthAt(level, x, z), z));
+
+            double y = depthAt(level, x, z);
+            if (!Double.isNaN(previous)) {
+                // A tunnel follows the ground, not what is standing on it. The
+                // heightmap counts a tree trunk, a wall or a stack of crates as
+                // surface, so an unclamped route jumps several blocks up in that
+                // column and the straight line between the two waypoints then
+                // passes through open air - the mole surfaces after a stride.
+                // In forest and around any building that is the normal case.
+                y = Mth.clamp(y, previous - MAX_DEPTH_STEP, previous + MAX_DEPTH_STEP);
+            }
+            previous = y;
+            points.add(new Vec3(x, y, z));
         }
 
         double[] lengthAt = new double[points.size()];

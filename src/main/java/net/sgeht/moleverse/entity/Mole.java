@@ -8,6 +8,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
@@ -24,12 +25,16 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
+import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.debug.MoleDebug;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
 import net.sgeht.moleverse.entity.burrow.BurrowLog;
 import net.sgeht.moleverse.entity.burrow.BurrowState;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
+import net.sgeht.moleverse.entity.burrow.MoleFollowMotherGoal;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
 import net.sgeht.moleverse.registry.ModSounds;
 
@@ -41,7 +46,9 @@ import net.sgeht.moleverse.registry.ModSounds;
  * trip itself is run by {@link MoleBurrowGoal}; what lives here is the state it
  * publishes, the physical side effects of being inside the ground, and the
  * recovery that undoes them if a trip is ever cut short by something other than
- * the goal.</p>
+ * the goal. A juvenile never makes that trip on its own - it rides along with an
+ * adult through {@link MoleFollowMotherGoal}, which needs nothing from this class
+ * beyond the same state.</p>
  *
  * <p>The rearing pose is split in two. The secondary motion - head sweeping,
  * snout twitching, paws shifting - comes from the {@code mole_peek} keyframe
@@ -123,6 +130,28 @@ public class Mole extends Animal {
     private int previewBurrowTicks;
     private int previewEmergeTicks;
 
+    /**
+     * The burrowing state machine, kept so {@code /moleverse mole burrow} can
+     * reach into it.
+     *
+     * <p>Assigned in {@link #registerGoals()} rather than by a field initialiser:
+     * {@code Mob}'s constructor calls that method before this class's own fields
+     * exist, so an initialiser here would silently build a second goal that the
+     * selector never sees. It stays null on the client, where {@code Mob} skips
+     * {@code registerGoals} entirely.</p>
+     */
+    private @Nullable MoleBurrowGoal burrowGoal;
+
+    /**
+     * The mound this mole has left standing open, or null.
+     *
+     * <p>Saved with the entity, unlike everything else about a trip. The state
+     * machine closes the shaft when it finishes, but a world that is saved
+     * mid-trip never gets there - and a mound stuck open forever is a change to
+     * the world, not just to the mole.</p>
+     */
+    private @Nullable BlockPos openShaft;
+
     public Mole(EntityType<? extends Mole> type, Level level) {
         super(type, level);
     }
@@ -146,7 +175,14 @@ public class Mole extends Animal {
         // Priority 0 and uninterruptable: once a mole is in the ground, nothing
         // else may claim its movement. It only holds MOVE and LOOK, so FloatGoal
         // above (JUMP) still works when he is swimming rather than digging.
-        this.goalSelector.addGoal(0, new MoleBurrowGoal(this));
+        this.burrowGoal = new MoleBurrowGoal(this);
+        this.goalSelector.addGoal(0, this.burrowGoal);
+        // Same priority, added after. Two goals at one priority never displace
+        // each other and insertion order decides who claims MOVE and LOOK first -
+        // which is harmless here, because the two are mutually exclusive by
+        // construction: the burrow goal refuses every baby, and the escort
+        // refuses every adult.
+        this.goalSelector.addGoal(0, new MoleFollowMotherGoal(this));
         this.goalSelector.addGoal(1, new PanicGoal(this, 1.6));
         this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
@@ -154,6 +190,11 @@ public class Mole extends Animal {
     }
 
     // --- burrowing ------------------------------------------------------------
+
+    /** Null on the client, and only ever read by {@code /moleverse mole burrow}. */
+    public @Nullable MoleBurrowGoal getBurrowGoal() {
+        return this.burrowGoal;
+    }
 
     public BurrowState getBurrowState() {
         return BurrowState.byId(this.entityData.get(DATA_BURROW_STATE));
@@ -180,10 +221,17 @@ public class Mole extends Animal {
      * {@code setInvulnerable}: that flag is written to NBT, so a chunk unload
      * halfway down a shaft would serialise a mole that is invulnerable for good.
      * The state is not saved, so it cannot outlive the trip.</p>
+     *
+     * <p>The two exceptions vanilla grants its own invulnerability are granted
+     * here as well. Without them {@code /kill} and a creative punch bounce off a
+     * travelling mole, which is exactly the moment someone reaches for them.</p>
      */
     @Override
     public boolean isInvulnerableTo(ServerLevel level, DamageSource damageSource) {
-        return this.getBurrowState().isDamageImmune() || super.isInvulnerableTo(level, damageSource);
+        boolean immuneWhileUnderground = this.getBurrowState().isDamageImmune()
+                && !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY)
+                && !damageSource.isCreativePlayer();
+        return immuneWhileUnderground || super.isInvulnerableTo(level, damageSource);
     }
 
     /**
@@ -272,6 +320,16 @@ public class Mole extends Animal {
         this.setBurrowState(BurrowState.WANDERING, "loaded");
         this.endUnderground();
 
+        // The shaft he went down is closed by the goal when the trip ends - but
+        // a trip cut short by saving and quitting never reaches that point, and
+        // the fresh goal after loading knows nothing about it. Without this the
+        // crater stands open for good and nothing in the game ever shuts it.
+        if (this.openShaft != null) {
+            MoleMound.setOpen(level, this.openShaft, false);
+            BurrowLog.recovered(this, "closed a shaft left open by an interrupted trip");
+            this.openShaft = null;
+        }
+
         // No chunk guard: this hook runs once the entity has entered the level's
         // ticking list, which is after its own chunk is there.
         BlockPos here = this.blockPosition();
@@ -279,6 +337,29 @@ public class Mole extends Animal {
             BurrowLog.recovered(this, "loaded inside solid ground");
             this.pushToSurface(level);
         }
+    }
+
+    @Override
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        // The burrow state itself is deliberately not saved - a mole always
+        // comes back above ground. This one position is, because it is the only
+        // record of a block that has to be put back.
+        output.storeNullable("OpenShaft", BlockPos.CODEC, this.openShaft);
+    }
+
+    @Override
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.openShaft = input.read("OpenShaft", BlockPos.CODEC).orElse(null);
+    }
+
+    /**
+     * Remembers which mound is standing open on this mole's account, so it can
+     * be closed even if the trip never finishes.
+     */
+    public void setOpenShaft(@Nullable BlockPos pos) {
+        this.openShaft = pos;
     }
 
     // --- ticking --------------------------------------------------------------

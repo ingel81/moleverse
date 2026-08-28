@@ -6,11 +6,13 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.sgeht.moleverse.client.debug.MoleDebugCommand;
+import net.sgeht.moleverse.client.debug.MoleNetworkOverlay;
 import net.sgeht.moleverse.client.render.MoleModel;
 import net.sgeht.moleverse.client.render.MoleRenderer;
 import net.sgeht.moleverse.registry.ModEntities;
@@ -48,5 +50,16 @@ public final class MoleverseClient {
     @SubscribeEvent
     static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
         MoleDebugCommand.register(event.getDispatcher());
+    }
+
+    /**
+     * Feeds the mound overlay. A client tick rather than a render event on
+     * purpose: {@code Minecraft.tick} is wrapped in a gizmo collector, so
+     * {@code Gizmos.line} works from here and the drawing needs no
+     * {@code PoseStack} and no buffer handling of its own.
+     */
+    @SubscribeEvent
+    static void onClientTick(ClientTickEvent.Post event) {
+        MoleNetworkOverlay.tick();
     }
 }
