@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "": [
+      { "model": "moleverse:block/loose_soil" },
+      { "model": "moleverse:block/loose_soil", "y": 90 },
+      { "model": "moleverse:block/loose_soil", "y": 180 },
+      { "model": "moleverse:block/loose_soil", "y": 270 }
+    ]
+  }
+}

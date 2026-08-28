@@ -1,0 +1,50 @@
+# Mod-Metadaten fuer den FML-Modloader.
+# Diese Datei ist ein Template: alle Dollar-Klammer-Platzhalter werden beim Build aus
+# gradle.properties gefuellt (siehe Task "generateModMetadata" in build.gradle).
+# Niemals die generierte Fassung in build/ editieren.
+
+# modLoader/loaderVersion werden bewusst weggelassen: loaderVersion meint die Version
+# des javafml-Sprachladers (aktuell 10.0), NICHT die NeoForge-Version. Ohne Angabe
+# gelten die Defaults, die zur verwendeten NeoForge-Version passen.
+license="${mod_license}"
+issueTrackerURL="${mod_issue_tracker}"
+
+[[mods]]
+    modId="${mod_id}"
+    version="${mod_version}"
+    displayName="${mod_name}"
+    displayURL="${mod_homepage}"
+    logoFile="${mod_logo_file}"
+    authors="${mod_authors}"
+    credits="${mod_credits}"
+    description='''
+${mod_description}
+'''
+
+# --- Abhaengigkeiten ------------------------------------------------------
+# type: required | optional | incompatible | discouraged
+# ordering: NONE | BEFORE | AFTER   (Ladereihenfolge relativ zur Dependency)
+# side: BOTH | CLIENT | SERVER
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# --- Optionale Bloecke, aktivieren sobald benoetigt -----------------------
+# Mixins:
+# [[mixins]]
+# config="${mod_id}.mixins.json"
+#
+# Access Transformer (wird sonst automatisch aus META-INF/accesstransformer.cfg geladen):
+# [[accessTransformers]]
+# file="META-INF/accesstransformer.cfg"

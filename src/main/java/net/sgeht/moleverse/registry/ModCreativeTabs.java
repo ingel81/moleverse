@@ -1,0 +1,35 @@
+package net.sgeht.moleverse.registry;
+
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.sgeht.moleverse.Moleverse;
+
+/** Kreativ-Tabs der Mod. */
+public final class ModCreativeTabs {
+
+    public static final DeferredRegister<CreativeModeTab> REGISTER =
+            DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Moleverse.MOD_ID);
+
+    /**
+     * Sammel-Tab fuer alles aus Moleverse. Solange die Mod klein ist, reicht ein
+     * einzelner Tab; bei mehr Inhalt spaeter nach Themen aufteilen.
+     */
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN = REGISTER.register(
+            "main",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup." + Moleverse.MOD_ID + ".main"))
+                    .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
+                    .icon(() -> ModItems.MOLE_PELT.get().getDefaultInstance())
+                    .displayItems((params, output) -> {
+                        output.accept(ModItems.MOLE_PELT.get());
+                        output.accept(ModItems.LOOSE_SOIL.get());
+                    })
+                    .build());
+
+    private ModCreativeTabs() {
+    }
+}

@@ -1,0 +1,196 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.144'
+    id 'idea'
+    id 'eclipse'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-${minecraft_version}"
+}
+
+// Mojang liefert mit 1.21.11 Java 21 an Endnutzer aus -> Mods muessen Java 21 targeten.
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+sourceSets.main.resources {
+    // Von den Data Generators erzeugte Ressourcen mit einpacken.
+    srcDir 'src/generated/resources'
+    // Reine Entwicklungs-Artefakte gehoeren nicht ins fertige JAR.
+    exclude '**/*.bbmodel'      // Blockbench-Projektdateien
+    exclude '**/*.xcf'          // GIMP-Quellen
+    exclude '**/*.aseprite'
+    exclude 'src/generated/**/.cache'
+}
+
+repositories {
+    // JEI
+    maven {
+        name = 'BlameJared'
+        url = 'https://maven.blamejared.com/'
+        content { includeGroup 'mezz.jei' }
+    }
+    // Modrinth (Jade und weitere Dev-Mods)
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        minecraftVersion = project.parchment_minecraft_version
+        mappingsVersion = project.parchment_mappings_version
+    }
+
+    // Access Transformer wird automatisch aus
+    // src/main/resources/META-INF/accesstransformer.cfg gezogen, sobald die Datei existiert.
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        // Startet einen GameTestServer, fuehrt alle registrierten GameTests aus und beendet sich.
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        // Data Generation: schreibt nach src/generated/resources.
+        data {
+            clientData()
+            programArguments.addAll '--mod', project.mod_id,
+                    '--all',
+                    '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            // Marker: SCAN (Mod-Scan), REGISTRIES (Registry-Events), REGISTRYDUMP (Registry-Inhalte)
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+// 'localRuntime' statt 'runtimeOnly' fuer Test-Dependencies, die NICHT als
+// Abhaengigkeit dieser Mod veroeffentlicht werden sollen.
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // --- JEI ------------------------------------------------------------
+    // API zur Compile-Zeit (fuer eigene JEI-Plugins), volles JAR nur zur Laufzeit.
+    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
+    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+
+    // --- Jade (Block-/Entity-Tooltips, Waila-Nachfolger) ------------------
+    // Reines Dev-Komfortwerkzeug, keine Compile-Abhaengigkeit.
+    localRuntime "maven.modrinth:jade:${jade_version_id}"
+}
+
+// ---------------------------------------------------------------------------
+// Mod-Metadaten: src/main/templates -> build/generated/sources/modMetadata
+// Platzhalter ${...} werden aus gradle.properties gefuellt. Fehlt eine
+// Property, bricht der Build ab (gewollt).
+// ---------------------------------------------------------------------------
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+            mod_credits            : mod_credits,
+            mod_homepage           : mod_homepage,
+            mod_issue_tracker      : mod_issue_tracker,
+            mod_logo_file          : mod_logo_file,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs << '-Xlint:all' << '-Xlint:-processing' << '-Xlint:-serial'
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : mod_name,
+                'Implementation-Version'  : mod_version,
+                'Implementation-Vendor'   : mod_authors,
+        ])
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifactId = mod_id
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'projectLocal'
+            url = layout.buildDirectory.dir('repo')
+        }
+    }
+}
+
+// IDEA laedt Sources/Javadoc nicht mehr automatisch.
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

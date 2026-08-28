@@ -1,0 +1,14 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { name = 'NeoForged'; url = 'https://maven.neoforged.net/releases' }
+    }
+}
+
+plugins {
+    // Erlaubt Gradle, ein passendes JDK automatisch zu beschaffen, falls das lokale
+    // JDK nicht zur geforderten Toolchain-Version passt.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'moleverse'
