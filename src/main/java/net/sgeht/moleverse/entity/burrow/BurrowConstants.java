@@ -42,15 +42,15 @@ public final class BurrowConstants {
     public static final double UNDERGROUND_SPEED_PER_TICK = 3.0 / TICKS_PER_SECOND;
 
     /**
-     * Earliest a mole digs a <em>new</em> hole after a trip.
+     * Earliest a mole breaks ground for a <em>new</em> hole.
      *
-     * <p>Was ninety seconds, on the assumption that time was what had to ration
-     * new mounds. It is not - the density cap does that, at the site, where it
-     * can actually judge whether another hole belongs there. All the long timer
-     * achieved was a mole standing on its own molehill for a minute and a half,
-     * which is the opposite of an animal that lives underground.</p>
+     * <p>Rations digging, and nothing else. It used to gate every trip, which
+     * meant a mole that had just extended its network sat on the new molehill
+     * for the whole minute - the tunnels it had just dug standing unused. Running
+     * the network costs the world nothing and is what a mole does all day; only
+     * adding to it is worth slowing down.</p>
      */
-    public static final int BURROW_COOLDOWN = 12 * TICKS_PER_SECOND;
+    public static final int NEW_HOLE_COOLDOWN = 60 * TICKS_PER_SECOND;
 
     /**
      * Earliest a mole goes back down a hole that already exists.

@@ -59,6 +59,17 @@ public class MoleBurrowGoal extends Goal {
     private int nextRetryTick;
 
     /**
+     * No <em>new</em> hole is dug before this tick.
+     *
+     * <p>Separate from the trip timer on purpose. Running the network is what a
+     * mole does all day and is never rationed; breaking fresh ground changes the
+     * world and is. Sharing one timer between them meant a mole that had just
+     * extended its network then sat on the new mound for a minute instead of
+     * using the tunnels it had dug.</p>
+     */
+    private int nextNewHoleTick;
+
+    /**
      * Tick the mole last came up, and what the boredom timer counts from.
      *
      * <p>Deliberately not "last tick it stood still". A wandering goal keeps a
@@ -308,9 +319,12 @@ public class MoleBurrowGoal extends Goal {
         // between mounds that already exist costs the world nothing, so a mole
         // with a network of its own can live in it instead of walking the
         // surface between rare trips.
-        int cooldown = !this.wentUnder ? BurrowConstants.REFUSAL_RETRY_DELAY
-                : this.placedMound ? BurrowConstants.BURROW_COOLDOWN
-                : BurrowConstants.NETWORK_TRIP_COOLDOWN;
+        int cooldown = this.wentUnder
+                ? BurrowConstants.NETWORK_TRIP_COOLDOWN
+                : BurrowConstants.REFUSAL_RETRY_DELAY;
+        if (this.placedMound) {
+            this.nextNewHoleTick = this.mole.tickCount + BurrowConstants.NEW_HOLE_COOLDOWN;
+        }
 
         this.entry = null;
         this.exit = null;
@@ -422,7 +436,8 @@ public class MoleBurrowGoal extends Goal {
         float chance = threat != null
                 ? BurrowConstants.FLEE_EXPLORE_CHANCE
                 : BurrowConstants.EXPLORE_CHANCE;
-        boolean explore = !crowded && this.random.nextFloat() < chance;
+        boolean mayDig = this.mole.tickCount >= this.nextNewHoleTick;
+        boolean explore = mayDig && !crowded && this.random.nextFloat() < chance;
 
         BlockPos chosen = explore
                 ? null
@@ -431,7 +446,12 @@ public class MoleBurrowGoal extends Goal {
             this.exit = chosen;
             this.exitIsNew = false;
         } else {
-            this.exit = MoundNetwork.findFreshSite(level, this.random, this.entry, threat);
+            // Also gated: this is the fallback when the network offers nothing,
+            // and without the check it would dig the very hole the timer is
+            // there to ration.
+            this.exit = mayDig
+                    ? MoundNetwork.findFreshSite(level, this.random, this.entry, threat)
+                    : null;
 
             // Exploring is a preference, not a demand. If no fresh site is free,
             // fall back to the network rather than refusing a trip that was
@@ -452,9 +472,11 @@ public class MoleBurrowGoal extends Goal {
                 // close to be worth the trip, and no room for a fifth anywhere in
                 // reach. He wanders off and tries again from somewhere else,
                 // which is what spreads a territory out instead of stacking it.
-                this.refuse((crowded ? "density cap reached: " : "no valid exit: ")
+                this.refuse((crowded ? "density cap reached: "
+                        : !mayDig ? "still resting from the last new hole: "
+                        : "no valid exit: ")
                         + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE
-                        + " blocks and no fresh site was free");
+                        + " blocks and no fresh site was available");
                 return false;
             }
             this.exitIsNew = true;
