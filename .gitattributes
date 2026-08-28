@@ -1,5 +1,18 @@
-# Disable autocrlf on generated files, they always generate with LF
-# Add any extra files or paths here to make git stop saying they
-# are changed when only line endings change.
-src/generated/**/.cache/* text eol=lf
-src/generated/**/*.json text eol=lf
+# Normalise everything to LF in the repository. Without this, files committed
+# from Windows keep CRLF, and the Linux CI runner cannot execute gradlew:
+# the shebang becomes "/bin/sh\r" and the shell reports
+# "cannot execute: required file not found".
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# The wrapper script is executed by POSIX shells; LF is mandatory.
+gradlew text eol=lf
+
+# Binaries: never touch.
+*.jar      binary
+*.png      binary
+*.ogg      binary
+*.bbmodel  binary
