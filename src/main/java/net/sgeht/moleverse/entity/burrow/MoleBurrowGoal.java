@@ -371,6 +371,7 @@ public class MoleBurrowGoal extends Goal {
      */
     private boolean passesGuards(boolean diggable) {
         String refusal = null;
+        boolean elsewhereWouldHelp = false;
         if (this.mole.isBaby()) {
             refusal = "baby - a juvenile only follows its mother down";
         } else if (this.mole.isLeashed()) {
@@ -385,12 +386,22 @@ public class MoleBurrowGoal extends Goal {
             refusal = "in water";
         } else if (!diggable) {
             refusal = "ground is not diggable";
+            elsewhereWouldHelp = true;
         }
 
         if (refusal == null) {
             return true;
         }
-        this.refuse(refusal);
+
+        // Ground underfoot is about the place, not the mole: standing on a path
+        // block or a stone platform, walking off is the answer. The rest -
+        // juvenile, leashed, riding, carrying, in the air - travel with the mole
+        // and would only make it pace.
+        if (elsewhereWouldHelp) {
+            this.refuseAndMoveOn(refusal);
+        } else {
+            this.refuse(refusal);
+        }
         return false;
     }
 
@@ -835,7 +846,7 @@ public class MoleBurrowGoal extends Goal {
 
     /** Ends the trip without a dig. The goal stops on the next tick and cleans up. */
     private void abort(String why) {
-        this.refuse(why);
+        this.refuseAndMoveOn(why);
         this.mole.setBurrowState(BurrowState.WANDERING, "aborted");
     }
 

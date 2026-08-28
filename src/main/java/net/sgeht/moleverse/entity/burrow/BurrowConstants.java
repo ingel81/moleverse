@@ -23,7 +23,6 @@ public final class BurrowConstants {
     /** Above this many mounds within {@link #SEARCH_RADIUS} of a site, no new mound is created. */
     public static final int MAX_MOUNDS_IN_RADIUS = 4;
 
-
     /** Longest distance of a freshly dug trip. */
     public static final int NEW_TRAVEL_MAX = 16;
 
@@ -65,7 +64,6 @@ public final class BurrowConstants {
      * adding to it is worth slowing down.</p>
      */
     public static final int NEW_HOLE_COOLDOWN = 60 * TICKS_PER_SECOND;
-
 
     /**
      * How long a mole stays above ground before going back down, at the least.
