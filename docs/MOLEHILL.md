@@ -107,8 +107,8 @@ profile with a little noise, smoothed so no cell towers over all its neighbours,
 then each 1 px layer covered greedily with as few rectangles as possible. That
 detour exists because hand-stacking boxes produced a stepped pyramid twice over -
 it read as architecture, not as earth. A round falloff on a fine grid gives a
-round outline for free, and the generator is in the scratchpad if the shape ever
-needs regenerating with a different seed or radius.
+round outline for free. The generators are kept in `art/generators/`, so the
+seed, the radius and the cell size stay available as tuning dials.
 
 Two closed shapes rather than one, because both looked right and a field of a
 single mound reads as stamped.
