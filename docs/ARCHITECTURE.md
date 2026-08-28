@@ -47,10 +47,26 @@ common code causes a `NoClassDefFoundError` there.
 
 ## Resources: hand-written versus generated
 
-`src/main/resources` holds what cannot sensibly be generated (textures, sounds,
-language files). `src/generated/resources` is filled by `runData` (models,
-blockstates, loot tables, recipes, tags) and is part of the jar as well.
+`src/main/resources` holds only what cannot sensibly be generated: textures,
+sounds, the mod logo, and translations other than the source locale.
 
-While there are no data generators yet, loot tables and tags are also
-hand-written under `src/main/resources/data`. They move to `data/` providers
-once the generators arrive.
+Everything else comes from `runData` and lands in `src/generated/resources`,
+which is part of the jar as well and is committed to the repository:
+
+| Provider | Output |
+|---|---|
+| `ModModelProvider` | blockstates, block models, item models |
+| `ModLootTableProvider` -> `ModBlockLootProvider` | `data/moleverse/loot_table/` |
+| `ModBlockTagsProvider` | block tags, including additions to vanilla tags |
+| `ModItemTagsProvider` | item tags |
+| `ModLanguageProvider` | `lang/en_us.json` |
+
+Never hand-write a file that a provider produces. Both copies would end up in
+the jar and it is undefined which one wins.
+
+`ModelProvider` validates its own output: every block and item registered in
+the mod's namespace must be covered, otherwise `runData` fails. That check is
+the main reason to prefer generators over hand-written JSON.
+
+`de_de.json` stays hand-written. Only the source locale is generated;
+translations are edited by hand.

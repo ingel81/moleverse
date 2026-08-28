@@ -1,0 +1,11 @@
+{
+  "block.moleverse.loose_soil": "Loose Soil",
+  "item.moleverse.mole_pelt": "Mole Pelt",
+  "itemGroup.moleverse.main": "Moleverse",
+  "message.moleverse.greeting": "Hello, mole. The tunnels are waiting.",
+  "moleverse.configuration.debugLogging": "Debug logging",
+  "moleverse.configuration.debugLogging.tooltip": "Write additional Moleverse debug output to the log.",
+  "moleverse.configuration.greetPlayer": "Greet player",
+  "moleverse.configuration.greetPlayer.tooltip": "Greet the player with a Moleverse message when they join a world.",
+  "moleverse.configuration.title": "Moleverse Configuration"
+}

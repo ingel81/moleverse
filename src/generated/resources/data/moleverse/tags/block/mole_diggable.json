@@ -1,0 +1,15 @@
+{
+  "values": [
+    "moleverse:loose_soil",
+    "minecraft:dirt",
+    "minecraft:grass_block",
+    "minecraft:coarse_dirt",
+    "minecraft:rooted_dirt",
+    "minecraft:podzol",
+    "minecraft:mycelium",
+    "minecraft:sand",
+    "minecraft:gravel",
+    "minecraft:mud",
+    "minecraft:clay"
+  ]
+}

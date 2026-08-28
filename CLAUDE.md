@@ -84,6 +84,33 @@ web almost always target older versions and are frequently wrong for this one.
   `100644` and the Linux CI runner failed with `./gradlew: Permission denied`.
   Fixed with `git update-index --chmod=+x gradlew`.
 
+## Data generation
+
+`./gradlew runData` writes to `src/generated/resources`, which is committed.
+Entry point: `data/MoleverseDataGenerators`, bound to `Dist.CLIENT` because
+model generation lives in client-only classes.
+
+API shape in this version, verified against the AE2 checkout and the NeoForge
+sources - most tutorials still show the pre-1.21.9 API and will not compile:
+
+* The event is `GatherDataEvent.Client`, not plain `GatherDataEvent`.
+* Providers are added through `event.getGenerator().getVanillaPack(true)`.
+* Models: extend `net.minecraft.client.data.models.ModelProvider` and override
+  `registerModels(BlockModelGenerators, ItemModelGenerators)`. The two-argument
+  constructor `(PackOutput, String modId)` is a NeoForge addition and scopes
+  validation to our namespace.
+  `blockModels.createTrivialCube(block)` covers blockstate, block model and the
+  block item; `itemModels.generateFlatItem(item, ModelTemplates.FLAT_ITEM)` covers flat items.
+* Loot: `net.minecraft.data.loot.LootTableProvider` with
+  `SubProviderEntry(factory, LootContextParamSets.BLOCK)`; the sub provider extends
+  `BlockLootSubProvider` and must narrow `getKnownBlocks()` to this mod's blocks.
+* Tags: `net.neoforged.neoforge.common.data.BlockTagsProvider` / `ItemTagsProvider`,
+  constructor `(PackOutput, CompletableFuture<HolderLookup.Provider>, String modId)`.
+* Language: `net.neoforged.neoforge.common.data.LanguageProvider`.
+
+Never hand-write a file a provider produces - both copies land in the jar.
+Only the source locale is generated; `de_de.json` stays hand-written.
+
 ## Conventions
 
 * Versions live in `gradle.properties` only. Never hard-wire them in code or build script.
