@@ -1,0 +1,519 @@
+{
+  "length": 6,
+  "animations": [
+    {
+      "bone": "root",
+      "target": "position",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            0,
+            0,
+            2
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 1.5,
+          "target": [
+            0,
+            0.4,
+            2
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 3,
+          "target": [
+            0,
+            0,
+            2
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.5,
+          "target": [
+            0,
+            0.4,
+            2
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            0,
+            0,
+            2
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "root",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            70,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 1.5,
+          "target": [
+            72,
+            0,
+            3
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 3,
+          "target": [
+            70,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.5,
+          "target": [
+            72,
+            0,
+            -3
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            70,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "head",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 0.8,
+          "target": [
+            8,
+            -38,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 1.7,
+          "target": [
+            8,
+            -38,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 2.6,
+          "target": [
+            -4,
+            42,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 3.5,
+          "target": [
+            -4,
+            42,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.4,
+          "target": [
+            6,
+            -12,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 5.2,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "snout",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 0.15,
+          "target": [
+            11,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 0.3,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 0.45,
+          "target": [
+            11,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 0.6,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 1.9,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 2.05,
+          "target": [
+            11,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 2.2,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 2.35,
+          "target": [
+            11,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 2.5,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.6,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.75,
+          "target": [
+            11,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.9,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 5.05,
+          "target": [
+            11,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 5.2,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "front_leg_right",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            -18,
+            0,
+            -10
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 1.5,
+          "target": [
+            -18,
+            0,
+            -14
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 3,
+          "target": [
+            -18,
+            0,
+            -10
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.5,
+          "target": [
+            -18,
+            0,
+            -12
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            -18,
+            0,
+            -10
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "front_leg_left",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            -18,
+            0,
+            10
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 1.5,
+          "target": [
+            -18,
+            0,
+            12
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 3,
+          "target": [
+            -18,
+            0,
+            10
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 4.5,
+          "target": [
+            -18,
+            0,
+            14
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            -18,
+            0,
+            10
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "hind_leg_right",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            -34,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            -34,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "hind_leg_left",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            -34,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            -34,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    },
+    {
+      "bone": "tail",
+      "target": "rotation",
+      "keyframes": [
+        {
+          "timestamp": 0,
+          "target": [
+            -18,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 3,
+          "target": [
+            -12,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "timestamp": 6,
+          "target": [
+            -18,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ],
+  "loop": true
+}

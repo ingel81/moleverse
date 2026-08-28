@@ -62,9 +62,11 @@ dialog blocks the Blockbench event loop, which kills the MCP connection. Its
 conversion is barely a dozen lines; replicate it in `risky_eval`, return the JSON,
 and write the file from the shell instead.
 
-Beware: Blockbench flips the sign of X rotations for this format on the way out,
-the same mirroring the geometry export applies. Verify a rotation in game before
-trusting its sign.
+Beware: the MCP tool `create_animation` negates X rotations on the way *in*. Pass
+`70` and the keyframe stores `-70`. The export itself is faithful and writes
+whatever is stored, so always check the pose in the viewport after creating an
+animation rather than trusting the number you passed. Setting a keyframe directly
+through `risky_eval` (`keyframe.set('x', value)`) bypasses the negation.
 
 Playing an animation from the model class:
 

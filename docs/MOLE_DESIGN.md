@@ -41,3 +41,28 @@ and a narrative thread towards the dimension.
 
 Burrowing and resurfacing is the one thing that separates the mole from a
 recoloured pig. Everything else is a standard mob and can wait.
+
+## Animations
+
+Built so far, in `assets/moleverse/neoforge/animations/entity/`:
+
+| Animation | Length | Purpose |
+|---|---|---|
+| `mole_walk` | 1.0 s, loop | Diagonal four-legged gait, body bobbing, snout twitching. |
+| `mole_peek` | 6.0 s, loop | Body reared up out of a hole, head sweeping left and right, bursts of sniffing. |
+
+Still to do:
+
+* **Digging.** One scooping cycle: the front paws alternate, the body pushes
+  forward, the snout stays low.
+* **Idle** above ground, and a **burrow** transition that pulls the mole under.
+
+Digging has to work in every direction, horizontally as well as straight down or
+up. Do **not** bake one animation per direction. Bake a single scoop cycle and
+drive the body angle procedurally: keep the dig pitch and yaw on the render state
+and apply them to the `root` part in `setupAnim` before the keyframe animation is
+applied. Any angle then works, not just the three that happened to be baked, and
+there is one animation to maintain instead of many.
+
+The `root` bone exists precisely for this: everything hangs under it, so rotating
+it aims the whole mole.
