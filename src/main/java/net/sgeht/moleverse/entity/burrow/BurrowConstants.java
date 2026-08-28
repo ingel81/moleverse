@@ -44,10 +44,13 @@ public final class BurrowConstants {
     /**
      * Earliest a mole digs a <em>new</em> hole after a trip.
      *
-     * <p>Long on purpose: every new hole is another mound in the world, and this
-     * is the rate at which a territory grows.</p>
+     * <p>Was ninety seconds, on the assumption that time was what had to ration
+     * new mounds. It is not - the density cap does that, at the site, where it
+     * can actually judge whether another hole belongs there. All the long timer
+     * achieved was a mole standing on its own molehill for a minute and a half,
+     * which is the opposite of an animal that lives underground.</p>
      */
-    public static final int BURROW_COOLDOWN = 90 * TICKS_PER_SECOND;
+    public static final int BURROW_COOLDOWN = 12 * TICKS_PER_SECOND;
 
     /**
      * Earliest a mole goes back down a hole that already exists.

@@ -111,6 +111,16 @@ public class MoleBurrowGoal extends Goal {
      */
     private @Nullable Consumer<String> forcedBy;
 
+    /**
+     * Whether the last decision was a refusal.
+     *
+     * <p>Read by the strolling goal. A mole that cannot dig where it stands has
+     * to be free to walk off and try elsewhere - that is what spreads a territory
+     * out rather than stacking it, and without it the mole would stand on a
+     * mound forever, since strolling is otherwise switched off near one.</p>
+     */
+    private boolean refusing;
+
     public MoleBurrowGoal(Mole mole) {
         this.mole = mole;
         this.random = mole.getRandom();
@@ -140,6 +150,11 @@ public class MoleBurrowGoal extends Goal {
      */
     public void forceBurrow(Consumer<String> report) {
         this.forcedBy = report;
+    }
+
+    /** True while the mole has been turned down and should look elsewhere. */
+    public boolean isRefusing() {
+        return this.refusing;
     }
 
     @Override
@@ -214,6 +229,7 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
+        this.refusing = false;
         this.fleeing = fleeingNow;
         this.report("digging in, entry " + (this.entryIsNew ? "fresh" : "reused")
                 + ", exit " + (this.exitIsNew ? "fresh" : "reused")
@@ -353,6 +369,7 @@ public class MoleBurrowGoal extends Goal {
      * {@code /moleverse mole burrow} once.
      */
     private void refuse(String why) {
+        this.refusing = true;
         BurrowLog.refused(this.mole, why);
         this.report("refused - " + why);
     }

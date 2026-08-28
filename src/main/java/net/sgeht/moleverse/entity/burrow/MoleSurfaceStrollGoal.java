@@ -39,7 +39,14 @@ public class MoleSurfaceStrollGoal extends WaterAvoidingRandomStrollGoal {
     }
 
     /**
-     * True while no mound is within reach.
+     * True while no mound is within reach, or while the mole has been refused a
+     * trip and needs to look somewhere else.
+     *
+     * <p>The second half matters as much as the first. With strolling switched
+     * off near a mound, a mole that cannot dig - the area is full, no exit is far
+     * enough, nowhere takes a fresh hole - would stand on its own molehill
+     * indefinitely. Walking off is precisely the answer in that case, and it is
+     * what spreads a territory outward instead of stacking it in one spot.</p>
      *
      * <p>Cheap: one point-of-interest count, and only while the base goal would
      * otherwise be starting or continuing a walk.</p>
@@ -48,6 +55,12 @@ public class MoleSurfaceStrollGoal extends WaterAvoidingRandomStrollGoal {
         if (!(this.mole.level() instanceof ServerLevel level)) {
             return true;
         }
+
+        MoleBurrowGoal burrowing = this.mole.getBurrowGoal();
+        if (burrowing != null && burrowing.isRefusing()) {
+            return true;
+        }
+
         return MoundNetwork.scan(level, this.mole.blockPosition()).nearest() == null;
     }
 }
