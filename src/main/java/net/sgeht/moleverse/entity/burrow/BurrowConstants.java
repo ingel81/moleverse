@@ -52,25 +52,27 @@ public final class BurrowConstants {
      */
     public static final int NEW_HOLE_COOLDOWN = 60 * TICKS_PER_SECOND;
 
-    /**
-     * Earliest a mole goes back down a hole that already exists.
-     *
-     * <p>Short, because using the network costs the world nothing - no new mound
-     * appears. A mole with a network of its own should spend most of its life in
-     * it rather than trotting about on the surface; above ground it only surfaces,
-     * looks around and goes back under.</p>
-     */
-    public static final int NETWORK_TRIP_COOLDOWN = 2 * TICKS_PER_SECOND;
 
     /**
-     * How long a mole stays above ground before it wants to be under it again.
+     * How long a mole stays above ground before going back down, at the least.
      *
      * <p>Counted from the moment it surfaced, not from when it last stood still:
      * a mole with a wandering goal is almost never still, so a stillness timer
      * left it strolling about indefinitely. Above ground is where it looks
      * around and gets its bearings; the network is where it lives.</p>
      */
-    public static final int SURFACE_DWELL = 2 * TICKS_PER_SECOND;
+    public static final int SURFACE_DWELL_MIN = 2 * TICKS_PER_SECOND;
+
+    /**
+     * And at the most. A fresh figure is drawn every time it comes up.
+     *
+     * <p>Randomised because a fixed interval reads as clockwork: a mole popping
+     * up and vanishing on the same beat every time looks like a machine, and the
+     * spread is what turns the same behaviour into an animal going about its
+     * business. It also spaces out a colony that would otherwise surface in
+     * lockstep.</p>
+     */
+    public static final int SURFACE_DWELL_MAX = 8 * TICKS_PER_SECOND;
 
     /**
      * Chance that a mole digs somewhere new even though its network offers a

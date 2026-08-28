@@ -80,6 +80,12 @@ public class MoleBurrowGoal extends Goal {
      */
     private int surfacedTick;
 
+    /**
+     * How long this particular stay above ground lasts, drawn fresh each time it
+     * surfaces. Keeps a mole from popping up on a metronome.
+     */
+    private int dwellTicks = BurrowConstants.SURFACE_DWELL_MIN;
+
     /** Start of the current state, for the two animation lengths and the approach timeout. */
     private int stateEnteredTick;
 
@@ -212,7 +218,7 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
-        boolean bored = !settled && now - this.surfacedTick >= BurrowConstants.SURFACE_DWELL;
+        boolean bored = !settled && now - this.surfacedTick >= this.dwellTicks;
         if (!forced && !fleeingNow && !bored) {
             return false;
         }
@@ -319,9 +325,10 @@ public class MoleBurrowGoal extends Goal {
         // between mounds that already exist costs the world nothing, so a mole
         // with a network of its own can live in it instead of walking the
         // surface between rare trips.
-        int cooldown = this.wentUnder
-                ? BurrowConstants.NETWORK_TRIP_COOLDOWN
-                : BurrowConstants.REFUSAL_RETRY_DELAY;
+        this.dwellTicks = Mth.nextInt(this.random,
+                BurrowConstants.SURFACE_DWELL_MIN, BurrowConstants.SURFACE_DWELL_MAX);
+
+        int cooldown = this.wentUnder ? this.dwellTicks : BurrowConstants.REFUSAL_RETRY_DELAY;
         if (this.placedMound) {
             this.nextNewHoleTick = this.mole.tickCount + BurrowConstants.NEW_HOLE_COOLDOWN;
         }
