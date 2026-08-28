@@ -339,6 +339,43 @@ public class Mole extends Animal {
         }
     }
 
+    /**
+     * Shuts the shaft before the mole is gone for good.
+     *
+     * <p>A dead mob stops ticking its goals - {@code isImmobile} is true from the
+     * moment it starts dying - so the goal's own cleanup never runs. Without this
+     * the crater stands open for the rest of the world's life, and killing a mole
+     * mid-trip is not exotic: it is what someone does when they want it gone.</p>
+     */
+    @Override
+    public void die(DamageSource cause) {
+        this.closeOpenShaft();
+        super.die(cause);
+    }
+
+    /**
+     * The same for a mole that is discarded rather than killed.
+     *
+     * <p>Deliberately not on a chunk unload or a dimension change: there the
+     * saved position is the whole point, and closing the shaft would throw away
+     * the record that has to survive.</p>
+     */
+    @Override
+    public void onRemovedFromLevel() {
+        RemovalReason reason = this.getRemovalReason();
+        if (reason == RemovalReason.KILLED || reason == RemovalReason.DISCARDED) {
+            this.closeOpenShaft();
+        }
+        super.onRemovedFromLevel();
+    }
+
+    private void closeOpenShaft() {
+        if (this.openShaft != null && this.level() instanceof ServerLevel level) {
+            MoleMound.setOpen(level, this.openShaft, false);
+            this.openShaft = null;
+        }
+    }
+
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);

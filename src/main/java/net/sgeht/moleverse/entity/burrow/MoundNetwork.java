@@ -148,21 +148,6 @@ public final class MoundNetwork {
     }
 
     /**
-     * Picks the mound the mole comes back out of.
-     *
-     * <p>Two rules, both with a failure mode behind them. Never the entry and
-     * never closer to it than {@link BurrowConstants#MIN_EXIT_DISTANCE}, because
-     * uniform choice otherwise picks the mound he just dived into and he pops
-     * straight back out. And when he is fleeing, weight the choice by distance
-     * from the threat - a random member of the network is as likely to surface
-     * him next to the wolf as away from it, which turns the signature escape into
-     * a suicide.</p>
-     *
-     * @param threat where the danger is, or {@code null} when he is merely bored
-     * @return an existing mound to surface at, or {@code null} when the network
-     *         holds none that is far enough away
-     */
-    /**
      * Whether a mound is somewhere a mole could actually arrive.
      *
      * <p>The index answers from disk, so it names mounds in terrain that is not
@@ -174,6 +159,22 @@ public final class MoundNetwork {
         return level.isPositionEntityTicking(mound);
     }
 
+    /**
+     * Picks the mound the mole comes back out of.
+     *
+     * <p>Three rules, each with a failure mode behind it. Never the entry and
+     * never closer to it than {@link BurrowConstants#MIN_EXIT_DISTANCE}, because
+     * uniform choice otherwise picks the mound he just dived into and he pops
+     * straight back out. Never one the mole cannot reach, see
+     * {@link #canTravelTo}. And when he is fleeing, weight the choice by distance
+     * from the threat - a random member of the network is as likely to surface
+     * him next to the wolf as away from it, which turns the signature escape into
+     * a suicide.</p>
+     *
+     * @param threat where the danger is, or {@code null} when he is merely bored
+     * @return an existing mound to surface at, or {@code null} when the network
+     *         holds none that is far enough away and reachable
+     */
     public static @Nullable BlockPos chooseExit(ServerLevel level, RandomSource random, Members network,
             BlockPos entry, @Nullable Vec3 threat) {
         int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;

@@ -7,7 +7,6 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -99,9 +98,14 @@ public final class BurrowRoute {
                 // heightmap counts a tree trunk, a wall or a stack of crates as
                 // surface, so an unclamped route jumps several blocks up in that
                 // column and the straight line between the two waypoints then
-                // passes through open air - the mole surfaces after a stride.
-                // In forest and around any building that is the normal case.
-                y = Mth.clamp(y, previous - MAX_DEPTH_STEP, previous + MAX_DEPTH_STEP);
+                // passes through open air - the mole surfaces after a stride. In
+                // forest and around any building that is the normal case.
+                //
+                // Upwards only. A downward step needs no limit: it puts the
+                // route deeper into rock, where it stays valid. Limiting it
+                // instead leaves the route hanging above a falling slope, which
+                // breaks ordinary hillsides that worked before this clamp.
+                y = Math.min(y, previous + MAX_DEPTH_STEP);
             }
             previous = y;
             points.add(new Vec3(x, y, z));

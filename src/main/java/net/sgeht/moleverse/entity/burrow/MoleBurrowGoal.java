@@ -486,6 +486,15 @@ public class MoleBurrowGoal extends Goal {
     /** Opens the shaft he goes down, digging the mound first when there is none yet. */
     private boolean openEntryMound(ServerLevel level) {
         if (!MoleMound.isMound(level, this.entry)) {
+            // The entry was picked as an existing mound, which is why the plan
+            // never asked whether another one would fit. Up to five seconds of
+            // walking pass before this runs, and a player can knock that mound
+            // away in the meantime - digging a replacement here would push the
+            // area over the cap through the one path that never checked it.
+            if (!MoundNetwork.hasRoomForMound(level, this.entry)) {
+                return false;
+            }
+
             BlockState support = level.getBlockState(this.entry.below());
             BlockState replaced = level.getBlockState(this.entry);
             if (!MoleMound.tryPlace(level, this.entry, true)) {
@@ -537,6 +546,16 @@ public class MoleBurrowGoal extends Goal {
         // at all. Coming up without a mound is the better failure.
         if (!MoundNetwork.hasRoomForMound(level, this.emergeAt)) {
             BurrowLog.recovered(this.mole, "surfaced where the mounds are already too dense - none placed");
+            return;
+        }
+
+        // Both other paths that place a mound honour the minimum distance; this
+        // one is reached when a trip is cut short, which is exactly when the two
+        // mounds would end up on top of each other. Two heaps a stride apart
+        // read as a mistake, not as a tunnel.
+        int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;
+        if (this.emergeAt.distSqr(this.entry) < minSqr) {
+            BurrowLog.recovered(this.mole, "surfaced too close to the entry - no second mound");
             return;
         }
 
