@@ -109,10 +109,37 @@ Setup on this machine:
   picked up and the approval prompt never appears.
 * Blockbench must be running with a project open for most tools to work.
 
-Useful tools: `create_project`, `place_cube` (takes `from`/`to`/`origin`/`rotation`,
-which map one to one onto `CubeListBuilder`), `add_group` for bones,
-`create_texture` plus the painting tools, `set_camera_angle` and
-`capture_screenshot` to review the result, `export_model` to write to disk.
+Useful tools: `create_project` (format `modded_entity` = "Java Class", the entity
+format), `place_cube` (`from`/`to`/`origin`/`rotation` map one to one onto
+`CubeListBuilder`), `add_group` for bones, `create_texture`, `set_camera_angle`,
+`export_model` to write to disk, and `risky_eval` for everything the tools do not cover.
+
+### Quirks worth knowing
+
+* **`capture_screenshot` renders the viewport without textures.** Judging a texture
+  from it is impossible - it always looks flat grey. Use `capture_app_screenshot`,
+  which grabs the real window.
+* **`add_group`'s `parent` parameter has no effect.** Groups end up as siblings at
+  the top level. Reparent afterwards with `risky_eval`: `group.addTo(rootGroup)`.
+* **The `modded_entity` export mirrors the X axis.** A part at +X in Blockbench comes
+  out at -X in Java, which is the entity's *right* in Minecraft convention. Name parts
+  according to the Java result, not the Blockbench view.
+* **`place_cube` fails without a texture** (`No texture found for "undefined"`).
+  Create a texture first.
+* **`create_texture` ignores `width`/`height` when `fill_color` is used** and produces
+  16x16. The project resolution is separate again: set `Project.texture_width` and
+  `Project.texture_height` via `risky_eval`, otherwise the export writes the wrong
+  values into `LayerDefinition.create(...)`.
+* **Auto UV assigns `[0, 0]` to every cube**, stacking them all in the same corner.
+  Pack the layout by hand: in box UV mode a cube occupies `2*(depth+width)` by
+  `depth+height` pixels, and `uv_offset` is its top-left corner.
+
+### Where the files live
+
+Blockbench projects and raw exports go to `art/`, outside every source set.
+Entity textures belong in `src/main/resources/assets/moleverse/textures/entity/`.
+Only the geometry from an export is used; the surrounding class is written by hand
+against the current API (see `art/README.md`).
 
 ## Data generation
 
