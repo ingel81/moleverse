@@ -33,6 +33,16 @@ public class MoleModel extends EntityModel<MoleRenderState> {
      */
     private static final float WALK_SPEED_SCALE = 2.5F;
 
+    /**
+     * How fast the walk cycle runs for a given distance covered.
+     *
+     * <p>A mole has short legs and takes small, quick steps; at the value the
+     * cycle was first written with it looked like it was wading. This is the
+     * dial for that - the animation itself is unchanged, only how much of it
+     * plays per block travelled.</p>
+     */
+    private static final float WALK_CYCLE_SPEED = 5.0F;
+
     private static final AnimationHolder WALK = getAnimation(Moleverse.id("mole_walk"));
     private static final AnimationHolder PEEK = getAnimation(Moleverse.id("mole_peek"));
     private static final AnimationHolder IDLE = getAnimation(Moleverse.id("mole_idle"));
@@ -70,7 +80,7 @@ public class MoleModel extends EntityModel<MoleRenderState> {
         // Resets every part to its rest pose. Everything below is additive.
         super.setupAnim(state);
 
-        this.walk.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, 2.0F, WALK_SPEED_SCALE);
+        this.walk.applyWalk(state.walkAnimationPos, state.walkAnimationSpeed, WALK_CYCLE_SPEED, WALK_SPEED_SCALE);
         this.applyIdle(state);
 
         this.dig.apply(state.digAnimationState, state.ageInTicks);
