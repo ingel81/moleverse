@@ -1,104 +1,106 @@
 # Moleverse
 
-Minecraft-Mod über Maulwürfe: ihre Gänge, ihr Handwerk und eine eigene Welt unter der Welt.
+A Minecraft mod about moles: their tunnels, their craft, and a world beneath the world.
 
 | | |
 |---|---|
 | Minecraft | 1.21.11 |
-| Modloader | NeoForge 21.11.45 |
+| Mod loader | NeoForge 21.11.45 |
 | Java | 21 |
 | Build | Gradle 9.2.1 + ModDevGradle 2.0.144 |
-| Mod-ID | `moleverse` |
+| Mod id | `moleverse` |
 | Package | `net.sgeht.moleverse` |
 
-## Voraussetzungen
+## Requirements
 
-* JDK 21 (Temurin empfohlen). Prüfen mit `java -version`.
-* Windows: die Firewall arbeitet auf diesem Rechner mit `DefaultOutboundAction = Block`.
-  Jede neue Java-Installation braucht daher eine eigene Outbound-Allow-Regel,
-  sonst schlagen alle Gradle-Downloads mit `SocketException: Permission denied: getsockopt` fehl.
+* JDK 21 (Temurin recommended). Verify with `java -version`.
+* Windows: if the firewall runs with `DefaultOutboundAction = Block`, every new
+  Java installation needs its own outbound allow rule. Without it, all Gradle
+  downloads fail with `SocketException: Permission denied: getsockopt`.
 
-## Entwickeln
+## Development
 
-Alle Kommandos im Projektverzeichnis, `gradlew` statt eines global installierten Gradle.
+Run everything from the project directory using `gradlew` rather than a globally
+installed Gradle.
 
 ```bash
-./gradlew build          # kompilieren + JAR bauen
-./gradlew runClient      # Minecraft-Client mit der Mod starten
-./gradlew runServer      # dedizierten Server starten
-./gradlew runData        # Data Generators -> src/generated/resources
-./gradlew runGameTestServer   # GameTests ausführen, danach beenden
+./gradlew build          # compile and build the jar
+./gradlew runClient      # start the Minecraft client with the mod
+./gradlew runServer      # start a dedicated server
+./gradlew runData        # run the data generators -> src/generated/resources
+./gradlew runGameTestServer   # run the game tests, then exit
 ```
 
-Der erste Lauf dauert lange: Gradle-Distribution, NeoForge und Minecraft werden
-geladen und dekompiliert.
+The first run takes a while: the Gradle distribution, NeoForge and Minecraft are
+downloaded and decompiled.
 
-### Dev-Umgebung
+### Development environment
 
-`runClient` startet mit zwei Komfort-Mods, die **nicht** im ausgelieferten JAR landen
-(`localRuntime`, siehe `build.gradle`):
+`runClient` starts with two convenience mods that are **not** part of the shipped
+jar (`localRuntime`, see `build.gradle`):
 
-* **JEI** – Rezept-/Item-Browser, Nachfolger von NEI.
-* **Jade** – Tooltip für anvisierte Blöcke und Entities, Nachfolger von Waila/Hwyla.
+* **JEI** - recipe and item browser, successor to NEI.
+* **Jade** - tooltip for the block or entity you are looking at, successor to Waila.
 
-Versionen stehen in `gradle.properties` (`jei_version`, `jade_version_id`).
-Weitere Dev-Mods lassen sich als `localRuntime "maven.modrinth:<slug>:<version-id>"`
-ergänzen; die Version-ID steht in der Modrinth-URL bzw. in der API.
+Their versions live in `gradle.properties` (`jei_version`, `jade_version_id`).
+Further development mods can be added as
+`localRuntime "maven.modrinth:<slug>:<version-id>"`; the version id is part of
+the Modrinth URL and of the API response.
 
 ### IDE
 
-IntelliJ IDEA: Projektverzeichnis als Gradle-Projekt öffnen, Import abwarten.
-Die Run Configurations (`runClient` usw.) erzeugt ModDevGradle beim Sync automatisch.
+IntelliJ IDEA: open the project directory as a Gradle project and let the import
+finish. ModDevGradle creates the run configurations (`runClient` and friends)
+during the sync.
 
-## Die Mod im normalen Launcher testen
+## Testing the mod in a normal launcher
 
-Für einen Test außerhalb der Dev-Umgebung – etwa in einer CurseForge-Instanz:
+To test outside the development environment, for example in a CurseForge instance:
 
 1. `./gradlew build`
-2. Das Ergebnis liegt unter `build/libs/moleverse-1.21.11-<version>.jar`.
-   Die Datei mit dem Suffix `-sources.jar` wird **nicht** gebraucht.
-3. In CurseForge eine Instanz mit **Minecraft 1.21.11 / NeoForge** anlegen.
-4. Instanz → *Open Folder* → JAR nach `mods/` kopieren.
-5. Instanz starten.
+2. The result is `build/libs/moleverse-1.21.11-<version>.jar`.
+   The file ending in `-sources.jar` is not needed.
+3. Create an instance with **Minecraft 1.21.11 / NeoForge**.
+4. Instance -> *Open Folder* -> copy the jar into `mods/`.
+5. Start the instance.
 
-Der Weg über `runClient` ist im Alltag schneller: kein JAR-Export, kein Launcher,
-Änderungen an Ressourcen greifen teilweise ohne Neustart.
+Day to day, `runClient` is faster: no jar export, no launcher, and some resource
+changes apply without a restart.
 
-## Projektstruktur
+## Project layout
 
 ```
 src/main/java/net/sgeht/moleverse/
-├── Moleverse.java          Einstiegspunkt (@Mod), Mod-ID, Logger, id()-Helper
-├── MoleverseClient.java    Client-Einstiegspunkt (@Mod dist=CLIENT)
-├── config/                 ModConfigSpec-Definitionen
-├── registry/               DeferredRegister je Registry-Typ, gebündelt in ModRegistries
-├── event/                  Handler am NeoForge-Game-Bus
-├── tag/                    TagKey-Konstanten
-├── block/ item/ entity/    Eigene Block-, Item- und Entity-Klassen
-├── worldgen/ dimension/    Weltgenerierung und eigene Dimension
-├── client/                 Renderer, Screens, clientseitige Events
-├── network/                Netzwerk-Payloads
-├── data/                   Data Generators
-└── util/                   Hilfsklassen
+├── Moleverse.java          entry point (@Mod), mod id, logger, id() helper
+├── MoleverseClient.java    client entry point (@Mod dist=CLIENT)
+├── config/                 ModConfigSpec definitions
+├── registry/               one DeferredRegister per registry type, bundled in ModRegistries
+├── event/                  handlers on the NeoForge game bus
+├── tag/                    TagKey constants
+├── block/ item/ entity/    custom block, item and entity classes
+├── worldgen/ dimension/    world generation and the mod's own dimension
+├── client/                 renderers, screens, client-side events
+├── network/                network payloads
+├── data/                   data generators
+└── util/                   helpers
 
-src/main/resources/         handgepflegte Assets und Daten
-src/generated/resources/    von runData erzeugt, wird mit eingepackt
-src/main/templates/         neoforge.mods.toml mit ${...}-Platzhaltern
+src/main/resources/         hand-written assets and data
+src/generated/resources/    produced by runData, shipped in the jar
+src/main/templates/         neoforge.mods.toml with build-time placeholders
 ```
 
-## Versionen anheben
+## Bumping versions
 
-Minecraft-, NeoForge- und Parchment-Version stehen ausschließlich in
-`gradle.properties`. Ein Port beginnt dort und arbeitet sich dann durch die
-Compilerfehler.
+The Minecraft, NeoForge and Parchment versions live in `gradle.properties` and
+nowhere else. A port starts there and then works through the compiler errors.
 
-## Lizenz
+## Licence
 
-[LGPL-3.0-or-later](LICENSE) - dieselbe Lizenz wie Applied Energistics 2.
+[LGPL-3.0-or-later](LICENSE) - the same licence Applied Energistics 2 uses.
 
-Konkret: Der Quelltext ist offen. Wer die Mod forkt und weitergibt, muss den
-Fork ebenfalls unter LGPL stellen und die Urheberschaft nennen. Andere Mods
-duerfen Moleverse als Dependency einbinden, ohne selbst LGPL zu werden.
+In practice: the source is open. Anyone who forks the mod and redistributes it
+must place the fork under the LGPL as well and credit the authorship. Other mods
+may depend on Moleverse without becoming LGPL themselves.
 
-`LICENSE` enthaelt den LGPL-3.0-Text gefolgt vom GPL-3.0-Text, auf den die
-LGPL verweist. Die Urheberangabe steht in `NOTICE`.
+`LICENSE` contains the LGPL-3.0 text followed by the GPL-3.0 text it refers to.
+The copyright notice is in `NOTICE`.

@@ -10,5 +10,5 @@
   "moleverse.configuration.debugLogging": "Debug logging",
   "moleverse.configuration.debugLogging.tooltip": "Write additional Moleverse debug output to the log.",
   "moleverse.configuration.greetPlayer": "Greet player",
-  "moleverse.configuration.greetPlayer.tooltip": "Send a Moleverse greeting when a player joins a world."
+  "moleverse.configuration.greetPlayer.tooltip": "Greet the player with a Moleverse message when they join a world."
 }

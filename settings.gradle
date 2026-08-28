@@ -6,8 +6,8 @@ pluginManagement {
 }
 
 plugins {
-    // Erlaubt Gradle, ein passendes JDK automatisch zu beschaffen, falls das lokale
-    // JDK nicht zur geforderten Toolchain-Version passt.
+    // Lets Gradle provision a matching JDK automatically when the local one
+    // does not satisfy the requested toolchain version.
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 

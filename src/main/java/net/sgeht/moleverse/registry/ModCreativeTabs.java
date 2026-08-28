@@ -8,15 +8,15 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 
-/** Kreativ-Tabs der Mod. */
+/** Creative mode tabs of this mod. */
 public final class ModCreativeTabs {
 
     public static final DeferredRegister<CreativeModeTab> REGISTER =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Moleverse.MOD_ID);
 
     /**
-     * Sammel-Tab fuer alles aus Moleverse. Solange die Mod klein ist, reicht ein
-     * einzelner Tab; bei mehr Inhalt spaeter nach Themen aufteilen.
+     * Catch-all tab for everything from Moleverse. One tab is enough while the
+     * mod is small; split it by theme once there is more content.
      */
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN = REGISTER.register(
             "main",

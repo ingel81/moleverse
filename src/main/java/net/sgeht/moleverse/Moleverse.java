@@ -12,16 +12,16 @@ import net.sgeht.moleverse.registry.ModRegistries;
 import org.slf4j.Logger;
 
 /**
- * Einstiegspunkt der Mod. Laeuft auf Client und dedizierter Server-Seite.
+ * Mod entry point. Runs on both the client and the dedicated server.
  *
- * <p>Diese Klasse haelt bewusst keine Inhalte, sondern verdrahtet nur:
- * Registries, Config und Lifecycle-Listener. Alles Fachliche liegt in den
- * Unterpaketen.</p>
+ * <p>This class deliberately holds no content. It only wires things up:
+ * registries, configuration and lifecycle listeners. Everything domain
+ * specific lives in the sub-packages.</p>
  */
 @Mod(Moleverse.MOD_ID)
 public final class Moleverse {
 
-    /** Mod-ID. Muss identisch zu {@code mod_id} in gradle.properties sein. */
+    /** Mod id. Must be identical to {@code mod_id} in gradle.properties. */
     public static final String MOD_ID = "moleverse";
 
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -33,20 +33,20 @@ public final class Moleverse {
 
         container.registerConfig(ModConfig.Type.COMMON, MoleverseConfig.COMMON_SPEC);
 
-        LOGGER.info("Moleverse konstruiert.");
+        LOGGER.info("Moleverse constructed.");
     }
 
     /**
-     * Baut eine {@link Identifier} im Namespace dieser Mod.
+     * Builds an {@link Identifier} in this mod's namespace.
      *
-     * @param path Pfad ohne Namespace, z.B. {@code "loose_soil"}
+     * @param path path without namespace, for example {@code "loose_soil"}
      */
     public static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
     private void onCommonSetup(FMLCommonSetupEvent event) {
-        // Thread-unsicherer Setup-Code gehoert in event.enqueueWork(...).
-        event.enqueueWork(() -> LOGGER.debug("Common setup abgeschlossen."));
+        // Thread-unsafe setup work belongs inside event.enqueueWork(...).
+        event.enqueueWork(() -> LOGGER.debug("Common setup finished."));
     }
 }

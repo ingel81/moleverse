@@ -6,11 +6,11 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 
 /**
- * Entity-Typen der Mod.
+ * Entity types of this mod.
  *
- * <p>Noch leer. Sobald der Maulwurf-Mob existiert, kommen hier
- * {@code EntityType.Builder}-Registrierungen hin; Attribute werden ueber
- * {@code EntityAttributeCreationEvent} nachgereicht, Renderer im Client-Paket.</p>
+ * <p>Still empty. Once the mole mob exists, {@code EntityType.Builder}
+ * registrations go here; attributes are supplied through
+ * {@code EntityAttributeCreationEvent} and renderers live in the client package.</p>
  */
 public final class ModEntities {
 

@@ -6,15 +6,15 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 
-/** Alle Items der Mod, inklusive der BlockItems aus {@link ModBlocks}. */
+/** Every item of this mod, including the block items from {@link ModBlocks}. */
 public final class ModItems {
 
     public static final DeferredRegister.Items REGISTER = DeferredRegister.createItems(Moleverse.MOD_ID);
 
-    /** Maulwurfsfell: erstes Drop-Material, spaeter Craftingbasis. */
+    /** Mole pelt: the first drop material, later a crafting base. */
     public static final DeferredItem<Item> MOLE_PELT = REGISTER.registerSimpleItem("mole_pelt");
 
-    // --- BlockItems -------------------------------------------------------
+    // --- Block items ------------------------------------------------------
     public static final DeferredItem<BlockItem> LOOSE_SOIL = REGISTER.registerSimpleBlockItem(ModBlocks.LOOSE_SOIL);
 
     private ModItems() {

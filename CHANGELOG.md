@@ -1,18 +1,18 @@
 # Changelog
 
-Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
-Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Hinzugefügt
-- Projektgerüst: NeoForge 21.11.45 / Minecraft 1.21.11, ModDevGradle, Parchment.
-- Block `moleverse:loose_soil` (lockere Erde).
-- Item `moleverse:mole_pelt` (Maulwurfsfell).
-- Kreativ-Tab `moleverse:main`.
-- Begrüßungsnachricht beim Betreten der Welt (abschaltbar per Config).
-- Konfiguration (COMMON) mit `debugLogging` und `greetPlayer`.
-- Tags `moleverse:mole_diggable` (Block) und `moleverse:mole_materials` (Item).
-- Lokalisierung en_us / de_de.
-- Dev-Umgebung mit JEI und Jade.
-- Lizenz LGPL-3.0-or-later.
+### Added
+- Project scaffold: NeoForge 21.11.45 / Minecraft 1.21.11, ModDevGradle, Parchment.
+- Block `moleverse:loose_soil`.
+- Item `moleverse:mole_pelt`.
+- Creative mode tab `moleverse:main`.
+- Greeting message when a player joins a world, toggleable in the config.
+- Configuration (COMMON) with `debugLogging` and `greetPlayer`.
+- Tags `moleverse:mole_diggable` (block) and `moleverse:mole_materials` (item).
+- Localisation for en_us and de_de.
+- Development environment with JEI and Jade.
+- Licence LGPL-3.0-or-later.

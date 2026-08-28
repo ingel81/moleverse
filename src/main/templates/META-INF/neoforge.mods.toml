@@ -1,11 +1,16 @@
-# Mod-Metadaten fuer den FML-Modloader.
-# Diese Datei ist ein Template: alle Dollar-Klammer-Platzhalter werden beim Build aus
-# gradle.properties gefuellt (siehe Task "generateModMetadata" in build.gradle).
-# Niemals die generierte Fassung in build/ editieren.
+# Mod metadata for the FML mod loader.
+# This file is a template: every placeholder is filled at build time from
+# gradle.properties (see the "generateModMetadata" task in build.gradle).
+# Never edit the generated copy under build/.
+#
+# Note: a literal dollar-brace construct anywhere in this file - comments
+# included - is evaluated as a Groovy expression by Gradle's expand() and will
+# break the build unless it names an actual property.
 
-# modLoader/loaderVersion werden bewusst weggelassen: loaderVersion meint die Version
-# des javafml-Sprachladers (aktuell 10.0), NICHT die NeoForge-Version. Ohne Angabe
-# gelten die Defaults, die zur verwendeten NeoForge-Version passen.
+# modLoader and loaderVersion are deliberately omitted: loaderVersion refers to
+# the version of the javafml language loader (currently 10.0), NOT to the
+# NeoForge version. Without them the defaults matching the NeoForge version in
+# use apply. The official MDK omits them for the same reason.
 license="${mod_license}"
 issueTrackerURL="${mod_issue_tracker}"
 
@@ -21,9 +26,9 @@ issueTrackerURL="${mod_issue_tracker}"
 ${mod_description}
 '''
 
-# --- Abhaengigkeiten ------------------------------------------------------
+# --- Dependencies ---------------------------------------------------------
 # type: required | optional | incompatible | discouraged
-# ordering: NONE | BEFORE | AFTER   (Ladereihenfolge relativ zur Dependency)
+# ordering: NONE | BEFORE | AFTER   (load order relative to the dependency)
 # side: BOTH | CLIENT | SERVER
 
 [[dependencies.${mod_id}]]
@@ -40,11 +45,12 @@ ${mod_description}
     ordering="NONE"
     side="BOTH"
 
-# --- Optionale Bloecke, aktivieren sobald benoetigt -----------------------
+# --- Optional blocks, enable once needed ----------------------------------
 # Mixins:
 # [[mixins]]
-# config="${mod_id}.mixins.json"
+# config="moleverse.mixins.json"
 #
-# Access Transformer (wird sonst automatisch aus META-INF/accesstransformer.cfg geladen):
+# Access transformer (otherwise loaded automatically from
+# META-INF/accesstransformer.cfg):
 # [[accessTransformers]]
 # file="META-INF/accesstransformer.cfg"

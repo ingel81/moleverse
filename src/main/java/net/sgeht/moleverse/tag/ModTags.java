@@ -7,8 +7,8 @@ import net.minecraft.world.level.block.Block;
 import net.sgeht.moleverse.Moleverse;
 
 /**
- * Tag-Keys der Mod. Die zugehoerigen JSON-Dateien liegen unter
- * {@code data/moleverse/tags/...} bzw. werden per Datagen erzeugt.
+ * Tag keys of this mod. The matching JSON files live under
+ * {@code data/moleverse/tags/...} or are produced by the data generators.
  */
 public final class ModTags {
 
@@ -16,7 +16,7 @@ public final class ModTags {
     }
 
     public static final class Blocks {
-        /** Bloecke, durch die ein Maulwurf graben kann. */
+        /** Blocks a mole is able to dig through. */
         public static final TagKey<Block> MOLE_DIGGABLE = create("mole_diggable");
 
         private Blocks() {
@@ -28,7 +28,7 @@ public final class ModTags {
     }
 
     public static final class Items {
-        /** Materialien aus Maulwurfsfell. */
+        /** Materials made from mole pelt. */
         public static final TagKey<Item> MOLE_MATERIALS = create("mole_materials");
 
         private Items() {

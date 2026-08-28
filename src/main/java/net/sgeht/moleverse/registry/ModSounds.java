@@ -7,10 +7,10 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 
 /**
- * Sound-Events der Mod.
+ * Sound events of this mod.
  *
- * <p>Noch leer. Der Register ist bereits verdrahtet, damit spaetere Sounds
- * (Graben, Maulwurf-Laute, Dimensions-Ambiente) nur noch eine Zeile brauchen:
+ * <p>Still empty. The register is already wired up so that later sounds
+ * (digging, mole calls, dimension ambience) only need one line:
  * {@code public static final DeferredHolder<SoundEvent, SoundEvent> DIG = register("dig");}</p>
  */
 public final class ModSounds {

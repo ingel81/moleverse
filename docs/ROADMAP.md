@@ -1,32 +1,32 @@
 # Roadmap
 
-Grobrichtung, keine Terminzusage. Reihenfolge so gewählt, dass jede Stufe
-spielbar endet.
+Rough direction, not a schedule. Ordered so that every stage ends in something
+playable.
 
-## 0.1 — Gerüst *(aktuell)*
-Projektaufbau, ein Block, ein Item, Kreativ-Tab, Begrüßung. Ziel: `runClient`
-startet und zeigt Moleverse-Inhalte.
+## 0.1 - Scaffold *(current)*
+Project setup, one block, one item, a creative tab, a greeting. Goal:
+`runClient` starts and shows Moleverse content.
 
-## 0.2 — Der Maulwurf
-Maulwurf als Entity: Modell, Textur, Animation, Spawn in Grasland/Wald,
-Verhalten (gräbt sich ein, taucht auf), Drops.
+## 0.2 - The mole
+The mole as an entity: model, texture, animation, spawning in plains and
+forests, behaviour (burrows away, surfaces again), drops.
 
-## 0.3 — Graben
-Werkzeug oder Fähigkeit zum Anlegen von Gängen. Tag `mole_diggable` steuert,
-was passierbar ist. Gang-Blöcke, Stützen, Beleuchtung.
+## 0.3 - Digging
+A tool or ability for carving tunnels. The `mole_diggable` tag controls what is
+passable. Tunnel blocks, supports, lighting.
 
-## 0.4 — Ressourcen
-Eigene Erze oder Fundstücke im Untergrund, Verarbeitung, Rezepte.
-Data Generators einführen, handgeschriebene JSONs ablösen.
+## 0.4 - Resources
+Custom ores or finds underground, processing, recipes. Introduce the data
+generators and retire the hand-written JSON.
 
-## 0.5 — Strukturen
-Maulwurfsbauten in der Oberwelt: Kammern, Vorratslager, Gangsysteme.
-Jigsaw-Strukturen mit Templates.
+## 0.5 - Structures
+Mole burrows in the overworld: chambers, storage, tunnel networks. Jigsaw
+structures with templates.
 
-## 1.0 — Das Moleverse
-Eigene Dimension mit eigenem Chunk-Generator, Biomen und Übergang aus der
-Oberwelt. Alles darunter ist Vorarbeit dafür.
+## 1.0 - The Moleverse
+A dimension of its own with a custom chunk generator, biomes and a transition
+from the overworld. Everything before this is groundwork for it.
 
-## Offen / noch zu entscheiden
-- Veröffentlichung: CurseForge, Modrinth, beides?
-- Mixins: erst einführen, wenn ein konkreter Bedarf besteht.
+## Open
+- Distribution: CurseForge, Modrinth, both?
+- Mixins: introduce only once there is a concrete need.

@@ -11,10 +11,11 @@ import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.config.MoleverseConfig;
 
 /**
- * Handler am NeoForge-Game-Bus (Laufzeit-Events, nicht Mod-Lifecycle).
+ * Handlers on the NeoForge game bus, meaning runtime events rather than the
+ * mod lifecycle.
  *
- * <p>{@link EventBusSubscriber} registriert alle statischen
- * {@code @SubscribeEvent}-Methoden automatisch.</p>
+ * <p>{@link EventBusSubscriber} registers every static
+ * {@code @SubscribeEvent} method automatically.</p>
  */
 @EventBusSubscriber(modid = Moleverse.MOD_ID)
 public final class MoleverseGameEvents {
@@ -24,7 +25,7 @@ public final class MoleverseGameEvents {
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
-        Moleverse.LOGGER.info("Moleverse ist aktiv - der Untergrund wartet.");
+        Moleverse.LOGGER.info("Moleverse is active - the underground is waiting.");
     }
 
     @SubscribeEvent
@@ -32,7 +33,7 @@ public final class MoleverseGameEvents {
         if (!MoleverseConfig.GREET_PLAYER.get()) {
             return;
         }
-        // Das Event feuert auch fuer den ClientPlayer; nur der ServerPlayer verschickt Chat.
+        // The event also fires for the client player; only the server player sends chat.
         if (event.getEntity() instanceof ServerPlayer player) {
             player.sendSystemMessage(
                     Component.translatable("message." + Moleverse.MOD_ID + ".greeting")

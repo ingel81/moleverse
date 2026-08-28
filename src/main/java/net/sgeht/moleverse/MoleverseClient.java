@@ -10,20 +10,20 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 /**
- * Client-seitiger Einstiegspunkt. Wird auf dedizierten Servern nicht geladen,
- * daher darf hier direkt auf Client-Klassen zugegriffen werden.
+ * Client-side entry point. Not loaded on dedicated servers, so client classes
+ * may be referenced directly from here.
  */
 @Mod(value = Moleverse.MOD_ID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = Moleverse.MOD_ID, value = Dist.CLIENT)
 public final class MoleverseClient {
 
     public MoleverseClient(ModContainer container) {
-        // Generischer Config-Screen unter Mods -> Moleverse -> Config.
+        // Generic config screen under Mods -> Moleverse -> Config.
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
     }
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
-        Moleverse.LOGGER.debug("Client setup abgeschlossen.");
+        Moleverse.LOGGER.debug("Client setup finished.");
     }
 }
