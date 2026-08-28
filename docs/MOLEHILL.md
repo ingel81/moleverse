@@ -90,7 +90,8 @@ NETWORK_SCAN_MAX      64 blocks    hard bound on how far a chain is followed
 UNDERGROUND_SPEED      3 blocks/s  travel speed below the surface
 BURROW_COOLDOWN       90 s         earliest a mole digs a NEW hole again
 NETWORK_TRIP_COOLDOWN  8 s         earliest it goes back down an existing one
-BURROW_IDLE_DELAY      3 s         standing still this long counts as bored
+SURFACE_DWELL          4 s         how long it stays up before wanting back down
+EXPLORE_CHANCE         25%         chance of digging somewhere new anyway, so the network grows
 PLAYER_SCARE_DISTANCE  8 blocks    a player nearer than this sends it under
 SNEAK_SCARE_FACTOR     1/3         how much of that a crouching player gets
 APPROACH_TIMEOUT       5 s         give up walking to an entry mound and dig here

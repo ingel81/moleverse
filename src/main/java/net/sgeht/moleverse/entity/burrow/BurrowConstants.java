@@ -59,8 +59,26 @@ public final class BurrowConstants {
      */
     public static final int NETWORK_TRIP_COOLDOWN = 8 * TICKS_PER_SECOND;
 
-    /** Standing still this long counts as bored. */
-    public static final int BURROW_IDLE_DELAY = 3 * TICKS_PER_SECOND;
+    /**
+     * How long a mole stays above ground before it wants to be under it again.
+     *
+     * <p>Counted from the moment it surfaced, not from when it last stood still:
+     * a mole with a wandering goal is almost never still, so a stillness timer
+     * left it strolling about indefinitely. Above ground is where it looks
+     * around and gets its bearings; the network is where it lives.</p>
+     */
+    public static final int SURFACE_DWELL = 4 * TICKS_PER_SECOND;
+
+    /**
+     * Chance that a mole digs somewhere new even though its network offers a
+     * perfectly good exit.
+     *
+     * <p>Without it a territory stops growing the moment it has two usable
+     * mounds: the exit search prefers what already exists, so it would always
+     * find one and never break new ground. This is how a mole colonises a
+     * meadow over time rather than pacing between the same two holes.</p>
+     */
+    public static final float EXPLORE_CHANCE = 0.25F;
 
     /**
      * How close a player may come before a mole dives for cover.

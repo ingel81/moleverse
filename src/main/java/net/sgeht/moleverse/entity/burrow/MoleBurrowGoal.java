@@ -58,8 +58,16 @@ public class MoleBurrowGoal extends Goal {
      */
     private int nextRetryTick;
 
-    /** Last tick the mole was moving. The boredom timer counts from here. */
-    private int lastMovedTick;
+    /**
+     * Tick the mole last came up, and what the boredom timer counts from.
+     *
+     * <p>Deliberately not "last tick it stood still". A wandering goal keeps a
+     * mole moving almost continuously, so a timer that waits for stillness
+     * hardly ever fires - which is why an established mole spent its life on the
+     * surface instead of in its own network. How long it has been up is the
+     * thing actually being asked about.</p>
+     */
+    private int surfacedTick;
 
     /** Start of the current state, for the two animation lengths and the approach timeout. */
     private int stateEnteredTick;
@@ -144,9 +152,6 @@ public class MoleBurrowGoal extends Goal {
         }
 
         int now = this.mole.tickCount;
-        if (this.mole.getDeltaMovement().horizontalDistanceSqr() > BurrowConstants.STILL_THRESHOLD) {
-            this.lastMovedTick = now;
-        }
 
         boolean forced = this.forcedBy != null;
 
@@ -181,7 +186,7 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
-        boolean bored = !settled && now - this.lastMovedTick >= BurrowConstants.BURROW_IDLE_DELAY;
+        boolean bored = !settled && now - this.surfacedTick >= BurrowConstants.SURFACE_DWELL;
         if (!forced && !fleeingNow && !bored) {
             return false;
         }
@@ -300,7 +305,7 @@ public class MoleBurrowGoal extends Goal {
         this.entryIsNew = false;
         this.exitIsNew = false;
         this.placedMound = false;
-        this.lastMovedTick = this.mole.tickCount;
+        this.surfacedTick = this.mole.tickCount;
         this.nextAttemptTick = this.mole.tickCount + cooldown;
         // Only a trip that really happened clears the retry throttle. An
         // attempt that started and then failed - a mound it could not walk to,
@@ -388,12 +393,37 @@ public class MoleBurrowGoal extends Goal {
 
     private boolean chooseExitAndRoute(ServerLevel level, MoundNetwork.Members network, @Nullable Vec3 threat,
             boolean crowded) {
-        BlockPos chosen = MoundNetwork.chooseExit(level, this.random, network, this.entry, threat);
+        // Now and then, strike out for somewhere new even though the network has
+        // an exit to offer. Preferring what exists is right most of the time -
+        // it is what stops a meadow filling with holes - but always preferring
+        // it means a territory freezes at two mounds and never grows again. Not
+        // while fleeing: an escape is no time to go exploring.
+        boolean explore = threat == null && !crowded
+                && this.random.nextFloat() < BurrowConstants.EXPLORE_CHANCE;
+
+        BlockPos chosen = explore
+                ? null
+                : MoundNetwork.chooseExit(level, this.random, network, this.entry, threat);
         if (chosen != null) {
             this.exit = chosen;
             this.exitIsNew = false;
         } else {
             this.exit = MoundNetwork.findFreshSite(level, this.random, this.entry);
+
+            // Exploring is a preference, not a demand. If no fresh site is free,
+            // fall back to the network rather than refusing a trip that was
+            // perfectly possible.
+            if (this.exit == null && explore) {
+                this.exit = MoundNetwork.chooseExit(level, this.random, network, this.entry, threat);
+                if (this.exit != null) {
+                    this.exitIsNew = false;
+                    this.route = BurrowRoute.between(level, this.entry, this.exit);
+                    BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, false,
+                            this.route.length(), this.route.waypointCount());
+                    return true;
+                }
+            }
+
             if (this.exit == null) {
                 // The crowded case: mounds all around but every one of them too
                 // close to be worth the trip, and no room for a fifth anywhere in
