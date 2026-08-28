@@ -212,6 +212,26 @@ public final class BurrowConstants {
 
     public static final float DIG_SOUND_PITCH = 0.7F;
 
+    /**
+     * How long a mole may stand on ground it cannot dig before it is carried
+     * back to soil.
+     *
+     * <p>Walking off is the usual answer to that refusal and it works nearly
+     * every time. It is no answer where walking cannot reach soil - the roof of
+     * a village house, a platform, any ledge the pathfinder will not drop off -
+     * and there the refusal repeats every {@link #REFUSAL_RETRY_DELAY} for the
+     * rest of the world's life. Long enough that an ordinary detour across a
+     * path block never reaches it.</p>
+     */
+    public static final int STRANDED_RESCUE_DELAY = 30 * TICKS_PER_SECOND;
+
+    /**
+     * How far around a stranded mole soil is looked for. A village house is
+     * about seven blocks across, so this reaches the meadow beside one from
+     * its ridge.
+     */
+    public static final int STRANDED_RESCUE_RADIUS = 8;
+
     private BurrowConstants() {
     }
 }

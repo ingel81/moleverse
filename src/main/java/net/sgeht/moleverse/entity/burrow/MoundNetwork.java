@@ -25,6 +25,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.registry.ModPoi;
+import net.sgeht.moleverse.tag.ModTags;
 
 /**
  * Which mounds are around, which of them are linked, and where another one could
@@ -298,6 +299,49 @@ public final class MoundNetwork {
      */
     public static BlockPos surfaceAt(ServerLevel level, int x, int z) {
         return new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+    }
+
+    /**
+     * The nearest spot within {@code radius} whose ground a mole is able to dig
+     * into, or null when there is none.
+     *
+     * <p>Column by column, because that is the question being asked: the
+     * heightmap says where each column ends and the block beneath that says
+     * whether the surface is soil or something somebody built. A roof therefore
+     * never answers while the meadow beside the house does, which is the whole
+     * point - this exists for a mole that ended up on top of a building.</p>
+     *
+     * <p>It sweeps {@code (2*radius+1)^2} columns, so it runs once per stranded
+     * mole per {@link BurrowConstants#STRANDED_RESCUE_DELAY} and never per tick.
+     * Columns outside the entity-ticking area are skipped rather than loaded: a
+     * rescue must not pull chunks in, and a spot that is not ticking is one the
+     * mole could not live at anyway.</p>
+     */
+    public static @Nullable BlockPos nearestDiggableSurface(ServerLevel level, BlockPos origin, int radius) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        BlockPos best = null;
+        double bestSqr = Double.MAX_VALUE;
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                cursor.set(origin.getX() + dx, origin.getY(), origin.getZ() + dz);
+                if (!level.isPositionEntityTicking(cursor)) {
+                    continue;
+                }
+
+                BlockPos surface = surfaceAt(level, cursor.getX(), cursor.getZ());
+                if (!level.getBlockState(surface.below()).is(ModTags.Blocks.MOLE_DIGGABLE)) {
+                    continue;
+                }
+
+                double distSqr = surface.distSqr(origin);
+                if (distSqr < bestSqr) {
+                    best = surface;
+                    bestSqr = distSqr;
+                }
+            }
+        }
+        return best;
     }
 
     private static List<BlockPos> moundsWithin(ServerLevel level, BlockPos centre, int radius) {

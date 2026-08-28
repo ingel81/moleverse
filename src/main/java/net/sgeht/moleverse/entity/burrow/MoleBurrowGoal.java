@@ -81,6 +81,13 @@ public class MoleBurrowGoal extends Goal {
     private int surfacedTick;
 
     /**
+     * When the mole first found itself on ground it cannot dig, or -1 while it
+     * stands on soil. Only the span matters: a mole that walks off a path block
+     * clears this long before the rescue in {@link #canUse()} looks at it.
+     */
+    private int strandedSinceTick = -1;
+
+    /**
      * How long this particular stay above ground lasts, drawn fresh each time it
      * surfaces. Keeps a mole from popping up on a metronome.
      */
@@ -231,6 +238,19 @@ public class MoleBurrowGoal extends Goal {
         BlockPos origin = this.mole.blockPosition();
         BlockState ground = level.getBlockState(origin.below());
         boolean diggable = ground.is(ModTags.Blocks.MOLE_DIGGABLE);
+
+        // Before the guards, because the guard for this case only asks the mole
+        // to walk on, and the whole point of the rescue is the spot where
+        // walking on leads nowhere.
+        if (diggable) {
+            this.strandedSinceTick = -1;
+        } else if (this.strandedSinceTick < 0) {
+            this.strandedSinceTick = now;
+        } else if (now - this.strandedSinceTick >= BurrowConstants.STRANDED_RESCUE_DELAY
+                && this.rescueFromStranding(level, origin)) {
+            this.delayNextAttempt();
+            return false;
+        }
 
         // Guards before the log line, not after: a baby or a leashed mole fails
         // them on every attempt for as long as it lives, and logging the wish
@@ -685,8 +705,21 @@ public class MoleBurrowGoal extends Goal {
         // is what tells them apart. Distance alone cannot: the route deliberately
         // climbs slower than rising ground does, so on any slope the gap grows
         // with the length of the trip and would condemn every uphill journey.
+        //
+        // The column on its own does not tell them apart either. A village wall
+        // stands solid from the soil to the eaves, so a mole coming up inside
+        // one passes this test and is set down on the ridge - where nothing is
+        // diggable, every later trip is refused, and it paces the roof until
+        // somebody pushes it off. What a wall does not have is soil under the
+        // spot it leads to, so the ground underfoot is asked as well.
+        String blocked = null;
         if (!isSolidColumn(level, x, z, Mth.floor(at.y) + 1, surfaced.getY())) {
-            BurrowLog.recovered(this.mole, "ground above is built over - returning to the entry");
+            blocked = "ground above is built over";
+        } else if (!isNaturalGround(level, surfaced)) {
+            blocked = "the surface above is not soil";
+        }
+        if (blocked != null) {
+            BurrowLog.recovered(this.mole, blocked + " - returning to the entry");
             surfaced = MoundNetwork.surfaceAt(level, this.entry.getX(), this.entry.getZ());
         }
 
@@ -744,6 +777,16 @@ public class MoleBurrowGoal extends Goal {
      * <p>About fifteen block reads, once per trip. It is the cavity that makes
      * surfacing wrong, not the height.</p>
      */
+    /**
+     * Whether a mole set down here would be standing on soil rather than on
+     * something built. {@code MOLE_MOUND_PLACEABLE} is the list to ask: it
+     * already answers "is this the top of the ground", and an emerge that lands
+     * anywhere else leaves a mole that can never dig again from where it stands.
+     */
+    private static boolean isNaturalGround(ServerLevel level, BlockPos surfaced) {
+        return level.getBlockState(surfaced.below()).is(ModTags.Blocks.MOLE_MOUND_PLACEABLE);
+    }
+
     private static boolean isSolidColumn(ServerLevel level, int x, int z, int fromY, int toY) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = fromY; y < toY; y++) {
@@ -900,6 +943,35 @@ public class MoleBurrowGoal extends Goal {
                     ModSounds.MOLE_DIG.get(), SoundSource.NEUTRAL,
                     BurrowConstants.DIG_SOUND_VOLUME, BurrowConstants.DIG_SOUND_PITCH);
         }
+    }
+
+    /**
+     * Carries a mole that has been standing on something it cannot dig back to
+     * the nearest soil.
+     *
+     * <p>The refusal this follows already asks the mole to walk on, and that is
+     * the right answer nearly every time. It is no answer at all where walking
+     * cannot reach soil: on a roof, a platform, any ledge the mob pathfinder
+     * refuses to drop off. Nothing changes there on its own, and the mole spends
+     * the rest of the world's life refusing every three seconds where it
+     * stands - a state with no visible cause, which is the failure mode this
+     * whole mechanic is most prone to.</p>
+     *
+     * @return false when no soil is in reach, in which case nothing moved and
+     *         the ordinary refusal follows
+     */
+    private boolean rescueFromStranding(ServerLevel level, BlockPos origin) {
+        BlockPos ground = MoundNetwork.nearestDiggableSurface(
+                level, origin, BurrowConstants.STRANDED_RESCUE_RADIUS);
+        if (ground == null) {
+            return false;
+        }
+
+        this.mole.getNavigation().stop();
+        this.mole.putDownAt(ground);
+        this.strandedSinceTick = -1;
+        BurrowLog.recovered(this.mole, "stranded on ground he cannot dig - put back on soil");
+        return true;
     }
 
     private void delayNextAttempt() {

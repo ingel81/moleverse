@@ -327,8 +327,16 @@ public class Mole extends Animal {
 
     /** Lifts the mole to the first free spot above the ground at its own coordinates. */
     public void pushToSurface(ServerLevel level) {
-        BlockPos surface = MoundNetwork.surfaceAt(level, this.getBlockX(), this.getBlockZ());
-        this.snapTo(surface.getBottomCenter());
+        this.putDownAt(MoundNetwork.surfaceAt(level, this.getBlockX(), this.getBlockZ()));
+    }
+
+    /**
+     * Sets the mole down in this block, standing still. Every recovery that moves
+     * a mole goes through here, so none of them leaves it carrying the momentum
+     * of wherever it came from.
+     */
+    public void putDownAt(BlockPos spot) {
+        this.snapTo(spot.getBottomCenter());
         this.setDeltaMovement(Vec3.ZERO);
     }
 
