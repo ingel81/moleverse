@@ -67,6 +67,31 @@ the ground it would above. That is the opposite of the nether and it is welcome:
 the whole fast-travel balancing problem disappears, the mirror is a place rather
 than a highway, and distance is itself a limit on how far anyone strays.
 
+### Scale is the content
+
+At 1:1 a mole run is a featureless tube and there is nothing to author. That is
+the argument for stretching it: at four times, the run is a gallery, and the
+small life of the soil becomes the large life of the burrow.
+
+* An earthworm is an animal the size of a horse, shouldering along the corridor -
+  the same creature farmed above.
+* Beetle grubs, centipedes, springtail swarms: a fauna that can exist at no other
+  scale.
+* Roots are beams. Supports grow rather than get built.
+* Gravel is a boulder field and a stone is a block in the road.
+* Fungal mycelium is a lit web across the ceiling. That is where light comes
+  from, not from torches.
+* Seep water drips, gathers, becomes a ford.
+* The worm larders a colony really keeps - worms stored alive - are a chamber
+  rather than a detail.
+* The moles themselves pass as large animals. A mole digging by is an event.
+
+Weather reaches down: rain means seep water and worms rising, frost means hard,
+still ground.
+
+The tone to hold: sober and biological, with an edge of being a guest somewhere
+that did not plan for you.
+
 ### Limits, in layers
 
 | Layer | Means | Effect |
@@ -231,14 +256,44 @@ axolotl-bucket pattern, a Jade tooltip for mole and mound state, advancements,
 underground rumbling with dust when a mole tunnels nearby, biome variants, and a
 star-nosed mole with a sense of its own.
 
-## Lore
+## Lore and the way in
 
-Not "you shrink". **The deep burrow is old.** The galleries were dug by ancestors
-back when moles were large, and today's narrow runs are threaded through that old
-work - which is why there is room below that does not exist above.
+The player really is shrunk - a quarter of their size, which is why a mole run
+reads as a gallery. The mod stays sober about how moles and worms live; the one
+fantastic step is what those animals eventually hand over.
 
-It explains the size, it supplies the inhabitants for the dimension, and it fits
-the matriarch: she is what is left of that size.
+**The gift.** A mature worm out of the breeding chain closes around a find that
+only a deep network delivers, and what comes out of that is what makes a person
+small. The worm supplies the form, the moles supply what it forms around - the
+same division of labour the rest of the mod runs on.
+
+It is gated by all three systems at once, and none of them can be skipped:
+
+| Gate | Why it cannot be skipped |
+|---|---|
+| Breeding chain | the worm has to be a late tier, not one dug out of a mound |
+| Exchange chest | the core of the gift is a find, and finds come through trade |
+| A grown colony | a deep find only turns up where the network runs deep, so the colony has to be kept alive and extended |
+
+That makes it a midgame goal rather than a recipe, and it makes protecting the
+moles a progression requirement rather than a moral.
+
+Rejected on the way here, so that they do not come back unexamined: the burrow
+being ancient (explains size, but not why the galleries follow a route a mole ran
+last week - and the correspondence is the point); the burrow as something the
+colony hears rather than a place (explains every limit, and reads as
+metaphysics); shrinking by water loss after the fashion of a worm in drought
+(good consequences, wrong register).
+
+Open: whether the gift is spent per trip or kept and recharged, whether a mole
+has to be present at the mound, and what the second gift looks like.
+
+## The kingdom below
+
+An endgame dimension past the burrow, deliberately left open for now. One thing
+about it is settled, and it is the thing that matters for everything before it:
+**whatever is needed to reach it exists only in the burrow.** The midgame
+dimension is not a detour on the way to the endgame, it is the sole source of it.
 
 ## The one thing everything waits on
 
