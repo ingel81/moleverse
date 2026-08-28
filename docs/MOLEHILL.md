@@ -11,6 +11,7 @@ This document replaces the "Burrowing and molehills" section of
 | 2 - animations | `57f81b1` | Built. All six entity animations load |
 | 3 - the mechanic | `b0f9c6a` | Built |
 | 4 - natural spawning | `d849d2c` | Built. Biome tag and modifier generated |
+| Tuning | `1b4b1df`..`bcb0ed0` | Twelve rounds against play tests. The earthworm came out of these |
 
 Three review rounds ran against the code - one after phases 1, 2 and 4, one
 against the mechanic, and one against the fixes those produced. All fifteen
@@ -486,6 +487,34 @@ New chunks contain moles without spawn eggs, a populated meadow grows a small
 field of mounds over time, and the density cap holds across several moles.
 
 ---
+
+## What the tuning rounds taught
+
+Twelve commits of behaviour tuning followed the first play test, and the pattern
+in them is worth keeping. Every one started from a symptom the player named -
+"he walks about too much", "he sits on his molehill for a minute", "why does he
+not dig a third hole" - and in almost every case the cause was two settings that
+had been chosen separately and pulled against each other:
+
+* A 60% chance to dig somewhere new, against a 90-second cooldown on digging.
+  He almost always chose to dig, and then stood still for a minute and a half.
+* A boredom timer that waited for the mole to stand still, against a wandering
+  goal that kept it moving. The timer effectively never fired.
+* One cooldown gating both travelling and digging, when only digging changes the
+  world. Splitting them is what finally put the mole in its tunnels.
+* A minimum exit distance equal to the scare distance, so the shortest permitted
+  escape did not actually escape.
+* A refusal flag that switched wandering back on, set on the commonest success
+  path and cleared nowhere - a mole that once failed to reach a mound wandered
+  for the rest of its life.
+
+None of these are visible in the constant that gets changed; they are visible in
+the pair. When a number here is next adjusted, the question worth asking is which
+other number it is now in tension with.
+
+The live log is what settled each of them. `/moleverse mole log on` and then
+counting trips against mounds placed turned "feels wrong" into "one dig per 6.3
+trips, as designed" within a minute.
 
 ## Still to judge by eye
 

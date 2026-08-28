@@ -248,6 +248,33 @@ exclusion from the release build.
 * `neoforge.mods.toml` is a template under `src/main/templates`. Never edit the
   generated copy in `build/`.
 
+## Development environment
+
+`runClient` brings quality-of-life mods along. They live in `localRuntime`, so
+they never reach the jar or the mod metadata:
+
+| Mod | Why |
+|---|---|
+| JEI | recipe lookup |
+| Jade | block and entity tooltips - shows a mole's state at a glance |
+| FTB Ultimine | mine a whole vein or surface at once |
+| FTB Essentials | `/home`, `/tpa`, `/back` |
+
+FTB is **not on Modrinth** - it runs its own Maven at `maven.ftb.dev/releases`,
+and its builds are numbered after the Minecraft version (`2111.x` is 1.21.11).
+The FTB mods need **Architectury**, which needs a third repository again, and
+FTB Ranks is pulled in transitively by Essentials. All three repositories are in
+`build.gradle` with `content { includeGroup ... }` so they are only consulted for
+their own artifacts.
+
+The dev client **opens itself to LAN with cheats** as soon as a single-player
+world is entered - see `client/debug/DevWorldPublisher`. It goes through
+`IntegratedServer.publishServer(gameType, allowCheats, port)`, the same call the
+"Open to LAN" screen makes, whose middle argument is the cheats flag: commands
+therefore work even in a world that was created without them, which matters
+because every `runClient` tends to make a fresh one. It is gated behind the
+`moleverse.devPublish` system property, set only by the Gradle run configuration.
+
 ## Commands
 
 ```bash

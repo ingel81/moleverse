@@ -8,13 +8,15 @@ Project setup, one block, one item, a creative tab, a greeting. Data generators
 for models, loot tables, tags and the source locale. Goal: `runClient` starts
 and shows Moleverse content.
 
-## 0.2 - The mole *(in progress)*
-Done: entity, model, texture, walk and rearing animations, sounds, spawn egg,
-drops, a tuning panel for poses, the mound block in a closed and an open form,
-the dig, burrow, emerge and idle animations, and natural spawning in grassland
-and woodland.
-Open: the burrowing state machine and the mound network moles travel through -
-planned in full in `docs/MOLEHILL.md`.
+## 0.2 - The mole *(complete)*
+Entity, model, texture, six animations, sounds, spawn egg, drops, natural
+spawning, a tuning panel for poses, the mound block in a closed and an open
+form, and the burrowing mechanic: moles travel underground between mounds they
+treat as one connected network, extend it as they go, and flee into it.
+The earthworm came with it - it drops from mounds, moles eat it, and it is what
+makes breeding possible.
+Planned and recorded in `docs/MOLEHILL.md`, built in four phases and tuned over
+twelve rounds against play tests.
 
 ## 0.3 - Digging
 A tool or ability for carving tunnels. The `mole_diggable` tag controls what is
