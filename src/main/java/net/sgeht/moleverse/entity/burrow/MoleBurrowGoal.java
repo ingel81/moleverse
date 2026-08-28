@@ -199,9 +199,10 @@ public class MoleBurrowGoal extends Goal {
         Player scary = level.getNearestPlayer(
                 this.mole.getX(), this.mole.getY(), this.mole.getZ(),
                 BurrowConstants.PLAYER_SCARE_DISTANCE, true);
-        Player offering = level.getNearestPlayer(
-                this.mole.getX(), this.mole.getY(), this.mole.getZ(),
-                BurrowConstants.FOOD_NOTICE_DISTANCE, false);
+        // Picked by what they are holding, not by who is closest: an empty
+        // handed player standing nearer would otherwise mask the one with the
+        // worm, and the mole would dig away from an offer it could see.
+        Player offering = this.nearestPlayerOffering(level);
 
         // A mole called over by a worm, or one that has just been fed, is not
         // frightened and not bored either - it is waiting. Digging out from
@@ -398,12 +399,30 @@ public class MoleBurrowGoal extends Goal {
      * {@code /moleverse mole burrow} once.
      */
     private void refuse(String why) {
+        this.refuseHere(why, false);
+    }
+
+    /**
+     * A refusal that walking somewhere else would actually solve.
+     *
+     * <p>Only these nudge the mole on. The permanent ones - a juvenile, a leash,
+     * water underfoot - repeat every three seconds for the rest of its life, and
+     * pushing it into a fresh walk each time would leave it pacing without the
+     * pauses that make an animal look like one.</p>
+     */
+    private void refuseAndMoveOn(String why) {
+        this.refuseHere(why, true);
+    }
+
+    private void refuseHere(String why, boolean elsewhereWouldHelp) {
         this.refusing = true;
-        // Ask the stroll goal to set off now. On its own it decides to walk on
-        // about one evaluation in a hundred and twenty, so the mole would stand
-        // there re-planning the same impossible trip for a dozen seconds before
-        // anything could change.
-        this.mole.wanderNow();
+        if (elsewhereWouldHelp) {
+            // Ask the stroll goal to set off now. On its own it decides to walk
+            // on about one evaluation in a hundred and twenty, so the mole would
+            // stand there re-planning the same impossible trip for a dozen
+            // seconds before anything could change.
+            this.mole.wanderNow();
+        }
         BurrowLog.refused(this.mole, why);
         this.report("refused - " + why);
     }
@@ -429,7 +448,7 @@ public class MoleBurrowGoal extends Goal {
             this.entry = nearest;
             this.entryIsNew = false;
         } else if (!MoleMound.canPlaceAt(level, origin)) {
-            this.refuse("no room for a mound where he stands");
+            this.refuseAndMoveOn("no room for a mound where he stands");
             return false;
         } else {
             this.entry = origin;
@@ -492,7 +511,7 @@ public class MoleBurrowGoal extends Goal {
                 // close to be worth the trip, and no room for a fifth anywhere in
                 // reach. He wanders off and tries again from somewhere else,
                 // which is what spreads a territory out instead of stacking it.
-                this.refuse((crowded ? "density cap reached: "
+                this.refuseAndMoveOn((crowded ? "density cap reached: "
                         : !mayDig ? "still resting from the last new hole: "
                         : "no valid exit: ")
                         + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE
@@ -670,6 +689,27 @@ public class MoleBurrowGoal extends Goal {
 
         this.mole.setBurrowState(BurrowState.EMERGING, reason);
         this.stateEnteredTick = this.mole.tickCount;
+    }
+
+    /**
+     * The nearest player actually holding something this mole eats.
+     */
+    private @Nullable Player nearestPlayerOffering(ServerLevel level) {
+        double rangeSqr = BurrowConstants.FOOD_NOTICE_DISTANCE * BurrowConstants.FOOD_NOTICE_DISTANCE;
+        Player best = null;
+        double bestSqr = rangeSqr;
+
+        for (Player player : level.players()) {
+            if (player.isSpectator() || !player.isHolding(this.mole::isFood)) {
+                continue;
+            }
+            double distSqr = this.mole.distanceToSqr(player);
+            if (distSqr <= bestSqr) {
+                best = player;
+                bestSqr = distSqr;
+            }
+        }
+        return best;
     }
 
     /**

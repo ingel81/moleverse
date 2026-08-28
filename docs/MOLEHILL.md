@@ -57,7 +57,7 @@ field of mounds.
 | Earthworm | What a mole is actually after. Moles follow it, eat it, and breed for it, which is the only route to a juvenile other than a spawn egg |
 | Underground travel | The entity stays alive, turns invisible, loses collision and moves under the surface |
 | Mounds per trip | Two: entry and exit |
-| New-dig distance | 8 to 16 blocks |
+| New-dig distance | 12 to 16 blocks, tied to the minimum exit distance |
 | Mound detection | The mound is a **point of interest**. `PoiManager` keeps the index; the blocks in the world remain the data |
 | Density cap | At most 4 mounds within 16 blocks, counting everyone's |
 | Reuse | Existing mounds serve as both entry and exit |
@@ -83,7 +83,9 @@ there is something to watch.
 ```
 SEARCH_RADIUS         16 blocks    how far a mole looks for existing mounds
 MAX_MOUNDS_IN_RADIUS   4           above this, no new mound is created
-NEW_TRAVEL_RANGE       8-16 blocks distance of a freshly dug trip
+NEW_TRAVEL_RANGE      12-16 blocks distance of a freshly dug trip. The lower bound
+                                   follows MIN_EXIT_DISTANCE - a shorter roll would be
+                                   rejected after the fact and the attempt wasted
 MIN_EXIT_DISTANCE     12 blocks    an exit closer than this is not worth the trip,
                                    and must exceed the scare distance or a flight
                                    would surface inside the radius it fled

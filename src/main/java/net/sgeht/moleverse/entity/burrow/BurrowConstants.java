@@ -23,8 +23,6 @@ public final class BurrowConstants {
     /** Above this many mounds within {@link #SEARCH_RADIUS} of a site, no new mound is created. */
     public static final int MAX_MOUNDS_IN_RADIUS = 4;
 
-    /** Shortest distance of a freshly dug trip. */
-    public static final int NEW_TRAVEL_MIN = 8;
 
     /** Longest distance of a freshly dug trip. */
     public static final int NEW_TRAVEL_MAX = 16;
@@ -38,6 +36,15 @@ public final class BurrowConstants {
      * dive again on arrival, for as long as the player stood there.</p>
      */
     public static final int MIN_EXIT_DISTANCE = 12;
+
+    /**
+     * Shortest distance of a freshly dug trip.
+     *
+     * <p>Tied to {@link #MIN_EXIT_DISTANCE}, not chosen independently: a site
+     * nearer than that is rejected after the fact, so any shorter roll here is
+     * an attempt thrown away before it is made.</p>
+     */
+    public static final int NEW_TRAVEL_MIN = MIN_EXIT_DISTANCE;
 
     /** Two mounds count as connected up to this gap, and the chain continues from there. */
     public static final int NETWORK_LINK_MAX = 16;
