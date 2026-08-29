@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "0": "minecraft:block/mangrove_roots",
-    "1": "minecraft:block/dark_oak_planks",
-    "particle": "minecraft:block/dark_oak_planks"
+    "0": "moleverse:block/colony_board",
+    "1": "moleverse:block/colony_board",
+    "particle": "moleverse:block/colony_board"
   },
   "elements": [
     {

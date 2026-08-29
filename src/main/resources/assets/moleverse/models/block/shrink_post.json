@@ -1,8 +1,8 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "0": "minecraft:block/mangrove_roots",
-    "particle": "minecraft:block/mangrove_roots"
+    "0": "moleverse:block/shrink_post",
+    "particle": "moleverse:block/shrink_post"
   },
   "elements": [
     {

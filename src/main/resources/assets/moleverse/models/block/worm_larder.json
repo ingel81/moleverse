@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/cube_all",
   "textures": {
-    "all": "minecraft:block/muddy_mangrove_roots_top"
+    "all": "moleverse:block/worm_larder"
   }
 }

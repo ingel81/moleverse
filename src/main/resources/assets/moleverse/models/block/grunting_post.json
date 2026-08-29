@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "0": "minecraft:block/stripped_oak_log",
-    "1": "minecraft:block/dark_oak_planks",
-    "particle": "minecraft:block/stripped_oak_log"
+    "0": "moleverse:block/grunting_post",
+    "1": "moleverse:block/grunting_post",
+    "particle": "moleverse:block/grunting_post"
   },
   "elements": [
     {

@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "side": "minecraft:block/barrel_side",
-    "top": "minecraft:block/barrel_top",
-    "bottom": "minecraft:block/barrel_bottom",
-    "earth": "minecraft:block/rooted_dirt",
-    "particle": "minecraft:block/barrel_side"
+    "side": "moleverse:block/exchange_station",
+    "top": "moleverse:block/exchange_station_top",
+    "bottom": "moleverse:block/exchange_station",
+    "earth": "moleverse:block/exchange_station",
+    "particle": "moleverse:block/exchange_station"
   },
   "elements": [
     {
