@@ -59,10 +59,25 @@ public final class ModRecipeProvider extends RecipeProvider {
      * Loose soil is displaced earth and nothing more, so it converts both ways
      * at one to one. Anything less generous would make a player hoard the stuff
      * that every other recipe here is built on.
+     *
+     * <p>The two directions are not shaped alike, and that is deliberate. The way
+     * out of loose soil takes an item only this mod has, so nothing can collide
+     * with it and one at a time is fine. The way in takes vanilla dirt, where a
+     * single-ingredient shapeless recipe is a collision waiting for the first
+     * other mod that adds one - so that direction is shaped, five at a time.</p>
      */
     private void soil() {
-        this.shapeless(RecipeCategory.BUILDING_BLOCKS, ModBlocks.LOOSE_SOIL.get())
-                .requires(Items.DIRT)
+        // Shaped, and scattered rather than solid, because the input is plain
+        // vanilla dirt. A single-ingredient shapeless recipe matches the same
+        // grid as every other mod's single-ingredient recipe on the same item,
+        // and when two of those collide the recipe manager keeps one and the
+        // other is simply gone - no error, no log line, no way to tell. Five
+        // dirt in an X is a grid nobody arrives at by accident.
+        this.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.LOOSE_SOIL.get(), 5)
+                .define('D', Items.DIRT)
+                .pattern("D D")
+                .pattern(" D ")
+                .pattern("D D")
                 .group(LOOSE_SOIL_GROUP)
                 .unlockedBy(getHasName(Items.DIRT), this.has(Items.DIRT))
                 .save(this.output);

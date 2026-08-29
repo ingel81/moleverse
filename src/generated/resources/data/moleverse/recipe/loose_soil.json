@@ -1,12 +1,17 @@
 {
-  "type": "minecraft:crafting_shapeless",
+  "type": "minecraft:crafting_shaped",
   "category": "building",
   "group": "loose_soil",
-  "ingredients": [
-    "minecraft:dirt"
+  "key": {
+    "D": "minecraft:dirt"
+  },
+  "pattern": [
+    "D D",
+    " D ",
+    "D D"
   ],
   "result": {
-    "count": 1,
+    "count": 5,
     "id": "moleverse:loose_soil"
   }
 }
