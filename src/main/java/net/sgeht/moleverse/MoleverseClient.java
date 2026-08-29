@@ -15,6 +15,7 @@ import net.sgeht.moleverse.client.debug.MoleDebugCommand;
 import net.sgeht.moleverse.client.debug.MoleNetworkOverlay;
 import net.sgeht.moleverse.client.render.MoleModel;
 import net.sgeht.moleverse.client.render.MoleRenderer;
+import net.sgeht.moleverse.network.ModPayloads;
 import net.sgeht.moleverse.registry.ModEntities;
 
 /**
@@ -32,6 +33,9 @@ public final class MoleverseClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
+        // The payload is registered in common code, which must not name a client
+        // class - so the handler is a slot and this is where it gets filled.
+        ModPayloads.setLinkSink(MoleNetworkOverlay::acceptLinks);
         Moleverse.LOGGER.debug("Client setup finished.");
     }
 

@@ -20,6 +20,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.config.MoleverseConfig;
 import net.sgeht.moleverse.entity.Mole;
+import net.sgeht.moleverse.entity.burrow.BurrowLink;
 import net.sgeht.moleverse.entity.burrow.Colony;
 import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
@@ -48,6 +49,9 @@ public final class MoleServerCommand {
     /** How far from whoever typed the command a mole still counts as "the nearest". */
     private static final int SEARCH_RANGE = 64;
 
+    /** Runs printed by the dump before it starts counting the rest instead. */
+    private static final int LINK_DUMP_LIMIT = 20;
+
     private MoleServerCommand() {
     }
 
@@ -75,7 +79,14 @@ public final class MoleServerCommand {
                                 .then(Commands.literal("on")
                                         .executes(ctx -> setOutline(ctx.getSource(), true)))
                                 .then(Commands.literal("off")
-                                        .executes(ctx -> setOutline(ctx.getSource(), false))))));
+                                        .executes(ctx -> setOutline(ctx.getSource(), false))))
+                        .then(Commands.literal("tunnels")
+                                .then(Commands.literal("on")
+                                        .executes(ctx -> setTunnels(ctx.getSource(), true)))
+                                .then(Commands.literal("off")
+                                        .executes(ctx -> setTunnels(ctx.getSource(), false))))
+                        .then(Commands.literal("links")
+                                .executes(MoleServerCommand::colonyLinks))));
     }
 
     /** Which colony owns the ground the caller is standing on, if any. */
@@ -116,6 +127,65 @@ public final class MoleServerCommand {
                     colony.id(), colony.core().getX(), colony.core().getZ(), away)), false);
         }
         return colonies.size();
+    }
+
+    /**
+     * Turns the stored-run view on or off.
+     *
+     * <p>Separate from the client's own {@code /moleverse network} overlay, and
+     * it wins while it is on: the client rebuilds runs at the one depth it knows,
+     * so a main run would be drawn two blocks too high. This sends what is
+     * actually stored.</p>
+     */
+    private static int setTunnels(CommandSourceStack source, boolean on) {
+        TunnelView.setEnabled(on);
+        source.sendSuccess(() -> Component.literal("Stored runs " + (on ? "on" : "off")
+                + (on ? " - turn on /moleverse network to see them" : ""))
+                .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.GRAY), false);
+        return 1;
+    }
+
+    /**
+     * Prints the runs stored for the colony underfoot, after clearing out any
+     * whose mounds are gone.
+     */
+    private static int colonyLinks(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        ColonyStore store = ColonyStore.get(level);
+
+        int pruned = store.prune(level);
+        Colony colony = store.at(BlockPos.containing(source.getPosition()));
+        if (colony == null) {
+            source.sendSuccess(() -> Component.literal("Unclaimed ground - no colony, no runs."
+                    + (pruned > 0 ? " Pruned " + pruned + " stale run(s)." : ""))
+                    .withStyle(ChatFormatting.GRAY), false);
+            return 0;
+        }
+
+        List<BurrowLink> links = store.linksOf(colony.id());
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Colony #%d - %d run(s) stored%s",
+                colony.id(), links.size(),
+                pruned > 0 ? ", " + pruned + " stale one(s) pruned" : "")), false);
+
+        int shown = Math.min(links.size(), LINK_DUMP_LIMIT);
+        for (int i = 0; i < shown; i++) {
+            BurrowLink link = links.get(i);
+            int deepest = link.depths().stream().mapToInt(Integer::intValue).min().orElse(0);
+            int shallowest = link.depths().stream().mapToInt(Integer::intValue).max().orElse(0);
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "  %d,%d - %d,%d  %s  y %d..%d  %d point(s)  used %dx",
+                    link.a().getX(), link.a().getZ(), link.b().getX(), link.b().getZ(),
+                    link.level().getSerializedName(), deepest, shallowest,
+                    link.pointCount(), link.uses())), false);
+        }
+        if (links.size() > shown) {
+            int rest = links.size() - shown;
+            source.sendSuccess(() -> Component.literal("  ... and " + rest + " more")
+                    .withStyle(ChatFormatting.GRAY), false);
+        }
+        return links.size();
     }
 
     /**

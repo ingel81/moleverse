@@ -17,7 +17,10 @@ import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.entity.Mole;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
+import net.sgeht.moleverse.entity.burrow.BurrowLink;
 import net.sgeht.moleverse.entity.burrow.BurrowRoute;
+import net.sgeht.moleverse.entity.burrow.RunLevel;
+import net.sgeht.moleverse.network.BurrowLinksPayload;
 import net.sgeht.moleverse.registry.ModBlocks;
 
 /**
@@ -58,6 +61,19 @@ public final class MoleNetworkOverlay {
     private static final int LINK_COLOUR = 0xC04AC8FF;
     private static final int TRAIL_COLOUR = 0xFFFF5A4A;
 
+    /** One colour per depth level, for runs the server sent. Feeding keeps the link blue. */
+    private static final int[] RUN_COLOUR = {0xC04AC8FF, 0xE0FFA33C, 0xE0FF5AC8};
+
+    /**
+     * Ticks a delivery of stored runs stays on screen.
+     *
+     * <p>Longer than the send interval, so a missed packet does not make the
+     * picture flicker, and short enough that switching the view off makes it go
+     * away on its own - the server stops sending and nothing else has to
+     * happen.</p>
+     */
+    private static final int STORED_TTL = 60;
+
     private static final float MOUND_STROKE = 2.0F;
     private static final float LINK_WIDTH = 2.0F;
     private static final float TRAIL_WIDTH = 3.0F;
@@ -70,6 +86,21 @@ public final class MoleNetworkOverlay {
 
     /** Where each travelling mole has been, keyed by entity id. */
     private static Map<Integer, List<Vec3>> trails = Map.of();
+
+    /**
+     * Runs as the server has them stored, when somebody turned that view on.
+     *
+     * <p>These are the truth and the reconstructed {@link #links} are not: the
+     * client rebuilds a route at the one depth it knows about, so a main run
+     * would be drawn two blocks too high. While stored runs are arriving they
+     * replace the guess entirely.</p>
+     */
+    private static List<StoredRun> stored = List.of();
+
+    private static int storedAge;
+
+    private record StoredRun(List<Vec3> path, int colour) {
+    }
 
     private MoleNetworkOverlay() {
     }
@@ -130,6 +161,11 @@ public final class MoleNetworkOverlay {
             ticksSinceRebuild = 0;
             rebuild(client.level, client.player.position());
         }
+
+        if (!stored.isEmpty() && ++storedAge > STORED_TTL) {
+            stored = List.of();
+            storedAge = 0;
+        }
         draw();
     }
 
@@ -137,7 +173,29 @@ public final class MoleNetworkOverlay {
         mounds = List.of();
         links = List.of();
         trails = Map.of();
+        stored = List.of();
+        storedAge = 0;
         ticksSinceRebuild = 0;
+    }
+
+    /**
+     * Takes a delivery of stored runs from the server.
+     *
+     * <p>Arrives whether or not the overlay is on - the two switches are
+     * independent, and a delivery that nobody draws costs a list assignment.</p>
+     */
+    public static void acceptLinks(BurrowLinksPayload payload) {
+        List<StoredRun> drawn = new ArrayList<>(payload.runs().size());
+        for (BurrowLinksPayload.Run run : payload.runs()) {
+            List<Vec3> path = new ArrayList<>(run.depths().size());
+            for (int i = 0; i < run.depths().size(); i++) {
+                path.add(BurrowLink.pointAt(run.a(), run.b(), run.depths(), i));
+            }
+            drawn.add(new StoredRun(path, RUN_COLOUR[Math.floorMod(run.level(), RUN_COLOUR.length)]));
+        }
+
+        stored = List.copyOf(drawn);
+        storedAge = 0;
     }
 
     /** Capped at the render distance: past it the client has no blocks to read. */
@@ -202,7 +260,7 @@ public final class MoleNetworkOverlay {
             for (int j = i + 1; j < found.size(); j++) {
                 BlockPos b = found.get(j).pos();
                 if (a.distSqr(b) <= maxSqr) {
-                    drawn.add(new Link(BurrowRoute.between(level, a, b).waypoints()));
+                    drawn.add(new Link(BurrowRoute.between(level, a, b, RunLevel.FEEDING).waypoints()));
                 }
             }
         }
@@ -245,10 +303,19 @@ public final class MoleNetworkOverlay {
                     .setAlwaysOnTop();
         }
 
-        for (Link link : links) {
-            List<Vec3> path = link.path();
-            for (int i = 1; i < path.size(); i++) {
-                Gizmos.line(path.get(i - 1), path.get(i), LINK_COLOUR, LINK_WIDTH).setAlwaysOnTop();
+        if (stored.isEmpty()) {
+            for (Link link : links) {
+                List<Vec3> path = link.path();
+                for (int i = 1; i < path.size(); i++) {
+                    Gizmos.line(path.get(i - 1), path.get(i), LINK_COLOUR, LINK_WIDTH).setAlwaysOnTop();
+                }
+            }
+        } else {
+            for (StoredRun run : stored) {
+                for (int i = 1; i < run.path().size(); i++) {
+                    Gizmos.line(run.path().get(i - 1), run.path().get(i), run.colour(), LINK_WIDTH)
+                            .setAlwaysOnTop();
+                }
             }
         }
 

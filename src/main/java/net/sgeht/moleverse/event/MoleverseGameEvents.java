@@ -14,6 +14,7 @@ import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.config.MoleverseConfig;
 import net.sgeht.moleverse.debug.ColonyOutline;
 import net.sgeht.moleverse.debug.MoleServerCommand;
+import net.sgeht.moleverse.debug.TunnelView;
 
 /**
  * Handlers on the NeoForge game bus, meaning runtime events rather than the
@@ -46,6 +47,7 @@ public final class MoleverseGameEvents {
     public static void onLevelTick(LevelTickEvent.Post event) {
         if (event.getLevel() instanceof ServerLevel level) {
             ColonyOutline.tick(level);
+            TunnelView.tick(level);
         }
     }
 
