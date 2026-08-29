@@ -177,3 +177,23 @@ Six modules, six commits, each one droppable without the others - see
 Verified: compiles, data generators run, and `runGameTestServer` boots with the
 dimension registered and no parse errors - which proves the datapack is correct
 and proves nothing about whether a corridor is walkable.
+
+### Second wave, same night
+
+* **Chambers are furnished.** Worm larders in the walls - moles really do store
+  paralysed earthworms, and at this scale that is furniture - plus nests, root
+  pillars holding the wider ceiling, and the way out standing in the middle.
+  Breaking a larder gives the worms back, which is so far the only thing down
+  there worth carrying home.
+* **Ambience.** Dust in the air, the occasional settle or trickle, and brown
+  close fog instead of the default black. All client side, all returning
+  immediately anywhere but the burrow.
+* **Six game tests**, run by `runGameTestServer` on every invocation: the
+  geometry round trip and its clamp, carving clearing ground while leaving a
+  floor, `alreadyCarved` before and after, and the link store surviving a write
+  and a read.
+* **The vertical clamp**, found by writing those tests. The mapping ran straight
+  out of the dimension for any colony far from sea level - a superflat world at
+  -60, a mountain at 140 - and carving at a height that does not exist fails
+  silently and buries whoever arrives. The test caught the clamp's own side
+  effect one run later, which is the whole argument for having tests at all.
