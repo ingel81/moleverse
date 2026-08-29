@@ -112,6 +112,10 @@ public final class BurrowTransit {
             CorridorCarver.carve(burrow, run);
         }
 
+        // Feeding runs and main runs lie four blocks apart down here, one over
+        // the other. Without this the burrow is two networks that never meet.
+        LevelShafts.connect(burrow, runs);
+
         placeWayOut(burrow, chamber);
         BurrowLife.stock(burrow, chamber);
 
