@@ -262,7 +262,13 @@ public final class TunnelDecorator {
             if (noise(SALT_FLOOR_FILL, x, floorY, z) >= chance) {
                 continue;
             }
-            if (!replaceShell(level, cursor.set(x, floorY, z), material.defaultBlockState())) {
+            // A seep that is already sunk here stays. Paving it over and letting
+            // dressSeep dig it out again would make the result depend on the order
+            // the two ran in, which is the one thing all of this is built to avoid.
+            if (level.getBlockState(cursor.set(x, floorY, z)).is(Blocks.WATER)) {
+                continue;
+            }
+            if (!replaceShell(level, cursor, material.defaultBlockState())) {
                 continue;
             }
             if (material == Blocks.GRAVEL) {
@@ -723,9 +729,16 @@ public final class TunnelDecorator {
      * the only input, so two runs crossing the same cell agree on where their
      * patches go - which nobody can see through solid earth, and which keeps the
      * answer stable when the run drifts sideways.</p>
+     *
+     * <p>The anchor is kept to the middle half of its cell rather than allowed
+     * anywhere in it. Over a full cell two neighbouring anchors can land back to
+     * back or a whole cell apart, which turns two pools of light into one blob and
+     * then leaves a stretch twice the intended length unlit. Halving the play
+     * halves the spread at both ends and costs nothing that anyone can see.</p>
      */
     private static int anchorAlong(long salt, int cell, int spacing, int axisId) {
-        return cell * spacing + (int) (noise(salt, cell, axisId, 0) * spacing);
+        int play = Math.max(1, spacing / 2);
+        return cell * spacing + (spacing - play) / 2 + (int) (noise(salt, cell, axisId, 0) * play);
     }
 
     /** A block or two off the centre line, so that nothing lines up down the middle of a run. */
