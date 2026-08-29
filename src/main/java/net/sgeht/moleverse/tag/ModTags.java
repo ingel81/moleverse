@@ -17,6 +17,16 @@ public final class ModTags {
     }
 
     public static final class Blocks {
+        /**
+         * Every block that counts as a molehill.
+         *
+         * <p>Two of them now: the heap a mole leaves and the shored-up version a
+         * player makes of it. The point-of-interest index, the network, the
+         * routes and the shaft all have to see both, and a tag is the one place
+         * that list can live without every caller naming the blocks itself.</p>
+         */
+        public static final TagKey<Block> MOLE_MOUNDS = create("mole_mounds");
+
         /** Blocks a mole is able to dig through. */
         public static final TagKey<Block> MOLE_DIGGABLE = create("mole_diggable");
 

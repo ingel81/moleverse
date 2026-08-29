@@ -1,6 +1,7 @@
 package net.sgeht.moleverse.registry;
 
-import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
@@ -48,7 +49,12 @@ public final class ModPoi {
     public static final DeferredHolder<PoiType, PoiType> MOLE_MOUND = REGISTER.register(
             "mole_mound",
             () -> new PoiType(
-                    Set.copyOf(ModBlocks.MOLE_MOUND.get().getStateDefinition().getPossibleStates()),
+                    // Both mound blocks, or a shored-up one would silently drop
+                    // out of the index - and with it out of every colony, every
+                    // network and every route that ends there.
+                    Stream.of(ModBlocks.MOLE_MOUND.get(), ModBlocks.PREPARED_MOLE_MOUND.get())
+                            .flatMap(block -> block.getStateDefinition().getPossibleStates().stream())
+                            .collect(Collectors.toUnmodifiableSet()),
                     MAX_TICKETS,
                     VALID_RANGE));
 

@@ -20,6 +20,10 @@ public final class ModBlockTagsProvider extends BlockTagsProvider {
 
     @Override
     protected void addTags(HolderLookup.Provider registries) {
+        tag(ModTags.Blocks.MOLE_MOUNDS)
+                .add(ModBlocks.MOLE_MOUND.get())
+                .add(ModBlocks.PREPARED_MOLE_MOUND.get());
+
         tag(ModTags.Blocks.MOLE_DIGGABLE)
                 .add(ModBlocks.LOOSE_SOIL.get())
                 .add(Blocks.DIRT)

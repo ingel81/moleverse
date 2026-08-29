@@ -81,7 +81,7 @@ public class MoleMound extends Block {
 
     /** True when this position already holds a mound, whatever its shaft is doing. */
     public static boolean isMound(LevelReader level, BlockPos pos) {
-        return level.getBlockState(pos).is(ModBlocks.MOLE_MOUND.get());
+        return level.getBlockState(pos).is(ModTags.Blocks.MOLE_MOUNDS);
     }
 
     /**
@@ -105,13 +105,13 @@ public class MoleMound extends Block {
      */
     public static void setOpen(ServerLevel level, BlockPos pos, boolean open) {
         BlockState state = level.getBlockState(pos);
-        if (state.is(ModBlocks.MOLE_MOUND.get()) && state.getValue(OPEN) != open) {
+        if (state.is(ModTags.Blocks.MOLE_MOUNDS) && state.getValue(OPEN) != open) {
             level.setBlock(pos, state.setValue(OPEN, open), Block.UPDATE_ALL);
         }
     }
 
     @Override
-    public MapCodec<MoleMound> codec() {
+    public MapCodec<? extends MoleMound> codec() {
         return CODEC;
     }
 

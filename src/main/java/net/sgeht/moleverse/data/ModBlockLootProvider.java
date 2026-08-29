@@ -33,6 +33,11 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
     protected void generate() {
         dropSelf(ModBlocks.LOOSE_SOIL.get());
 
+        // Unlike the heap it was made from, this gives itself back: the work put
+        // into it is the point, and losing it to a misplaced click would make
+        // anybody stop building them.
+        dropSelf(ModBlocks.PREPARED_MOLE_MOUND.get());
+
         // A mound gives back the earth a mole pushed up, and now and then what
         // the mole was after in the first place. That second pool is the reason
         // to dig a mound open rather than walk past it.

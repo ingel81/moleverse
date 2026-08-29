@@ -1,0 +1,75 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "0": "moleverse:block/mole_mound",
+    "shaft": "moleverse:block/mole_mound_shaft",
+    "particle": "moleverse:block/mole_mound"
+  },
+  "elements": [
+    {
+      "name": "floor",
+      "from": [0, 0, 0],
+      "to": [16, 8, 16],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#shaft"},
+        "down": {"uv": [0, 0, 16, 16], "texture": "#0"}
+      }
+    },
+    {
+      "name": "rim_north",
+      "from": [0, 8, 0],
+      "to": [16, 16, 3],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 16, 3], "texture": "#0"},
+        "down": {"uv": [0, 0, 16, 3], "texture": "#0"}
+      }
+    },
+    {
+      "name": "rim_south",
+      "from": [0, 8, 13],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 16, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 16, 3], "texture": "#0"},
+        "down": {"uv": [0, 0, 16, 3], "texture": "#0"}
+      }
+    },
+    {
+      "name": "rim_west",
+      "from": [0, 8, 3],
+      "to": [3, 16, 13],
+      "faces": {
+        "north": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 10, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 10, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 3, 10], "texture": "#0"},
+        "down": {"uv": [0, 0, 3, 10], "texture": "#0"}
+      }
+    },
+    {
+      "name": "rim_east",
+      "from": [13, 8, 3],
+      "to": [16, 16, 13],
+      "faces": {
+        "north": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 10, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 3, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 10, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 3, 10], "texture": "#0"},
+        "down": {"uv": [0, 0, 3, 10], "texture": "#0"}
+      }
+    }
+  ]
+}

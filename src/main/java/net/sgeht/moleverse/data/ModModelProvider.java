@@ -38,6 +38,7 @@ public final class ModModelProvider extends ModelProvider {
         blockModels.createTrivialCube(ModBlocks.LOOSE_SOIL.get());
 
         registerMoleMound(blockModels);
+        registerPreparedMoleMound(blockModels);
 
         itemModels.generateFlatItem(ModItems.MOLE_PELT.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
@@ -72,6 +73,27 @@ public final class ModModelProvider extends ModelProvider {
 
         // The item shows the domed shape; the flat one reads as a smear in hand.
         blockModels.registerSimpleItemModel(ModBlocks.MOLE_MOUND.get(), Moleverse.id("block/mole_mound_a"));
+    }
+
+    /**
+     * One shape in four rotations, for both states of the shaft.
+     *
+     * <p>The open flag changes nothing to look at here: the rim leaves the shaft
+     * exposed either way, and a mole down a prepared mound is hidden by the earth
+     * rather than by a lid. Both values are still listed, because a blockstate
+     * that omits one crashes the moment the property takes it.</p>
+     */
+    private void registerPreparedMoleMound(BlockModelGenerators blockModels) {
+        MultiVariant shape = rotations(new Variant(Moleverse.id("block/prepared_mole_mound")));
+
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.PREPARED_MOLE_MOUND.get())
+                        .with(PropertyDispatch.initial(MoleMound.OPEN)
+                                .select(false, shape)
+                                .select(true, shape)));
+
+        blockModels.registerSimpleItemModel(ModBlocks.PREPARED_MOLE_MOUND.get(),
+                Moleverse.id("block/prepared_mole_mound"));
     }
 
     /** Every given shape in all four Y rotations, picked at random in world. */

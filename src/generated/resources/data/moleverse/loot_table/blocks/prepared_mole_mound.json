@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "moleverse:prepared_mole_mound"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "moleverse:blocks/prepared_mole_mound"
+}

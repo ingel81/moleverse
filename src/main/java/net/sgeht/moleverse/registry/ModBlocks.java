@@ -8,6 +8,7 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.PreparedMoleMound;
 
 /** Every block of this mod. */
 public final class ModBlocks {
@@ -38,6 +39,22 @@ public final class ModBlocks {
                     .noCollision()
                     // A piston crumbles a mound rather than pushing it, which
                     // is what keeps them out of redstone contraptions.
+                    .pushReaction(PushReaction.DESTROY));
+
+    /**
+     * A mound a player has shored up, so that something can sit on it.
+     *
+     * <p>Not {@code instabreak} like the heap it came from: the heap is displaced
+     * soil and this took work. Still {@code noCollision}, for the reason spelled
+     * out in {@link PreparedMoleMound}.</p>
+     */
+    public static final DeferredBlock<PreparedMoleMound> PREPARED_MOLE_MOUND = REGISTER.registerBlock(
+            "prepared_mole_mound",
+            PreparedMoleMound::new,
+            props -> props.mapColor(MapColor.DIRT)
+                    .strength(0.6F)
+                    .sound(SoundType.ROOTED_DIRT)
+                    .noCollision()
                     .pushReaction(PushReaction.DESTROY));
 
     private ModBlocks() {
