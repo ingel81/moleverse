@@ -92,3 +92,83 @@ does not exist, which fails silently and buries whoever arrives.
 Two very different overworld heights can therefore share one burrow level. That
 is the right trade: colonies are hundreds of blocks apart horizontally, so a
 collision in the vertical costs nothing.
+
+## The corridors are not built - and the reason is where, not how much
+
+Found on 2026-08-29, the first time anybody went down. A player arriving in a
+chamber finds one large room with a few stubs and no corridors at all. The
+expectation - a junction with runs leading off it - is right, and cannot happen.
+
+### What actually runs
+
+`BurrowTransit.enter` carves everything at the moment somebody uses the shrink
+post: the chamber, the runs that end at that mound, then shafts and junctions
+across the colony. Nothing carves afterwards. The comment there says *"Everything
+further along is dug as they walk into it"* and that mechanism does not exist -
+the only per-tick work in the burrow is `BurrowRescue.tick`, and nothing else is
+subscribed to `LevelTickEvent`.
+
+### Why most of a run vanishes
+
+Every write the carver makes is guarded:
+
+```java
+static boolean clear(ServerLevel burrow, BlockPos.MutableBlockPos pos) {
+    if (!burrow.isInsideBuildHeight(pos.getY()) || !burrow.isLoaded(pos)) {
+        return false;
+    }
+```
+
+Correct in itself - the alternative is carving into chunks nobody asked for - but
+it fails **silently**. And `loadChamberChunks` loads only what the chamber
+touches, which is `CHAMBER_RADIUS` 6, so at most two chunks each way.
+
+Measured in the world it was found in: the runs were 14.7 and 17.6 overworld
+blocks, which at `SCALE` 4 is 59 and 70 blocks of corridor. Roughly sixteen of
+those blocks lie inside the loaded chamber chunks. The rest is skipped without a
+line in the log.
+
+### The shape the fix should have
+
+Not "load more before carving". The mistake is that digging was hung on an event
+that has nothing to do with place: *somebody entered the burrow*, rather than
+*this ground now exists*.
+
+The right shape is the one worldgen already has, and the Nether is the reference:
+walk towards the edge and what is beyond gets built as you arrive. Applied here -
+**a chunk asks which runs pass through it and carves those**, with the
+`ColonyStore` as the seed the way a seed drives terrain. Idempotent by
+construction, no force loading, and it covers the case nobody is watching: a mole
+travelling below while the player is elsewhere.
+
+**The hazard, and the tamer variant.** Real chunk generation runs off-thread and
+must not reach into another dimension's `SavedData` - and `ColonyStore` hangs on
+the overworld. A generator inside the burrow cannot get at it cleanly. Carving on
+**chunk load**, on the server thread, avoids that entirely: the overworld is one
+field access away there, the chunks around a player are loaded by definition, and
+the cost spreads over arrival instead of landing in one teleport.
+
+### What already exists to build it from
+
+| Piece | Where |
+|---|---|
+| `carve(ServerLevel, BurrowLink)` | `CorridorCarver:178` - whole run, idempotent |
+| `alreadyCarved(ServerLevel, BurrowLink)` | `CorridorCarver:309` |
+| `linksNear(BlockPos, int radius)` | `ColonyStore:229` - overworld coordinates |
+| `linksOf(int colony)` | `ColonyStore:224` |
+| `toBurrow` / `toOverworld` | `BurrowGeometry:69,84` |
+| `pointAt(int)` / `pointCount()` | `BurrowLink:77,96` - the run as a polyline |
+
+### Open questions for that session
+
+* **What is the unit of work** - a whole run when any part of it enters a loaded
+  chunk, or only the part inside that chunk? The carver takes whole runs today.
+* **How does a chunk find its runs?** `linksNear` is a radius query in overworld
+  coordinates; a chunk in the burrow is a box in burrow coordinates. Something
+  has to translate, and at `SCALE` 4 a burrow chunk is four overworld blocks.
+* **What triggers it** - chunk load, or a player-proximity sweep? Load is
+  cheaper and matches worldgen; proximity re-carves ground a player broke.
+* **Does `BurrowTransit.enter` keep carving anything at all** beyond the chamber,
+  or does it become just the chamber plus a teleport?
+* **What happens to shafts and junctions**, which today are cut across the whole
+  colony at entry and would have the same problem.

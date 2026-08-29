@@ -467,3 +467,42 @@ Added by the runs:
   `MoleFollowMotherGoal.findDivingAdult` takes whichever grown mole is nearest and
   diving. Cosmetic while both adults do the same thing, wrong as soon as they do
   not.
+
+## 2026-08-29, afternoon - the first descent
+
+Somebody went down for the first time. Three findings, and two of them were the
+same bug wearing different clothes.
+
+### One mistake, four places
+
+A mound is `noCollision` and raises no heightmap. Every fitting except the
+lantern is solid and does. So on a mound wearing one, `MoundNetwork.surfaceAt`
+lands two blocks high - and four separate pieces of code took that answer as the
+mound's own position:
+
+* **Surfacing.** `beginEmerging` walked the column, found the hollow mound in it,
+  and turned the mole back with *"ground above is built over"*. An exchange
+  station refused four consecutive deliveries. The station exists so that a mole
+  can surface through the mound beneath it, so the fitting made impossible the
+  one thing it is for.
+* **The overlay.** `findMounds` looked at the top block, found air, and drew
+  neither the mound nor any line ending at it - which is how a working colony
+  came to look like it had lost both its exchange stations.
+* **The way home.** `moundAbove` reported *"the mound above this chamber is
+  gone"* to a player standing under a mound that was plainly still there. The
+  shrink post that let them in was what hid it.
+* And `isWayOut`, through the same method, so the post said the same thing when
+  merely looked at.
+
+All four now resolve through `MoundAttachment.moundUnder`, which is the one place
+that knows a fitting sits on a mound. Worth remembering as a shape: the overlay
+comment cited the server's identity as its justification, and the server had the
+same wrong assumption - two places agreeing with each other is not evidence.
+
+### And one that is not a slip
+
+The corridors are not built. `BURROW.md` has the full account: carving is hung on
+somebody entering the burrow rather than on ground coming into existence, and
+every write into an unloaded chunk is skipped without a word. Sixteen blocks of a
+sixty-block run survive. The fix is the shape worldgen already has - a chunk
+carves the runs that pass through it - and it is a session of its own.
