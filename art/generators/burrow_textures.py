@@ -1,9 +1,13 @@
-"""Block textures for the burrow and the dimension below it.
+"""Block textures for the burrow, the dimension below it, and the mole's kit.
 
-Nine blocks used to borrow vanilla textures - rooted dirt, mangrove roots,
-shroomlight, barrel staves, spruce planks. Each one is a fine texture and
-together they made the mod look like a pile of other mods, because none of
-them share a palette with the mound the player dug through to get here.
+Most of these replaced a vanilla stand-in - rooted dirt, mangrove roots,
+shroomlight, barrel staves, spruce planks, oak, a lantern. Each one is a fine
+texture and together they made the mod look like a pile of other mods, because
+none of them share a palette with the mound the player dug through to get here.
+
+`loose_soil` is the exception and is a re-render rather than a replacement: it
+was already the mod's own art, but it was made of per-pixel jitter. Its entry
+says how the ramp was measured off the file it replaces instead of chosen.
 
 Everything here is generated, not placed pixel by pixel, for the reason the
 mound shapes are: the tuning dials are the seed, the ramp and the count, and
@@ -16,7 +20,7 @@ Two kinds of texture come out of this file:
 * Full 16x16 faces, for `cube_all` blocks and for the models whose faces carry
   block-shaped UVs (`exchange_station`, `worm_box`). These tile against copies
   of themselves, so every drawing operation wraps.
-* Atlases, for the three worked-wood props. A post, its collar and its end
+* Atlases, for the worked-wood props and the lantern. A post, its collar and its end
   grain are three different things at three different sizes, and a 16x16 image
   has room for all of them side by side. `ATLASES` below is the authority on
   where each one sits; the `uv` arrays in the model JSONs are copies of it, and
@@ -38,6 +42,7 @@ from texture_kit import (
     ROOT,
     SIZE,
     SOIL,
+    TURNED,
     WOOD,
     WORM_BODY,
     WORM_LIT,
@@ -92,34 +97,39 @@ PALE_WOOD = WOOD[1:]
 
 # --- shared drawing -------------------------------------------------------
 
-def soil_ground(canvas, rng, weights=(1, 2, 2, 2, 2, 3), clods=9, pockets=7, crumbs=4):
-    """The packed earth every underground texture starts from.
+def soil_ground(canvas, rng, ramp=SOIL, weights=(1, 2, 2, 2, 2, 3), clods=9, pockets=7, crumbs=4):
+    """Earth: noise for the ground, clods for the structure.
 
     Per-pixel noise alone comes out as static: at 16 px the eye has nothing to
     hold on to and a wall of it fizzes. So the noise is only the ground, and
     the structure is clods - two and three pixel patches a step lighter, each
     with a shadow along its lower edge, exactly as `mound_texture.py` builds
-    the mound above. Same earth, one ramp darker.
+    the mound above.
+
+    `ramp` needs five entries in the roles this uses: 0 is a pocket between
+    clods, 1 to 3 the ground, 3 and 4 the lit face of a clod. Passing a slice
+    of a longer ramp is how a surface block and a burrow block come out the
+    same hue at different values.
     """
-    canvas.noise((0, 0, SIZE, SIZE), SOIL, list(weights), rng, wrap=True)
+    canvas.noise((0, 0, SIZE, SIZE), ramp, list(weights), rng, wrap=True)
     for _ in range(clods):
         cx, cy = rng.randrange(SIZE), rng.randrange(SIZE)
         w, h = rng.choice([(2, 2), (3, 2), (2, 3), (3, 2)])
-        tone = SOIL[rng.choice([3, 3, 4])]
+        tone = ramp[rng.choice([3, 3, 4])]
         for dy in range(h):
             for dx in range(w):
                 if rng.random() < 0.18:
                     continue
                 canvas.put(cx + dx, cy + dy, tone)
         for dx in range(w):
-            canvas.put(cx + dx, cy + h, SOIL[rng.choice([0, 1])])
+            canvas.put(cx + dx, cy + h, ramp[rng.choice([0, 1])])
     for _ in range(pockets):
         x, y = rng.randrange(SIZE), rng.randrange(SIZE)
-        canvas.put(x, y, SOIL[0])
+        canvas.put(x, y, ramp[0])
         if rng.random() < 0.4:
-            canvas.put(x + rng.choice([-1, 1]), y, SOIL[1])
+            canvas.put(x + rng.choice([-1, 1]), y, ramp[1])
     for _ in range(crumbs):
-        canvas.put(rng.randrange(SIZE), rng.randrange(SIZE), SOIL[4])
+        canvas.put(rng.randrange(SIZE), rng.randrange(SIZE), ramp[4])
 
 
 def paint_strand(canvas, body, ramp, rng, nick=0.10):
@@ -276,6 +286,32 @@ def worm_end(canvas, at, rng, sunken=False):
 
 
 # --- the tiling blocks ----------------------------------------------------
+
+def loose_soil(rng):
+    """Dug earth on the surface. A re-render, not a redesign.
+
+    The old file was 48 colours: 232 of its 256 pixels shared a colour with no
+    neighbour at all, which is per-pixel jitter and nothing else. It is the
+    floor of every corridor, so it is the texture a player looks at longest,
+    and jitter at that dose fizzes.
+
+    What it is not allowed to do is look like a different block. So the ramp is
+    not chosen, it is measured off the file being replaced: mean colour #5A412F,
+    luminance from 49 to 90 with the mean at 70. That is exactly `TURNED[1:6]` -
+    the mound's ramp with its darkest and brightest ends left off - whose five
+    steps run 48, 58, 69, 80, 92 and whose middle entry is #58402A. Same hue,
+    same range, same weight. Only the jitter is gone, replaced by the clods
+    that were the point of `soil_ground` in the first place.
+
+    Calmer than `mole_mound` on the same ramp, which is right and was already
+    true of the old file: a mound is turned clods, this is what was raked flat.
+    """
+    c = Canvas()
+    soil_ground(c, rng, ramp=TURNED[1:6], weights=(1, 1, 2, 2, 2, 3),
+                clods=12, pockets=5, crumbs=5)
+    return c
+
+
 
 def deep_earth(rng):
     """The fill of the dimension. Dark, dense, subtly veined.
@@ -698,6 +734,7 @@ def shaft_lantern(rng):
 #: name -> (function, seed). The seeds are dials like every other number here:
 #: a texture that comes out badly composed is reseeded, not repainted.
 TEXTURES = [
+    ("loose_soil", loose_soil, 2318),
     ("deep_earth", deep_earth, 20260829),
     ("root_beam", root_beam, 4471),
     ("glow_mycelium", glow_mycelium, 90112),
@@ -716,7 +753,7 @@ TEXTURES = [
 
 #: The ones that tile against copies of themselves, shown as a wall in the
 #: preview sheet.
-TILING = {"deep_earth", "root_beam", "glow_mycelium", "worm_larder"}
+TILING = {"loose_soil", "deep_earth", "root_beam", "glow_mycelium", "worm_larder"}
 
 
 def paint_all():

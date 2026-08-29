@@ -46,6 +46,19 @@ SOIL = [
     (0x40, 0x33, 0x25),
 ]
 
+#: Freshly turned earth, above ground: `mound_texture.py`'s ramp, verbatim.
+#: `SOIL` is this one carried down into the dark, and having both here is what
+#: lets a surface block and a burrow block share a hue without sharing a value.
+TURNED = [
+    (0x33, 0x24, 0x18),
+    (0x3F, 0x2C, 0x1D),
+    (0x4B, 0x36, 0x23),
+    (0x58, 0x40, 0x2A),
+    (0x66, 0x4B, 0x32),
+    (0x74, 0x57, 0x3A),
+    (0x85, 0x66, 0x47),
+]
+
 #: Root and bark. Index 0 is the gap between two roots, which is nearly soil,
 #: and index 4 is the ridge of a root catching what light there is.
 ROOT = [

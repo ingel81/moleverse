@@ -37,6 +37,41 @@ older texture scripts, which write into `art/` and leave a second copy to be
 synced by hand. There is no reason for the working copy - the script is the
 source, and two PNGs that have to agree eventually will not.
 
+The surface function returns a **position on a ramp, not a colour**. It first
+mixed colours continuously and added per-texel grain, which came to 3965
+distinct colours across the atlas - a photograph, next to blocks that run to
+seven colours each. Now every effect - flank height, head and tail tint, ring
+joints, the blood vessel - adds or subtracts levels on one scalar, and the
+result is rounded once at the end. Rounding a smooth field is what a hand
+painter does when they reach for the next darkest swatch: it puts a hard edge
+where a mix put a fade. The ramp is `texture_kit.WORM` and it contains the four
+colours `earthworm_texture.py` chose by hand, so the animal in the burrow and
+the worm a mole carries off are literally the same colours. The atlas is nine.
+
+### The geometry decides what the shading may assume
+
+Both of the mistakes the quantised worm exposed were the same mistake, and it is
+the one worth stating once. A pattern written as a function of model position
+looks like it is independent of the boxes underneath it. It is not: the boxes
+decide which positions actually occur, and how many.
+
+* **A face may be a single value of the coordinate you are varying.** North and
+  south are whole cube ends at one constant z, so a rule keyed on z makes each
+  of them entirely on a ring or entirely off one - there is no in-between to
+  average out. The soft falloff hid this by making every end faintly grey; a
+  hard step turned half of them into pale bands around a joint, which is the one
+  place on a worm that never has one. They are taken as joints outright now,
+  because that is also what they physically are.
+* **A feature sized in absolute units is sized relative to nothing.** The blood
+  vessel was two units either side of the spine, which is a stripe on a
+  twenty-two unit segment and the entire animal on a four unit tail segment. Its
+  width is a fraction of the segment's now.
+
+Neither showed up while the colours were mixed continuously, because a fade
+degrades gracefully and a step does not. Anything keyed on position wants
+checking against the narrowest and the flattest box in the model, not the one
+that was in front of you when you wrote it.
+
 ## The burrow blocks
 
 Nine blocks borrowed vanilla textures - rooted dirt, mangrove roots,
@@ -57,6 +92,16 @@ opposite one.
 **Structure above one pixel.** Per-pixel noise on its own fizzes at 16 px. The
 soil textures get their body from clods - two and three pixel patches with a
 shadow along the lower edge - exactly as `mound_texture.py` builds the mound.
+
+`loose_soil` is here for that second reason and no other. It was already the
+mod's own art, but it was 48 colours of per-pixel jitter - 232 of its 256 pixels
+shared a colour with no neighbour at all - and it is the floor of every corridor,
+so it is the texture a player looks at longest. Re-rendering it is the one case
+in this file where the ramp was **measured rather than chosen**: the old file's
+mean colour, luminance range and spread were taken first, and they landed on
+`TURNED[1:6]` almost exactly. Same hue, same range, same weight, clods instead of
+jitter. A player who has been looking at that block for weeks should not be able
+to say what changed.
 
 The mole trap and the shaft lantern followed the same way out of vanilla. The
 trap runs its boards vertically because `worm_box` runs its slats horizontally
