@@ -104,11 +104,32 @@ SACK = [
     (0xB8, 0xA9, 0x83),
 ]
 
-#: Straight out of `earthworm_texture.py`.
-WORM_RIM = (0x5E, 0x30, 0x35)
-WORM_BODY = (0x9E, 0x5C, 0x5C)
-WORM_LIT = (0xC4, 0x81, 0x79)
-WORM_PALE = (0xE0, 0xA8, 0x9E)
+#: The worms, darkest first. Indices 1, 4, 6 and 7 are the four colours
+#: `earthworm_texture.py` picked by hand; the four between them were added so
+#: the great worm has somewhere to put a shaded flank without inventing its own
+#: palette. Index 0 is the dorsal blood vessel and the bottom of a ring joint.
+WORM = [
+    (0x46, 0x22, 0x2A),
+    (0x5E, 0x30, 0x35),
+    (0x6B, 0x36, 0x3B),
+    (0x83, 0x49, 0x4B),
+    (0x9E, 0x5C, 0x5C),
+    (0xB3, 0x6F, 0x69),
+    (0xC4, 0x81, 0x79),
+    (0xE0, 0xA8, 0x9E),
+]
+
+#: The clitellum: warm buff, and the one worm colour that is not on the ramp,
+#: because the swelling is a different material rather than a lighter shade of
+#: the same one.
+WORM_CLITELLUM = (0xBE, 0x87, 0x77)
+
+#: The names `earthworm_texture.py` uses, kept as aliases so the item textures
+#: and the entity cannot drift apart.
+WORM_RIM = WORM[1]
+WORM_BODY = WORM[4]
+WORM_LIT = WORM[6]
+WORM_PALE = WORM[7]
 
 
 # --- canvas ---------------------------------------------------------------

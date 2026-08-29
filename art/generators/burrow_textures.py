@@ -77,7 +77,17 @@ ATLASES = {
         "post_side": (12, 0, 14, 8),
         "post_end": (14, 0, 16, 2),
     },
+    "shaft_lantern": {
+        "cage_side": (0, 0, 6, 7),
+        "cage_end": (6, 0, 12, 6),
+        "cap_side": (0, 8, 8, 10),
+        "cap_top": (8, 6, 16, 14),
+    },
 }
+
+#: `WOOD` shifted up a step, for anything that reads as stripped rather than
+#: split. Same ramp, so a trap lid and a trap wall still agree about the wood.
+PALE_WOOD = WOOD[1:]
 
 
 # --- shared drawing -------------------------------------------------------
@@ -170,6 +180,29 @@ def plank_grain(canvas, rect, ramp, rng, vertical=True, wrap=False):
         for x in range(x0, x1):
             canvas.put(x, y0, ramp[4], wrap)
             canvas.put(x, y1 - 1, ramp[0], wrap)
+
+
+def board_run(canvas, ramp, rng, vertical=True, widths=(3, 4, 3, 3)):
+    """Boards laid side by side across a whole 16x16 face.
+
+    Each board gets a lit edge, a mottled middle and a seam, so the run reads
+    as separate planks rather than as one grained surface. Uneven widths on
+    purpose: four equal boards across sixteen pixels reads as a comb.
+    """
+    position, index = 0, 0
+    while position < SIZE:
+        width = widths[index % len(widths)]
+        index += 1
+        for a in range(position, min(position + width, SIZE)):
+            for b in range(SIZE):
+                if a == position:
+                    tone = ramp[4]
+                elif a == position + width - 1:
+                    tone = ramp[0]
+                else:
+                    tone = ramp[rng.choice([1, 2, 2, 2, 3])]
+                canvas.put(*((a, b) if vertical else (b, a)), tone)
+        position += width
 
 
 def end_grain(canvas, rect, core, rim, rng):
@@ -556,6 +589,110 @@ def worm_box(rng):
     return c
 
 
+def mole_trap(rng):
+    """The trap's walls and floor: solid boards, nailed, no gaps.
+
+    Deliberately the other way up from `worm_box`. Both are plank boxes and
+    both are made of the same wood, so if they also ran their boards the same
+    way they would be one block with two names: the worm box is horizontal
+    slats with daylight between them, the trap is vertical boards nailed shut.
+    """
+    c = Canvas(ground=WOOD[2] + (255,))
+    board_run(c, WOOD, rng, vertical=True)
+    for y in (4, 11):  # two rows of nails, one per board
+        for x in range(1, SIZE, 3):
+            c.put(x, y, WOOD[4])
+    for _ in range(6):
+        c.put(rng.randrange(SIZE), rng.randrange(SIZE), WOOD[1])
+    return c
+
+
+def mole_trap_frame(rng):
+    """The lid and the door jambs: stripped wood, a step paler than the walls.
+
+    The band inset two pixels from every edge is the lid's frame. The lid reads
+    the middle twelve pixels of this image, so the band lands exactly on its
+    rim; the jambs read narrow strips and come out as plain bars, which is what
+    a jamb is.
+    """
+    c = Canvas(ground=PALE_WOOD[2] + (255,))
+    board_run(c, PALE_WOOD, rng, vertical=False, widths=(4, 3, 4, 3))
+    for i in (2, SIZE - 3):
+        for j in range(2, SIZE - 2):
+            c.put(i, j, WOOD[1])
+            c.put(j, i, WOOD[1])
+    for corner in ((3, 3), (SIZE - 4, 3), (3, SIZE - 4), (SIZE - 4, SIZE - 4)):
+        c.put(*corner, PALE_WOOD[4])  # pegs at the corners of the frame
+    return c
+
+
+def mole_trap_door(rng):
+    """The drop door of a sprung trap: root heartwood, with a latch bar.
+
+    Dark on purpose. The empty and baited traps show an open gap here, so the
+    only thing this texture has to say at a glance is *shut* - which needs it
+    to be a different value from the walls, not a different pattern.
+    """
+    c = Canvas(ground=ROOT[2] + (255,))
+    board_run(c, ROOT, rng, vertical=True, widths=(3, 3, 4, 3))
+    for x in range(SIZE):  # the latch bar across the middle
+        c.put(x, 11, PALE_WOOD[4])
+        c.put(x, 12, WOOD[1])
+    for x in (5, 10):
+        c.put(x, 11, WOOD[0])  # the two pins holding it
+    return c
+
+
+def shaft_lantern(rng):
+    """A cage of root bars with glowing mycelium shut inside it.
+
+    The vanilla lantern was standing in here, which put an iron-and-torch
+    object in a mod whose only light source is a fungus. The cage is the same
+    root the posts are made of and the light inside is `glow_mycelium`'s ramp,
+    so the lantern reads as something a mole built out of what a mole has.
+    """
+    c = Canvas(ground=ROOT[1] + (255,))
+    rects = ATLASES["shaft_lantern"]
+
+    # The cage is mostly light. Only the two corner posts and one middle bar
+    # are opaque: a cage drawn as bars with light between them ends up more bar
+    # than light, and a lantern that is not the brightest thing in the corridor
+    # is not a lantern.
+    x0, y0, x1, y1 = rects["cage_side"]
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            c.put(x, y, GLOW[rng.choice([2, 3, 3, 4])], wrap=False)
+    for x in (x0, x0 + 3, x1 - 1):
+        for y in range(y0, y1):
+            c.put(x, y, ROOT[rng.choice([1, 2, 2])], wrap=False)
+    for x in range(x0, x1):  # the rims the bars are set into
+        c.put(x, y0, ROOT[3], wrap=False)
+        c.put(x, y1 - 1, ROOT[1], wrap=False)
+
+    x0, y0, x1, y1 = rects["cage_end"]
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            c.put(x, y, ROOT[rng.choice([1, 2, 2, 3])], wrap=False)
+    for y in range(y0 + 1, y1 - 1):  # light spilling through the woven base
+        for x in range(x0 + 1, x1 - 1):
+            c.put(x, y, GLOW[rng.choice([2, 3, 3])], wrap=False)
+    for x in range(x0 + 1, x1 - 1):
+        c.put(x, y0 + 3, ROOT[2], wrap=False)  # one strand across the weave
+
+    x0, y0, x1, y1 = rects["cap_side"]
+    for x in range(x0, x1):
+        c.put(x, y0, PALE_WOOD[4], wrap=False)
+        c.put(x, y0 + 1, WOOD[rng.choice([1, 2, 2])], wrap=False)
+
+    end_grain(c, rects["cap_top"], PALE_WOOD, WOOD[1], rng)
+    x0, y0, x1, y1 = rects["cap_top"]
+    for y in (y0 + 3, y0 + 4):  # the loop the lantern hangs from
+        for x in (x0 + 3, x0 + 4):
+            c.put(x, y, ROOT[0], wrap=False)
+    c.put(x0 + 3, y0 + 3, ROOT[3], wrap=False)
+    return c
+
+
 # --- driver ---------------------------------------------------------------
 
 #: name -> (function, seed). The seeds are dials like every other number here:
@@ -571,6 +708,10 @@ TEXTURES = [
     ("exchange_station", exchange_station, 7719),
     ("exchange_station_top", exchange_station_top, 61503),
     ("worm_box", worm_box, 24680),
+    ("mole_trap", mole_trap, 31415),
+    ("mole_trap_frame", mole_trap_frame, 27182),
+    ("mole_trap_door", mole_trap_door, 16180),
+    ("shaft_lantern", shaft_lantern, 14142),
 ]
 
 #: The ones that tile against copies of themselves, shown as a wall in the

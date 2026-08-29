@@ -19,8 +19,9 @@ than editing a hundred boxes, and a second variant costs nothing.
 | `great_worm_shape.py` | The great worm's segments, from a girth curve, plus the UV packing. Prints JSON. |
 | `great_worm_texture.py` | `great_worm.png` - the worm's skin, one texel at a time. Writes the shipped file. |
 | `texture_kit.py` | The shared ramps and the drawing primitives. Produces nothing on its own. |
-| `burrow_textures.py` | The ten block textures for the burrow and the dimension. Writes the shipped files. |
+| `burrow_textures.py` | The block textures for the burrow, the dimension, the mole trap and the shaft lantern. Writes the shipped files. |
 | `worm_item_textures.py` | `fat_worm.png` and `glow_worm.png`. Writes the shipped files. |
+| `mole_in_sack.py` | `mole_in_sack.png` - the bag from a profile curve, the snout by hand. |
 
 ## The great worm
 
@@ -57,7 +58,14 @@ opposite one.
 soil textures get their body from clods - two and three pixel patches with a
 shadow along the lower edge - exactly as `mound_texture.py` builds the mound.
 
-`shrink_post`, `grunting_post` and `colony_board` are atlases: a post, its
+The mole trap and the shaft lantern followed the same way out of vanilla. The
+trap runs its boards vertically because `worm_box` runs its slats horizontally
+- the two are otherwise the same wooden box, and one shared texture direction
+would have made them one block with two names. The lantern is a root cage with
+`glow_mycelium`'s ramp shut inside it rather than iron and a torch, since the
+mycelium is the only light this mod actually has.
+
+`shrink_post`, `grunting_post`, `colony_board` and `shaft_lantern` are atlases: a post, its
 collar and its end grain are different things at different sizes, and a 16x16
 image holds all of them side by side. The `ATLASES` table in the script is the
 authority on the layout and the `uv` arrays in the model JSONs are copies of it.

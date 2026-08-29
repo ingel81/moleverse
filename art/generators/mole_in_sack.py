@@ -46,29 +46,30 @@ GATHER_ROWS = (2, 3)
 
 #: Centre of the bag. The fraction is deliberate: a bag on a whole pixel is
 #: symmetrical, and a sack with a live mole in it should not be.
-CX = 7.8
+CX = 8.0
 
 #: The mole's snout, forced out sideways where the cord does not quite close.
 #: Hand placed - see the module docstring. Values pick the tone off `MOLE`.
 SNOUT = {
-    (3, 3): 3, (4, 3): 2,
-    (1, 4): 2, (2, 4): 2, (3, 4): 2, (4, 4): 1,
-    (3, 5): 1, (4, 5): 1,
+    (3, 3): 3, (4, 3): 0, (5, 3): 2,
+    (2, 4): 2, (3, 4): 2, (4, 4): 2, (5, 4): 1,
 }
-NOSE = (1, 4)
+NOSE = (2, 4)
 #: One claw over the rim on the other side. A single pale pixel: two read as
 #: a pair of eyes and the whole thing turns into a face.
-PAW = (11, 3)
+PAW = (10, 3)
 
 
 def half_width(t):
     """Half-width of the bag at depth `t`, 0 at the neck and 1 at the floor.
 
-    Swells fast out of the neck and tucks back in over the last sixth, which is
-    what a full sack standing on its base does. Both terms are smoothstepped,
-    so the outline has no corner in it to give the formula away.
+    Swells out of the neck to a belly a little past halfway, then draws back in
+    towards the floor. The taper is a factor on the whole width rather than a
+    subtraction, which is what rounds the bottom corners off: subtracting a
+    constant narrows the bag but leaves its sides vertical, and a sack with
+    vertical sides is a crate.
     """
-    return 1.3 + 4.7 * smooth(t / 0.45) - 0.8 * smooth((t - 0.84) / 0.16)
+    return 1.1 + 4.7 * smooth(t / 0.55) * (1.0 - 0.30 * smooth((t - 0.70) / 0.30))
 
 
 def bulge(t):
@@ -115,28 +116,18 @@ def paint(rng):
     c = Canvas()
     body = build_body()
 
-    # An outline all the way round, then the shading applied to what is left
-    # inside it. The worms get away without an outline because they are two
-    # pixels thick and are all edge already; an object this size shaded only
-    # off its own silhouette comes out as a pale shell with a dark one behind
-    # it, and nothing in the middle.
-    outline = {
-        (x, y)
-        for x, y in body
-        if any(((x + ox), (y + oy)) not in body for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)))
-    }
-    inner = body - outline
-    for x, y in outline:
-        c.put(x, y, SACK[0], wrap=False)
-
-    lit, shaded, interior = silhouette(inner, wrap=False)
-    for group, index in ((interior, 2), (lit, 4), (shaded, 1)):
+    # Shaded off the outline, the same rule as the worms. A hard outline all
+    # the way round was tried first and it eats the small shapes: the gathered
+    # top and the snout are only two or three pixels thick, so every one of
+    # their pixels is outline and they come out as one black blob on a hat.
+    lit, shaded, interior = silhouette(body, wrap=False)
+    for group, index in ((interior, 2), (lit, 4), (shaded, 0)):
         for x, y in group:
             c.put(x, y, SACK[index], wrap=False)
     for x, y in interior:  # a little weave, one ramp step either way
         if rng.random() < 0.24:
             c.put(x, y, SACK[rng.choice([1, 3, 3])], wrap=False)
-    for x, y in creases(body, rng) & inner:
+    for x, y in creases(body, rng) & (interior | shaded):
         c.put(x, y, SACK[1], wrap=False)
 
     # The cord. `CORD_Y` is the pinch itself and carries no cloth of its own -
@@ -145,6 +136,7 @@ def paint(rng):
     span = [x for x, y in body if y == NECK_Y]
     for x in range(min(span) - 1, max(span) + 2):
         c.put(x, CORD_Y, ROOT[1], wrap=False)
+        c.put(x, CORD_Y + 1, SACK[0], wrap=False)  # the shadow the tie casts
     c.put(max(span) + 1, CORD_Y + 1, ROOT[2], wrap=False)  # the loose end
 
     for (x, y), index in SNOUT.items():

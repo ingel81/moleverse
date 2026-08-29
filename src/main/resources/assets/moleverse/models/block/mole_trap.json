@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "planks": "minecraft:block/oak_planks",
-    "frame": "minecraft:block/stripped_oak_log",
-    "particle": "minecraft:block/oak_planks"
+    "planks": "moleverse:block/mole_trap",
+    "frame": "moleverse:block/mole_trap_frame",
+    "particle": "moleverse:block/mole_trap"
   },
   "elements": [
     {

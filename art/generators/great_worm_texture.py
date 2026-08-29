@@ -13,47 +13,56 @@ that packs the atlas the model is built from, so the texture cannot be painted
 for a layout the geometry no longer has. That rule was read out of the running
 editor rather than guessed: the box unwrap reverses the `up` face on both axes
 and `down` on one, and a wrong guess there mirrors the body gradient on the most
-visible face of the animal.
+visible face of the animal. Nothing in this file touches the layout - the UV
+rectangles, the packing and the canvas size are `great_worm_shape`'s and stay
+exactly as the Java model in `client/render/GreatWormModel.java` expects them.
+
+## Colour is an index, not a mix
+
+This started out mixing colours continuously and adding per-texel grain, and it
+came out at 3965 distinct colours across the atlas - effectively a photograph.
+Next to a mod whose blocks run to seven colours each, the worm read as if it
+had come from a different game.
+
+So the surface function returns a position on `texture_kit.WORM`, not a colour.
+Every field - flank height, head and tail tint, ring joints, the blood vessel -
+adds or subtracts levels on that one scalar, and the result is rounded once at
+the end. Banding is the point: rounding a smooth field is exactly how a hand
+painter picks the next darkest swatch, and it puts hard edges where a mix would
+have put a fade. The grain is gone with it, because a random half-step per texel
+turns a clean band edge back into a dither.
+
+Two consequences worth knowing. The ramp is shared with the item textures, so
+the animal in the burrow and the worm a mole carries off are literally the same
+colours. And the clitellum is the one thing that replaces the colour outright
+rather than shifting the level, because a swollen band is a different material
+and not a lighter shade of skin.
 
 Pigment only, no lighting. Minecraft shades the six directions itself; a baked
-highlight on the back fights it. What is baked is what an earthworm is actually
-coloured like: a dark red-brown dorsal side with the blood vessel showing
-through as a line down the middle, a pale ventral side, the ring joints between
-segments, and the smooth swollen clitellum a third of the way down.
-
-Palette continues `earthworm_texture.py`, so the animal in the burrow and the
-item a mole is after read as the same creature.
+highlight on the back fights it.
 """
-
-import random
 
 from PIL import Image
 
 import great_worm_shape as shape
+from texture_kit import WORM, WORM_CLITELLUM, smooth
 
 OUT = "D:/ai_local/minecraft_modding/moleverse/src/main/resources/assets/moleverse/textures/entity/great_worm.png"
-
-# --- palette --------------------------------------------------------------
-
-DORSAL = (0x6B, 0x36, 0x3B)
-VESSEL = (0x46, 0x22, 0x2A)
-FLANK = (0x9E, 0x5C, 0x5C)
-VENTRAL = (0xC9, 0x94, 0x8C)
-#: Warm buff, only a little lighter than the flank. The item texture's band
-#: colour was tried here first and read as a bandage: on a 16 px item the band
-#: has to shout to register at all, on a four block animal it is the brightest
-#: thing on the model and the eye goes nowhere else.
-CLITELLUM = (0xBE, 0x87, 0x77)
-#: The head end is darker and browner, the tail end paler and greyer. Both are
-#: mixed into the flank colour rather than replacing it.
-HEAD_TINT = (0x5A, 0x2E, 0x30)
-TAIL_TINT = (0xB6, 0x8E, 0x8A)
 
 #: Distance between two ring joints, in model units.
 RING_PITCH = 3
 
+#: How wide the dark part of a joint is, in the same units. One unit of three
+#: leaves two units of segment between rings, which is what makes the body read
+#: as segmented rather than as striped.
+RING_WIDTH = 1.0
+
 #: Where the clitellum sits along the body, as a fraction of the total length.
 CLITELLUM_FROM, CLITELLUM_TO = 0.26, 0.40
+
+#: How far up the flank the clitellum reaches. A band of even weight all the
+#: way round reads as a painted stripe rather than as a swelling.
+CLITELLUM_FOOT = 0.28
 
 CUBES, SIZE, TEXTURE_HEIGHT = shape.layout()
 
@@ -65,20 +74,6 @@ Z_BACK = max(c["to"][2] for c in CUBES)
 
 def lerp(a, b, u):
     return a + (b - a) * u
-
-
-def mix(c1, c2, u):
-    u = max(0.0, min(1.0, u))
-    return tuple(lerp(c1[i], c2[i], u) for i in range(3))
-
-
-def shade(colour, factor):
-    return tuple(max(0.0, min(255.0, c * factor)) for c in colour)
-
-
-def smooth(u):
-    u = max(0.0, min(1.0, u))
-    return u * u * (3.0 - 2.0 * u)
 
 
 def unproject(cube, face, px, py):
@@ -109,75 +104,86 @@ def unproject(cube, face, px, py):
     return lerp(x0, x1, s), y0, lerp(z1, z0, t)
 
 
-def surface(cube, face, x, y, z):
-    """Colour of the animal's skin at one point in model space.
+def flank_height(cube, face, y):
+    """How far up the flank a point sits, 0 at the belly and 1 along the spine.
 
-    `face` only decides how much of the point counts as back or belly. The
-    pattern itself is a function of position, which is the whole reason the
-    rings survive a segment boundary.
+    The two horizontal faces are the extremes outright; the sides read it off
+    y. `face` is the only thing the pattern takes from the geometry - everything
+    else is a function of position, which is the whole reason the rings survive
+    a segment boundary.
     """
-    height = cube["to"][1] - cube["from"][1]
-    along = (z - Z_FRONT) / (Z_BACK - Z_FRONT)
-
-    # How far up the flank, 0 at the belly and 1 along the spine. The two
-    # horizontal faces are the extremes outright; the sides read it off y.
     if face == "up":
-        up = 1.0
-    elif face == "down":
-        up = 0.0
-    else:
-        up = (y - cube["from"][1]) / max(height, 1)
+        return 1.0
+    if face == "down":
+        return 0.0
+    height = cube["to"][1] - cube["from"][1]
+    return (y - cube["from"][1]) / max(height, 1)
 
-    colour = mix(VENTRAL, FLANK, smooth(up / 0.62))
-    colour = mix(colour, DORSAL, smooth((up - 0.55) / 0.45))
 
-    # Head and tail tints, both narrow enough to leave the middle alone.
-    colour = mix(colour, HEAD_TINT, 0.55 * smooth((0.16 - along) / 0.16))
-    colour = mix(colour, TAIL_TINT, 0.50 * smooth((along - 0.68) / 0.32))
+def surface(cube, face, x, y, z):
+    """Colour of the skin at one point, as (ramp level, override or None).
 
-    # The dorsal blood vessel, showing through as a line down the back. Only
-    # on the upper surface, and it fades out over the clitellum like the rings.
-    band = smooth((along - CLITELLUM_FROM) / 0.04) * smooth((CLITELLUM_TO - along) / 0.05)
-    vessel = smooth((up - 0.80) / 0.20) * smooth((2.0 - abs(x)) / 1.5)
-    colour = mix(colour, VESSEL, 0.75 * vessel * (1.0 - band))
+    The level is a float and is rounded by the caller. Keeping it unrounded
+    until the end is what lets four separate effects stack without any of them
+    having to know about the others.
+    """
+    along = (z - Z_FRONT) / (Z_BACK - Z_FRONT)
+    up = flank_height(cube, face, y)
+    on_clitellum = CLITELLUM_FROM <= along < CLITELLUM_TO
 
-    # The ring joints. A hard line on the ring itself, a slight lift just after
-    # it, so each segment reads as rounded rather than as a stripe.
-    phase = (z - Z_FRONT) % RING_PITCH
-    ring = 1.0 - smooth(abs(phase - 0.5) / 0.9)
-    lift = smooth((phase - 1.4) / 0.8) * smooth((2.6 - phase) / 0.8)
-    colour = shade(colour, 1.0 - 0.16 * ring * (1.0 - 0.7 * band) + 0.07 * lift)
+    # Pale ventral side at the top of the ramp, dark red-brown dorsal at the
+    # bottom of it. Smoothstepped so the belly and the back each get a band of
+    # their own rather than the whole flank being one long fade.
+    level = 7.0 - 5.0 * smooth(up)
 
-    # The clitellum: swollen, smooth and paler, the one part of a worm with no
-    # visible ring joints at all. Strongest along the back and fading out down
-    # the flanks, because a band of even weight all the way round reads as a
-    # painted stripe rather than as a swelling.
-    colour = mix(colour, CLITELLUM, 0.55 * band * (0.30 + 0.70 * up))
+    # The head end is darker and browner, the tail end paler and greyer. Both
+    # narrow enough to leave the middle of the animal alone.
+    level -= 1.1 * smooth((0.16 - along) / 0.16)
+    level += 0.9 * smooth((along - 0.68) / 0.32)
 
-    return colour
+    # The ring joints. A hard step rather than a falloff: at one texel per
+    # model unit a soft ring is a two-pixel smudge, and the segmentation is the
+    # one thing on this animal that has to survive being seen from across a
+    # cavern. The clitellum has no rings at all, which is how you tell it from
+    # a stripe.
+    #
+    # A north or south face is a whole cube end at one constant z, so it is
+    # either entirely on a ring or entirely off one - and it is also exactly
+    # where this segment meets the next. Taking it as a joint outright is both
+    # the true answer and the safe one: off a ring it would come out as a pale
+    # band around the joint, which is the one place a worm never has one.
+    joint = face in ("north", "south") or (z - Z_FRONT) % RING_PITCH < RING_WIDTH
+    if joint and not on_clitellum:
+        level -= 2.2
+
+    # The dorsal blood vessel showing through, along the spine only. Its width
+    # is a fraction of the segment's, not a fixed number of units: the tail
+    # segments are only four units across, and an absolute stripe swallowed
+    # them whole.
+    vessel_half = max(1.0, 0.12 * (cube["to"][0] - cube["from"][0]))
+    if up > 0.82 and abs(x) < vessel_half and along < 0.85 and not on_clitellum:
+        level -= 2.5
+
+    if on_clitellum and up > CLITELLUM_FOOT:
+        return level, WORM_CLITELLUM
+    return level, None
 
 
 def paint():
     img = Image.new("RGBA", (SIZE, TEXTURE_HEIGHT), (0, 0, 0, 0))
     px = img.load()
-    rng = random.Random(20260829)
 
     for cube in CUBES:
         for face in ("north", "east", "south", "west", "up", "down"):
             u1, v1, u2, v2 = cube["faces"][face]
             for y in range(min(v1, v2), max(v1, v2)):
                 for x in range(min(u1, u2), max(u1, u2)):
-                    r, g, b = surface(cube, face, *unproject(cube, face, x, y))
-                    # A little grain. Enough to break the flat fill, small
-                    # enough not to read as noise at the distance the worm is
-                    # actually seen from.
-                    n = rng.uniform(-6.0, 6.0)
-                    px[x, y] = (
-                        int(max(0, min(255, r + n))),
-                        int(max(0, min(255, g + n))),
-                        int(max(0, min(255, b + n))),
-                        255,
-                    )
+                    level, override = surface(cube, face, *unproject(cube, face, x, y))
+                    if override is not None:
+                        px[x, y] = override + (255,)
+                    else:
+                        index = max(0, min(len(WORM) - 1, int(round(level))))
+                        px[x, y] = WORM[index] + (255,)
     return img
 
 
