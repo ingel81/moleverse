@@ -1,0 +1,22 @@
+{
+  "type": "moleverse:burrow",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:deep_dark",
+      "features": false,
+      "lakes": false,
+      "layers": [
+        {
+          "block": "minecraft:bedrock",
+          "height": 1
+        },
+        {
+          "block": "moleverse:deep_earth",
+          "height": 255
+        }
+      ],
+      "structure_overrides": []
+    }
+  }
+}
