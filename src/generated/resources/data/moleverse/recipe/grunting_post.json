@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": "minecraft:stick",
+    "S": "moleverse:loose_soil"
+  },
+  "pattern": [
+    " R ",
+    " R ",
+    "SSS"
+  ],
+  "result": {
+    "count": 1,
+    "id": "moleverse:grunting_post"
+  }
+}

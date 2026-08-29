@@ -9,7 +9,6 @@ import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.resources.ResourceKey;
-// Used by the colony board recipe below, which is commented out until the block exists.
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
@@ -123,33 +122,34 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy(getHasName(ModBlocks.LOOSE_SOIL.get()), this.has(ModBlocks.LOOSE_SOIL.get()))
                 .save(this.output);
 
-        // TODO: uncomment once ModBlocks.GRUNTING_POST exists. A stake driven
-        // into a bed of soil - the shape is the recipe. It is the first worm
-        // source that does not involve breaking molehills, so it has to be
-        // affordable before a player owns anything else of this mod's.
-        // this.shaped(RecipeCategory.DECORATIONS, ModBlocks.GRUNTING_POST.get())
-        //         .define('R', Items.STICK)
-        //         .define('S', ModBlocks.LOOSE_SOIL.get())
-        //         .pattern(" R ")
-        //         .pattern(" R ")
-        //         .pattern("SSS")
-        //         .group(ATTACHMENT_GROUP)
-        //         .unlockedBy(getHasName(ModBlocks.LOOSE_SOIL.get()), this.has(ModBlocks.LOOSE_SOIL.get()))
-        //         .save(this.output);
+        // A stake driven into a bed of soil - the shape is the recipe. It is the
+        // first worm source that does not involve breaking molehills, so it has
+        // to be affordable before a player owns anything else of this mod's.
+        //
+        // Outside the group on purpose: GruntingPost is a plain Block, not a
+        // MoundAttachment. It needs no mound under it and does not belong in a
+        // recipe book entry that says otherwise.
+        this.shaped(RecipeCategory.DECORATIONS, ModBlocks.GRUNTING_POST.get())
+                .define('R', Items.STICK)
+                .define('S', ModBlocks.LOOSE_SOIL.get())
+                .pattern(" R ")
+                .pattern(" R ")
+                .pattern("SSS")
+                .unlockedBy(getHasName(ModBlocks.LOOSE_SOIL.get()), this.has(ModBlocks.LOOSE_SOIL.get()))
+                .save(this.output);
 
-        // TODO: uncomment once ModBlocks.COLONY_BOARD exists. A sign in all but
-        // name, and priced like one: the soil in the middle is what ties the
-        // board to the ground it reads.
-        // this.shaped(RecipeCategory.DECORATIONS, ModBlocks.COLONY_BOARD.get())
-        //         .define('P', ItemTags.PLANKS)
-        //         .define('S', ModBlocks.LOOSE_SOIL.get())
-        //         .define('R', Items.STICK)
-        //         .pattern("PPP")
-        //         .pattern("PSP")
-        //         .pattern(" R ")
-        //         .group(ATTACHMENT_GROUP)
-        //         .unlockedBy(getHasName(ModBlocks.LOOSE_SOIL.get()), this.has(ModBlocks.LOOSE_SOIL.get()))
-        //         .save(this.output);
+        // A sign in all but name, and priced like one: the soil in the middle is
+        // what ties the board to the ground it reads.
+        this.shaped(RecipeCategory.DECORATIONS, ModBlocks.COLONY_BOARD.get())
+                .define('P', ItemTags.PLANKS)
+                .define('S', ModBlocks.LOOSE_SOIL.get())
+                .define('R', Items.STICK)
+                .pattern("PPP")
+                .pattern("PSP")
+                .pattern(" R ")
+                .group(ATTACHMENT_GROUP)
+                .unlockedBy(getHasName(ModBlocks.LOOSE_SOIL.get()), this.has(ModBlocks.LOOSE_SOIL.get()))
+                .save(this.output);
 
         // The door into the burrow, and the most expensive thing in the mod.
         // Two pelts and five worms is two moles and a stocked larder's worth of
@@ -168,21 +168,22 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy(getHasName(ModItems.EARTHWORM.get()), this.has(ModItems.EARTHWORM.get()))
                 .save(this.output);
 
-        // TODO: uncomment once ModBlocks.EXCHANGE_STATION exists. The other
-        // expensive one. The chest is the cheap half - two inventories have to
-        // come from somewhere - and the pelts and worms are the gate.
-        // this.shaped(RecipeCategory.DECORATIONS, ModBlocks.EXCHANGE_STATION.get())
-        //         .define('P', ModItems.MOLE_PELT.get())
-        //         .define('W', ModItems.EARTHWORM.get())
-        //         .define('C', Items.CHEST)
-        //         .define('S', ModBlocks.LOOSE_SOIL.get())
-        //         .pattern("PWP")
-        //         .pattern("WCW")
-        //         .pattern("SSS")
-        //         .group(ATTACHMENT_GROUP)
-        //         .unlockedBy(getHasName(ModItems.MOLE_PELT.get()), this.has(ModItems.MOLE_PELT.get()))
-        //         .unlockedBy(getHasName(ModItems.EARTHWORM.get()), this.has(ModItems.EARTHWORM.get()))
-        //         .save(this.output);
+        // The other expensive one. The chest is the cheap half - two inventories
+        // have to come from somewhere - and the pelts and worms are the gate. A
+        // worm short of the shrink post, because the station is what a player
+        // builds first and the way down is the deeper of the two gates.
+        this.shaped(RecipeCategory.DECORATIONS, ModBlocks.EXCHANGE_STATION.get())
+                .define('P', ModItems.MOLE_PELT.get())
+                .define('W', ModItems.EARTHWORM.get())
+                .define('C', Items.CHEST)
+                .define('S', ModBlocks.LOOSE_SOIL.get())
+                .pattern("PWP")
+                .pattern("WCW")
+                .pattern("SSS")
+                .group(ATTACHMENT_GROUP)
+                .unlockedBy(getHasName(ModItems.MOLE_PELT.get()), this.has(ModItems.MOLE_PELT.get()))
+                .unlockedBy(getHasName(ModItems.EARTHWORM.get()), this.has(ModItems.EARTHWORM.get()))
+                .save(this.output);
     }
 
     // Deliberately without a recipe:
@@ -190,11 +191,15 @@ public final class ModRecipeProvider extends RecipeProvider {
     // * mole_mound - a molehill is an animal's doing. Crafting one would let a
     //   player fabricate the whole network by hand, which is the one thing the
     //   mod is about.
-    // * worm_larder - it breaks for two to four worms. Any recipe costing fewer
-    //   than five is a duplication loop, and one costing more is a recipe nobody
-    //   crafts. It is found in the burrow, and that is enough.
-    // * glow_mycelium - likewise found below. Nothing in the overworld it could
-    //   plausibly be made of.
+    // * worm_larder - it breaks for two to four worms and does not give itself
+    //   back. Any recipe costing fewer than five worms is a duplication loop,
+    //   and one costing more is a recipe nobody would ever craft. There is no
+    //   price in between, so it stays a thing found in the burrow. That also
+    //   keeps it honest: a larder is a colony's cache, not player furniture.
+    // * glow_mycelium - likewise found below, and it is the burrow's own light.
+    //   Nothing in the overworld it could plausibly be made of, and making it
+    //   craftable would let a player light the corridors from a workbench
+    //   instead of from what grows down there.
     // * deep_earth - unbreakable dimension fill.
     // * mole_pelt - nothing to smelt or cook it into. It is not food, and vanilla
     //   has no precedent for cooking a hide. Left alone rather than invented.

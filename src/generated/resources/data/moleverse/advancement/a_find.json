@@ -1,0 +1,44 @@
+{
+  "parent": "moleverse:shored_up",
+  "criteria": {
+    "amethyst_shard": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:amethyst_shard"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "echo_shard": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:echo_shard"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.a_find.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "minecraft:amethyst_shard"
+    },
+    "title": {
+      "translate": "advancements.moleverse.a_find.title"
+    }
+  },
+  "requirements": [
+    [
+      "echo_shard",
+      "amethyst_shard"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

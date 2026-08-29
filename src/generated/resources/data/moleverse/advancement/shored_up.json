@@ -1,0 +1,45 @@
+{
+  "parent": "moleverse:own_mound",
+  "criteria": {
+    "have_prepared_mound": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:prepared_mole_mound"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "place_prepared_mound": {
+      "conditions": {
+        "location": [
+          {
+            "block": "moleverse:prepared_mole_mound",
+            "condition": "minecraft:block_state_property"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.shored_up.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:prepared_mole_mound"
+    },
+    "title": {
+      "translate": "advancements.moleverse.shored_up.title"
+    }
+  },
+  "requirements": [
+    [
+      "have_prepared_mound",
+      "place_prepared_mound"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_earthworm": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:earthworm"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_mole_pelt": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:mole_pelt"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "moleverse:exchange_station"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_mole_pelt",
+      "has_earthworm"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "moleverse:exchange_station"
+    ]
+  }
+}

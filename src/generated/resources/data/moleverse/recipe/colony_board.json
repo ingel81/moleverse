@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "mound_attachment",
+  "key": {
+    "P": "#minecraft:planks",
+    "R": "minecraft:stick",
+    "S": "moleverse:loose_soil"
+  },
+  "pattern": [
+    "PPP",
+    "PSP",
+    " R "
+  ],
+  "result": {
+    "count": 1,
+    "id": "moleverse:colony_board"
+  }
+}

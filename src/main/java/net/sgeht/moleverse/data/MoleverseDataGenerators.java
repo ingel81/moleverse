@@ -57,6 +57,7 @@ public final class MoleverseDataGenerators {
         // Recipes come with their own unlock advancements, which is why the
         // provider is a Runner rather than a plain provider in this version.
         pack.addProvider(output -> new ModRecipeProvider.Runner(output, lookup));
+        pack.addProvider(output -> new ModAdvancementProvider(output, lookup));
 
         // Base localisation. Other locales stay hand-written under src/main/resources.
         pack.addProvider(output -> new ModLanguageProvider(output, "en_us"));

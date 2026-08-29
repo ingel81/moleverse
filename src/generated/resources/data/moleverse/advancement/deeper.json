@@ -1,0 +1,44 @@
+{
+  "parent": "moleverse:down_there",
+  "criteria": {
+    "glow_mycelium": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:glow_mycelium"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "worm_larder": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:worm_larder"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.deeper.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:glow_mycelium"
+    },
+    "title": {
+      "translate": "advancements.moleverse.deeper.title"
+    }
+  },
+  "requirements": [
+    [
+      "glow_mycelium",
+      "worm_larder"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

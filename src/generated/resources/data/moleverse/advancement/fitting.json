@@ -1,0 +1,70 @@
+{
+  "parent": "moleverse:shored_up",
+  "criteria": {
+    "colony_board": {
+      "conditions": {
+        "location": [
+          {
+            "block": "moleverse:colony_board",
+            "condition": "minecraft:block_state_property"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
+    },
+    "exchange_station": {
+      "conditions": {
+        "location": [
+          {
+            "block": "moleverse:exchange_station",
+            "condition": "minecraft:block_state_property"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
+    },
+    "grunting_post": {
+      "conditions": {
+        "location": [
+          {
+            "block": "moleverse:grunting_post",
+            "condition": "minecraft:block_state_property"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
+    },
+    "shaft_lantern": {
+      "conditions": {
+        "location": [
+          {
+            "block": "moleverse:shaft_lantern",
+            "condition": "minecraft:block_state_property"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.fitting.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:shaft_lantern"
+    },
+    "title": {
+      "translate": "advancements.moleverse.fitting.title"
+    }
+  },
+  "requirements": [
+    [
+      "shaft_lantern",
+      "colony_board",
+      "exchange_station",
+      "grunting_post"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

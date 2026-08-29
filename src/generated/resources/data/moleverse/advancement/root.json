@@ -1,0 +1,46 @@
+{
+  "criteria": {
+    "earthworm": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:earthworm"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "mole_mound": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:mole_mound"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "background": "minecraft:block/rooted_dirt",
+    "description": {
+      "translate": "advancements.moleverse.root.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:earthworm"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "advancements.moleverse.root.title"
+    }
+  },
+  "requirements": [
+    [
+      "mole_mound",
+      "earthworm"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

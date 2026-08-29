@@ -1,0 +1,34 @@
+{
+  "parent": "moleverse:root",
+  "criteria": {
+    "place_mound": {
+      "conditions": {
+        "location": [
+          {
+            "block": "moleverse:mole_mound",
+            "condition": "minecraft:block_state_property"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.own_mound.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:mole_mound"
+    },
+    "title": {
+      "translate": "advancements.moleverse.own_mound.title"
+    }
+  },
+  "requirements": [
+    [
+      "place_mound"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

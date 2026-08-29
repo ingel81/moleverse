@@ -1,0 +1,58 @@
+{
+  "parent": "moleverse:down_there",
+  "criteria": {
+    "kill_great_worm": {
+      "conditions": {
+        "entity": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type": "moleverse:great_worm"
+            }
+          }
+        ]
+      },
+      "trigger": "minecraft:player_killed_entity"
+    },
+    "look_at_great_worm": {
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "looking_at": {
+                  "type": "moleverse:great_worm"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "trigger": "minecraft:location"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.scale_of_it.description"
+    },
+    "frame": "goal",
+    "icon": {
+      "count": 1,
+      "id": "moleverse:great_worm_spawn_egg"
+    },
+    "title": {
+      "translate": "advancements.moleverse.scale_of_it.title"
+    }
+  },
+  "requirements": [
+    [
+      "look_at_great_worm",
+      "kill_great_worm"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,30 @@
+{
+  "parent": "moleverse:shored_up",
+  "criteria": {
+    "enter_burrow": {
+      "conditions": {
+        "to": "moleverse:burrow"
+      },
+      "trigger": "minecraft:changed_dimension"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.down_there.description"
+    },
+    "frame": "goal",
+    "icon": {
+      "count": 1,
+      "id": "moleverse:shrink_post"
+    },
+    "title": {
+      "translate": "advancements.moleverse.down_there.title"
+    }
+  },
+  "requirements": [
+    [
+      "enter_burrow"
+    ]
+  ],
+  "sends_telemetry_event": true
+}
