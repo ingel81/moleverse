@@ -247,6 +247,35 @@ public final class BurrowConstants {
      */
     public static final int COLONY_MIN_SEPARATION = 144;
 
+    /**
+     * How far past {@link #COLONY_MIN_SEPARATION} an emigrating mole aims.
+     *
+     * <p>Aiming exactly at the separation would land it on the first spot that
+     * qualifies, where the next colony's band begins - and every colony would
+     * end up ringed by neighbours at the minimum distance. The margin makes new
+     * ground look like ground rather than like a fence.</p>
+     */
+    public static final int EMIGRATION_MARGIN = 48;
+
+    /**
+     * One leg of an emigration walk.
+     *
+     * <p>Vanilla pathfinding will not plan a hundred and fifty blocks in one
+     * call - it gives up and the mole stands still, which looks exactly like a
+     * bug. Short legs always succeed, and the bearing keeps them pointing the
+     * same way.</p>
+     */
+    public static final int EMIGRATION_HOP = 16;
+
+    /** How close counts as having reached the current leg. */
+    public static final int EMIGRATION_HOP_REACHED_SQR = 9;
+
+    /** After this long an emigration is abandoned, wherever the mole got to. */
+    public static final int EMIGRATION_TIMEOUT = 3 * 60 * TICKS_PER_SECOND;
+
+    /** And this long before it may try again. */
+    public static final int EMIGRATION_RETRY_DELAY = 60 * TICKS_PER_SECOND;
+
     /** Random surface points tried before a fresh dig is given up on. */
     public static final int FRESH_SITE_ATTEMPTS = 8;
 

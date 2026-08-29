@@ -37,6 +37,7 @@ import net.sgeht.moleverse.entity.burrow.BurrowConstants;
 import net.sgeht.moleverse.entity.burrow.BurrowLog;
 import net.sgeht.moleverse.entity.burrow.BurrowState;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
+import net.sgeht.moleverse.entity.burrow.MoleEmigrateGoal;
 import net.sgeht.moleverse.entity.burrow.MoleFollowMotherGoal;
 import net.sgeht.moleverse.entity.burrow.MoleSurfaceStrollGoal;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
@@ -201,6 +202,11 @@ public class Mole extends Animal {
         // Strolling only while it has no burrow to be in. Tempting, breeding and
         // following a parent are separate goals and keep working regardless - an
         // earthworm can still walk a mole across a meadow.
+        // Before the stroll and at the same priority, so it claims MOVE first
+        // when a colony is full: strolling would otherwise walk the mole in
+        // circles on the very ground it needs to leave. Below tempting and
+        // breeding on purpose - an offered worm is a reason to stay.
+        this.goalSelector.addGoal(4, new MoleEmigrateGoal(this, 1.0));
         this.surfaceStroll = new MoleSurfaceStrollGoal(this, 0.8);
         this.goalSelector.addGoal(4, this.surfaceStroll);
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));

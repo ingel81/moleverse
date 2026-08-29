@@ -101,6 +101,22 @@ public final class BurrowLog {
                 who(mole), where(a), where(b), run.getSerializedName(), run.depth(), points);
     }
 
+    /** A mole gave up on a full colony and set off. */
+    public static void emigrating(Entity mole, BlockPos target) {
+        if (off()) {
+            return;
+        }
+        LOG.info("{} leaving a full colony, heading for {}", who(mole), where(target));
+    }
+
+    /** And arrived somewhere a colony may be founded. */
+    public static void settled(Entity mole, BlockPos where) {
+        if (off()) {
+            return;
+        }
+        LOG.info("{} reached free ground at {}", who(mole), where(where));
+    }
+
     /** A colony came into being. Rare enough that every one of them is worth a line. */
     public static void colonyFounded(Entity mole, int id, BlockPos core) {
         if (off()) {

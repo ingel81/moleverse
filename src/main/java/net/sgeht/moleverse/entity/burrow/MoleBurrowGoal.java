@@ -102,6 +102,16 @@ public class MoleBurrowGoal extends Goal {
     private boolean arrivedCleanly;
 
     /**
+     * Set when the colony is full and there was nowhere left to dig, read by
+     * {@link MoleEmigrateGoal}.
+     *
+     * <p>Deliberately not cleared by {@link #stop()}: the wish comes out of a
+     * refusal, which never starts the goal in the first place, and it has to
+     * outlive the attempt that produced it.</p>
+     */
+    private boolean leaveWish;
+
+    /**
      * When the mole first found itself on ground it cannot dig, or -1 while it
      * stands on soil. Only the span matters: a mole that walks off a path block
      * clears this long before the rescue in {@link #canUse()} looks at it.
@@ -293,6 +303,8 @@ public class MoleBurrowGoal extends Goal {
         }
 
         this.refusing = false;
+        // A trip was found after all, so there is nothing to leave for.
+        this.leaveWish = false;
         this.fleeing = fleeingNow;
         this.report("digging in, entry " + (this.entryIsNew ? "fresh" : "reused")
                 + ", exit " + (this.exitIsNew ? "fresh" : "reused")
@@ -482,6 +494,15 @@ public class MoleBurrowGoal extends Goal {
         this.report("refused - " + why);
     }
 
+    /** True while this mole has been told its colony is full and has nowhere to dig. */
+    public boolean wantsToLeave() {
+        return this.leaveWish;
+    }
+
+    public void clearLeaveWish() {
+        this.leaveWish = false;
+    }
+
     /** Answers a forced attempt at most once. Does nothing when nobody asked. */
     private void report(String what) {
         Consumer<String> waiting = this.forcedBy;
@@ -580,11 +601,21 @@ public class MoleBurrowGoal extends Goal {
             }
 
             if (this.exit == null) {
+                // A colony that has run out of members as well as out of room is
+                // finished growing, and a mole that stays is a mole that refuses
+                // every three seconds for the rest of the world's life. That is
+                // the one refusal worth leaving over.
+                boolean full = network.mounds().size() >= BurrowConstants.NETWORK_MAX_MEMBERS;
+                if (full) {
+                    this.leaveWish = true;
+                }
+
                 // The crowded case: mounds all around but every one of them too
                 // close to be worth the trip, and no room for a fifth anywhere in
                 // reach. He wanders off and tries again from somewhere else,
                 // which is what spreads a territory out instead of stacking it.
-                this.refuseAndMoveOn((crowded ? "density cap reached: "
+                this.refuseAndMoveOn((full ? "colony is full: "
+                        : crowded ? "density cap reached: "
                         : !mayDig ? "still resting from the last new hole: "
                         : "no valid exit: ")
                         + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE

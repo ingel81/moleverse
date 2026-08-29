@@ -99,6 +99,23 @@ public class ColonyStore extends SavedData {
         return colony;
     }
 
+    /**
+     * Whether a colony could be founded here - which is also what an emigrating
+     * mole is walking towards.
+     *
+     * <p>Only the separation is asked. It is larger than
+     * {@link BurrowConstants#COLONY_EXTENT}, so a position inside somebody's box
+     * fails it anyway.</p>
+     */
+    public boolean isFreeGround(BlockPos pos) {
+        for (Colony colony : this.colonies) {
+            if (Colony.separation(colony.core(), pos) < BurrowConstants.COLONY_MIN_SEPARATION) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public List<Colony> all() {
         return List.copyOf(this.colonies);
     }
