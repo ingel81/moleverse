@@ -1,0 +1,335 @@
+package net.sgeht.moleverse.dimension;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+import net.sgeht.moleverse.entity.burrow.BurrowLink;
+import net.sgeht.moleverse.registry.ModBlocks;
+
+/**
+ * Turns a run a mole dug in the overworld into a corridor you can walk down in
+ * the burrow.
+ *
+ * <p>The burrow is solid {@link ModBlocks#DEEP_EARTH} until something clears it,
+ * so carving is the whole of world generation down there: the shape of the place
+ * is the history of the colony above it, not a noise function. A
+ * {@link BurrowLink} is the unit, because a link is what gets walked again and
+ * again - see the reasoning in that record.</p>
+ *
+ * <p><strong>Interpolation, not stamping.</strong> A link stores a waypoint every
+ * {@code WAYPOINT_SPACING} overworld blocks, which
+ * {@link BurrowGeometry#SCALE} turns into eight blocks down here. Carving one box
+ * per waypoint would give a string of disconnected rooms, so every segment is
+ * walked in single-block steps and a cross-section is cleared at each.</p>
+ *
+ * <p><strong>The cross-section is a disc, not a square.</strong> A square stamp
+ * swept along a diagonal comes out half again as wide as the same stamp swept
+ * along an axis; a disc is the same width in every direction, which is what
+ * {@link BurrowGeometry#CORRIDOR_WIDTH} is supposed to mean. It also matches the
+ * chambers, and a round tunnel reads as dug rather than as mined.</p>
+ *
+ * <p><strong>Nothing but deep earth and air is ever replaced.</strong> Corridors
+ * get furniture - roots, mycelium, whatever a later feature puts there - and a
+ * second mole travelling the same run must not eat it. That also makes carving
+ * idempotent, so {@link #alreadyCarved} is an optimisation rather than a
+ * correctness requirement.</p>
+ */
+public final class CorridorCarver {
+
+    /**
+     * Sideways reach from the centre line. An odd
+     * {@link BurrowGeometry#CORRIDOR_WIDTH} has a centre block, and this is what
+     * is left either side of it.
+     */
+    private static final int CORRIDOR_RADIUS = (BurrowGeometry.CORRIDOR_WIDTH - 1) / 2;
+
+    /**
+     * How many of a chamber's topmost layers curve inwards.
+     *
+     * <p>Without it a chamber is a drilled silo: full radius right up to a flat
+     * lid. The dome costs three lines and is the difference between a room and a
+     * shaft.</p>
+     */
+    private static final int CHAMBER_DOME = 4;
+
+    /**
+     * Clients yes, neighbour updates no.
+     *
+     * <p>{@code UPDATE_ALL} is {@code UPDATE_NEIGHBORS | UPDATE_CLIENTS}, and the
+     * neighbour half is the expensive one: a run is on the order of a thousand
+     * block changes, and each would fire a redstone-style update into six
+     * neighbours that are themselves deep earth or air and have nothing to say.
+     * Dropping it costs nothing, because the burrow has no block whose state
+     * depends on what is next to it.</p>
+     *
+     * <p>{@code UPDATE_CLIENTS} stays because a corridor may be carved while a
+     * player is standing in the burrow. It is affordable at this volume:
+     * {@code ChunkHolder.blockChanged} collects the positions into one set per
+     * 16-block section and the server flushes them as a single section-update
+     * packet at the end of the tick, so a thousand changes are a handful of
+     * packets, not a thousand.</p>
+     *
+     * <p>{@code UPDATE_KNOWN_SHAPE} suppresses the shape updates that
+     * {@code Level.markAndNotifyBlock} otherwise runs against all six neighbours
+     * of every changed block - six per carved block, none of which can change
+     * anything here. It is also the safer flag next to decorated corridors: a
+     * fitting hanging in a corridor we carve past is not asked whether it still
+     * has support, so re-carving cannot knock it down.</p>
+     */
+    private static final int CARVE_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
+    private CorridorCarver() {
+    }
+
+    /**
+     * Carves the whole run.
+     *
+     * <p>The two ends are corridor, not chamber - {@link #carveChamber} is a
+     * separate call because several links meet at one mound and the chamber there
+     * belongs to the mound, not to any one of them.</p>
+     *
+     * <p>Positions in unloaded chunks are skipped, never forced. Reading or
+     * writing one would make {@code Level.getChunkAt} load and if necessary
+     * generate that chunk on the spot, which is how carving a long run turns into
+     * a server freeze. A partly carved run is not a problem: carving is
+     * idempotent, so the next visit finishes what this one could not reach.</p>
+     *
+     * @return how many blocks were actually cleared - positions that were already
+     *         air do not count
+     */
+    public static int carve(ServerLevel burrow, BurrowLink link) {
+        int points = link.pointCount();
+        if (points < 2) {
+            return 0;
+        }
+
+        // Seeded from the link rather than from the level, so a run that is
+        // carved again after its corridor was somehow lost gets the same
+        // decoration back. The burrow is a place people learn their way around;
+        // furniture that moves between visits would undo that.
+        RandomSource random = RandomSource.create(seedOf(link));
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+
+        BlockPos previous = burrowPoint(link, 0);
+        int cleared = corridorAt(burrow, previous, cursor);
+
+        for (int i = 1; i < points; i++) {
+            BlockPos next = burrowPoint(link, i);
+            cleared += carveSegment(burrow, previous, next, cursor);
+
+            BlockPos centre = midpoint(previous, next);
+            if (burrow.isLoaded(centre)) {
+                TunnelDecorator.decorate(burrow, centre, random);
+            }
+
+            previous = next;
+        }
+
+        return cleared;
+    }
+
+    /**
+     * Carves a chamber where a mound maps to.
+     *
+     * <p>{@code burrowCentre} is already in burrow space and names the
+     * <em>walking surface</em> at the middle of the chamber, the same convention
+     * a corridor centre follows: the block below it is floor and is left alone.
+     * The caller decides where that is, because the height a mound maps to and
+     * the height the runs leaving it were dug at are not the same number.</p>
+     *
+     * <p>No decoration is applied. Corridor furniture in a chamber would fight
+     * with whatever the mound's own way out puts there.</p>
+     *
+     * @return how many blocks were actually cleared
+     */
+    public static int carveChamber(ServerLevel burrow, BlockPos burrowCentre) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int cleared = 0;
+
+        for (int layer = 0; layer < BurrowGeometry.CHAMBER_HEIGHT; layer++) {
+            cleared += disc(burrow, burrowCentre.getX(), burrowCentre.getY() + layer, burrowCentre.getZ(),
+                    chamberRadiusAt(layer), cursor);
+        }
+
+        return cleared;
+    }
+
+    /**
+     * True when this run already exists down there, so a second visit digs
+     * nothing.
+     *
+     * <p>One block is read: the walking surface at the middle waypoint. Cheap on
+     * purpose - this is asked before every trip, whereas carving happens once.
+     * The midpoint is the honest sample because both ends of a run touch a
+     * chamber and would read as carved as soon as the mound had one.</p>
+     *
+     * <p>An unloaded midpoint answers false. "Nothing there" and "nothing loaded
+     * there" are indistinguishable from here, and {@link #carve} skips unloaded
+     * positions anyway, so guessing wrong costs a walk over blocks that are
+     * already air.</p>
+     */
+    public static boolean alreadyCarved(ServerLevel burrow, BurrowLink link) {
+        if (link.pointCount() < 1) {
+            return false;
+        }
+
+        BlockPos centre = burrowPoint(link, link.pointCount() / 2);
+        return burrow.isLoaded(centre) && burrow.getBlockState(centre).isAir();
+    }
+
+    // --- carving --------------------------------------------------------------
+
+    /**
+     * Clears the line between two waypoints.
+     *
+     * <p>Steps of one block: the cross-section is five wide, so a coarser step
+     * would still join up, but only for as long as nobody lowers
+     * {@link BurrowGeometry#CORRIDOR_WIDTH}. A unit step is gapless whatever the
+     * width, and the cost is reads on blocks that are already air rather than
+     * extra writes.</p>
+     *
+     * <p>Starts at step 1. Step 0 is the waypoint the caller has already cleared,
+     * either as the start of the run or as the end of the previous segment.</p>
+     */
+    private static int carveSegment(ServerLevel burrow, BlockPos from, BlockPos to,
+            BlockPos.MutableBlockPos cursor) {
+        double dx = to.getX() - from.getX();
+        double dy = to.getY() - from.getY();
+        double dz = to.getZ() - from.getZ();
+        int steps = Math.max(1, Mth.ceil(Math.sqrt(dx * dx + dy * dy + dz * dz)));
+
+        int cleared = 0;
+        for (int step = 1; step <= steps; step++) {
+            double t = (double) step / steps;
+            cleared += corridorAt(burrow,
+                    from.getX() + (int) Math.round(dx * t),
+                    from.getY() + (int) Math.round(dy * t),
+                    from.getZ() + (int) Math.round(dz * t),
+                    cursor);
+        }
+        return cleared;
+    }
+
+    private static int corridorAt(ServerLevel burrow, BlockPos centre, BlockPos.MutableBlockPos cursor) {
+        return corridorAt(burrow, centre.getX(), centre.getY(), centre.getZ(), cursor);
+    }
+
+    /**
+     * One cross-section of corridor.
+     *
+     * <p>{@code y} is the walking surface and the carve goes upwards from it, so
+     * {@code y - 1} is never touched. That is the floor, and leaving it rather
+     * than filling it is deliberate: two runs one level apart lie four blocks
+     * apart down here against a corridor height of six, so their corridors
+     * genuinely overlap, and writing deep earth into a floor would be writing it
+     * into the middle of somebody else's corridor.</p>
+     */
+    private static int corridorAt(ServerLevel burrow, int x, int y, int z, BlockPos.MutableBlockPos cursor) {
+        int cleared = 0;
+        for (int layer = 0; layer < BurrowGeometry.CORRIDOR_HEIGHT; layer++) {
+            cleared += disc(burrow, x, y + layer, z, CORRIDOR_RADIUS, cursor);
+        }
+        return cleared;
+    }
+
+    /** One horizontal layer, round. */
+    private static int disc(ServerLevel burrow, int centreX, int y, int centreZ, int radius,
+            BlockPos.MutableBlockPos cursor) {
+        int cleared = 0;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (!withinDisc(dx, dz, radius)) {
+                    continue;
+                }
+                cursor.set(centreX + dx, y, centreZ + dz);
+                if (clear(burrow, cursor)) {
+                    cleared++;
+                }
+            }
+        }
+        return cleared;
+    }
+
+    /**
+     * The integer disc: {@code radius * radius + radius} rather than
+     * {@code radius * radius} is the squared radius of a circle drawn half a block
+     * outside the ring, which is what keeps the diagonals from being cut back to a
+     * plus sign.
+     */
+    private static boolean withinDisc(int dx, int dz, int radius) {
+        return dx * dx + dz * dz <= radius * radius + radius;
+    }
+
+    /**
+     * Clears one block, if this is a block we are allowed to clear.
+     *
+     * <p>The cursor is reused across the whole run and handed straight to
+     * {@code setBlock}, which is safe because NeoForge patches {@code Level}
+     * to call {@code immutable()} on the position before storing it anywhere.</p>
+     *
+     * @return true when something was actually turned into air
+     */
+    private static boolean clear(ServerLevel burrow, BlockPos.MutableBlockPos pos) {
+        if (!burrow.isInsideBuildHeight(pos.getY()) || !burrow.isLoaded(pos)) {
+            return false;
+        }
+
+        BlockState state = burrow.getBlockState(pos);
+        if (state.isAir() || !state.is(ModBlocks.DEEP_EARTH.get())) {
+            return false;
+        }
+
+        return burrow.setBlock(pos, Blocks.AIR.defaultBlockState(), CARVE_FLAGS);
+    }
+
+    // --- geometry -------------------------------------------------------------
+
+    /**
+     * Radius of chamber layer {@code layer}, counted up from the floor.
+     *
+     * <p>A quarter ellipse over the top {@link #CHAMBER_DOME} layers. The
+     * parameter stops short of 1 so the apex keeps a usable radius instead of
+     * closing to a single column - a dome, not a spire.</p>
+     */
+    private static int chamberRadiusAt(int layer) {
+        int flat = BurrowGeometry.CHAMBER_HEIGHT - CHAMBER_DOME;
+        if (layer < flat) {
+            return BurrowGeometry.CHAMBER_RADIUS;
+        }
+
+        double t = Mth.clamp((layer - flat + 1.0) / (CHAMBER_DOME + 1.0), 0.0, 1.0);
+        return (int) Math.round(BurrowGeometry.CHAMBER_RADIUS * Math.sqrt(1.0 - t * t));
+    }
+
+    /** Waypoint {@code index} of the run, in burrow space. */
+    private static BlockPos burrowPoint(BurrowLink link, int index) {
+        Vec3 overworld = link.pointAt(index);
+        return BurrowGeometry.toBurrow(BlockPos.containing(overworld));
+    }
+
+    private static BlockPos midpoint(BlockPos a, BlockPos b) {
+        return new BlockPos(
+                Math.floorDiv(a.getX() + b.getX(), 2),
+                Math.floorDiv(a.getY() + b.getY(), 2),
+                Math.floorDiv(a.getZ() + b.getZ(), 2));
+    }
+
+    /**
+     * A seed that depends on the run and on nothing else.
+     *
+     * <p>Sorted, so it does not matter which end was dug first. A link has no
+     * direction of its own - {@code BurrowLink.joins} makes the same point - and a
+     * seed that flipped with the storage order would decorate the same corridor
+     * differently after a reshape.</p>
+     */
+    private static long seedOf(BurrowLink link) {
+        long first = Math.min(link.a().asLong(), link.b().asLong());
+        long second = Math.max(link.a().asLong(), link.b().asLong());
+        return first * 31L + second;
+    }
+}
