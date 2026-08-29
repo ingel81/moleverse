@@ -239,21 +239,46 @@ public final class BurrowConstants {
      * How far apart two colony cores have to be, measured as a square.
      *
      * <p>It has to exceed twice {@link #COLONY_EXTENT}, so that boxes never
-     * touch and a position belongs to at most one colony. Only just, though: the
-     * surplus is a band around every colony where no new one may start, and a
-     * mole living in that band refuses every trip and does nothing but pace. At
-     * 144 the band is sixteen blocks wide; at 192 it would be a hundred and
-     * twenty-eight, which is a lot of meadow where moles never dig.</p>
+     * touch and a position belongs to at most one colony. The surplus is a band
+     * around every colony where no new one may start: 224 minus 128 leaves
+     * ninety-six blocks of ground that belongs to nobody.</p>
+     *
+     * <p><strong>This was 144, and the reason it was that low no longer
+     * holds.</strong> The old note here argued against a wider band because a
+     * mole standing in one refused every trip and did nothing but pace - which
+     * was true, and measured: a soak run caught one mole managing a hundred and
+     * fourteen refusals over seven and a half minutes. That was a missing exit,
+     * not an argument for a narrow band. Since {@link MoleEmigrateGoal} covers
+     * the band as well as a full colony, a mole that lands in one leaves after a
+     * single refusal, and the width costs a walk instead of a stall.</p>
+     *
+     * <p>Widened on purpose: at 144 two colonies could sit with sixteen blocks
+     * between their territories, which reads as one colony with a seam rather
+     * than as two.</p>
      */
-    public static final int COLONY_MIN_SEPARATION = 144;
+    public static final int COLONY_MIN_SEPARATION = 224;
 
     /**
      * How far past {@link #COLONY_MIN_SEPARATION} an emigrating mole aims.
      *
-     * <p>Aiming exactly at the separation would land it on the first spot that
-     * qualifies, where the next colony's band begins - and every colony would
-     * end up ringed by neighbours at the minimum distance. The margin makes new
-     * ground look like ground rather than like a fence.</p>
+     * <p><strong>A walking target, not a guarantee about where colonies end
+     * up.</strong> An earlier note here claimed the margin stopped colonies from
+     * ringing each other at the minimum distance. It does not, and two soak runs
+     * measured the gap exactly: aiming at 272, founding at 224, short by 48 -
+     * this constant - every time.</p>
+     *
+     * <p>The reason is structural rather than a slip. Arrival is not what
+     * decides where a colony starts; {@link ColonyStore#found} does, it accepts
+     * at {@link #COLONY_MIN_SEPARATION}, and {@link MoleBurrowGoal} asks it every
+     * {@link #REFUSAL_RETRY_DELAY} while the mole is still walking. The lower
+     * threshold is checked far more often than the higher one, so it always wins.
+     * Colony spacing is therefore set by {@link #COLONY_MIN_SEPARATION} alone -
+     * which is the constant to change when spacing is what is wanted.</p>
+     *
+     * <p>What the margin still buys is the walk itself: a target beyond the line
+     * keeps the mole moving outward instead of stopping on it. See
+     * {@link ColonyStore#hasSettlingRoom} for why stopping on the line was worse
+     * than walking past it.</p>
      */
     public static final int EMIGRATION_MARGIN = 48;
 
