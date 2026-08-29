@@ -3,8 +3,8 @@
   "textures": {
     "side": "moleverse:block/exchange_station",
     "top": "moleverse:block/exchange_station_top",
-    "bottom": "moleverse:block/exchange_station",
-    "earth": "moleverse:block/exchange_station",
+    "bottom": "moleverse:block/deep_earth",
+    "earth": "moleverse:block/deep_earth",
     "particle": "moleverse:block/exchange_station"
   },
   "elements": [

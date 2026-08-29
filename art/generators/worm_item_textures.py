@@ -62,7 +62,7 @@ PALE_CORE = (0xF1, 0xF8, 0xD4)
 
 #: The halo. Alpha rather than a lighter opaque colour, because the item is
 #: drawn over whatever inventory slot it happens to sit in.
-HALO = GLOW[2] + (96,)
+HALO = GLOW[2] + (80,)
 
 
 def stamp(spine, girth):
@@ -126,9 +126,14 @@ def glow_worm():
 
     body = stamp(SPINE, girth)
     band = band_pixels(SPINE, girth) & body
+    # The halo comes off the lit edge and the band only, not off the whole
+    # outline. A ring all the way round - including the shaded underside -
+    # reads as a sticker with a green border; light coming off the parts that
+    # are actually bright reads as light.
+    sources = silhouette(body, wrap=False)[0] | band
     halo = {
         (x + ox, y + oy)
-        for x, y in body
+        for x, y in sources
         for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1))
     } - body
     halo = {(x, y) for x, y in halo if 0 <= x < SIZE and 0 <= y < SIZE}

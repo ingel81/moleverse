@@ -487,18 +487,17 @@ def exchange_station(rng):
         x += width
 
     for y0 in (0, 4, 12):  # the lid rim and the two hoops
-        for y in (y0, y0 + 1):
-            for x in range(SIZE):
-                c.put(x, y, ROOT[2] if y == y0 + 1 else ROOT[3])
+        for x in range(SIZE):
+            c.put(x, y0, ROOT[3])
+            c.put(x, y0 + 1, ROOT[2])
+        if y0:  # pegs holding the hoop down, on the hoop rather than the stave
+            for x in (3, 11):
+                c.put(x, y0, WOOD[5])
 
-    for y in (8, 9):  # the slot
-        for x in range(3, 13):
-            c.put(x, y, WOOD[0] if y == 8 else SOIL[0])
-    for x in range(3, 13):
-        c.put(x, 10, WOOD[4])  # the lip below it, catching the light
-
-    for x in (4, 8, 12):
-        c.put(x, 7, WOOD[5])  # pegs
+    for x in range(3, 13):  # the slot a mole pushes worms through
+        c.put(x, 8, WOOD[0])
+        c.put(x, 9, SOIL[0])
+        c.put(x, 10, WOOD[3])  # the lip below it, catching what light there is
     return c
 
 

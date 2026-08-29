@@ -79,11 +79,15 @@ public final class ModModelProvider extends ModelProvider {
 
         // Three states, one model for now: whether the trap is set, sprung or
         // empty shows in the chat and the sound rather than in the wood.
-        MultiVariant trap = BlockModelGenerators.variant(new Variant(Moleverse.id("block/mole_trap")));
-        PropertyDispatch.C1<MultiVariant, MoleTrap.State> traps = PropertyDispatch.initial(MoleTrap.STATE);
-        for (MoleTrap.State state : MoleTrap.State.values()) {
-            traps = traps.select(state, trap);
-        }
+        // One model per state: whether a trap is set, sprung or empty is the one
+        // thing a player must be able to read from across a meadow.
+        PropertyDispatch.C1<MultiVariant, MoleTrap.State> traps = PropertyDispatch.initial(MoleTrap.STATE)
+                .select(MoleTrap.State.EMPTY,
+                        BlockModelGenerators.variant(new Variant(Moleverse.id("block/mole_trap"))))
+                .select(MoleTrap.State.BAITED,
+                        BlockModelGenerators.variant(new Variant(Moleverse.id("block/mole_trap_baited"))))
+                .select(MoleTrap.State.FULL,
+                        BlockModelGenerators.variant(new Variant(Moleverse.id("block/mole_trap_full"))));
         blockModels.blockStateOutput.accept(
                 MultiVariantGenerator.dispatch(ModBlocks.MOLE_TRAP.get()).with(traps));
         blockModels.registerSimpleItemModel(ModBlocks.MOLE_TRAP.get(), Moleverse.id("block/mole_trap"));

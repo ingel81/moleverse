@@ -2,7 +2,6 @@
   "parent": "minecraft:block/block",
   "textures": {
     "0": "moleverse:block/colony_board",
-    "1": "moleverse:block/colony_board",
     "particle": "moleverse:block/colony_board"
   },
   "elements": [
@@ -11,12 +10,12 @@
       "from": [7, 0, 7],
       "to": [9, 8, 9],
       "faces": {
-        "north": {"uv": [0, 0, 2, 8], "texture": "#0"},
-        "east": {"uv": [0, 0, 2, 8], "texture": "#0"},
-        "south": {"uv": [0, 0, 2, 8], "texture": "#0"},
-        "west": {"uv": [0, 0, 2, 8], "texture": "#0"},
-        "up": {"uv": [0, 0, 2, 2], "texture": "#0"},
-        "down": {"uv": [0, 0, 2, 2], "texture": "#0"}
+        "north": {"uv": [12, 0, 14, 8], "texture": "#0"},
+        "east": {"uv": [12, 0, 14, 8], "texture": "#0"},
+        "south": {"uv": [12, 0, 14, 8], "texture": "#0"},
+        "west": {"uv": [12, 0, 14, 8], "texture": "#0"},
+        "up": {"uv": [14, 0, 16, 2], "texture": "#0"},
+        "down": {"uv": [14, 0, 16, 2], "texture": "#0"}
       }
     },
     {
@@ -24,12 +23,12 @@
       "from": [3, 7, 7],
       "to": [13, 15, 9],
       "faces": {
-        "north": {"uv": [0, 0, 10, 8], "texture": "#1"},
-        "east": {"uv": [0, 0, 2, 8], "texture": "#1"},
-        "south": {"uv": [0, 0, 10, 8], "texture": "#1"},
-        "west": {"uv": [0, 0, 2, 8], "texture": "#1"},
-        "up": {"uv": [0, 0, 10, 2], "texture": "#1"},
-        "down": {"uv": [0, 0, 10, 2], "texture": "#1"}
+        "north": {"uv": [0, 0, 10, 8], "texture": "#0"},
+        "east": {"uv": [10, 0, 12, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 10, 8], "texture": "#0"},
+        "west": {"uv": [10, 0, 12, 8], "texture": "#0"},
+        "up": {"uv": [0, 8, 10, 10], "texture": "#0"},
+        "down": {"uv": [0, 8, 10, 10], "texture": "#0"}
       }
     }
   ]

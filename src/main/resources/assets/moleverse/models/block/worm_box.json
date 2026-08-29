@@ -2,8 +2,8 @@
   "parent": "minecraft:block/block",
   "textures": {
     "planks": "moleverse:block/worm_box",
-    "frame": "moleverse:block/worm_box",
-    "earth": "moleverse:block/worm_box",
+    "frame": "moleverse:block/root_beam",
+    "earth": "moleverse:block/worm_larder",
     "particle": "moleverse:block/worm_box"
   },
   "elements": [

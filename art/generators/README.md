@@ -18,6 +18,9 @@ than editing a hundred boxes, and a second variant costs nothing.
 | `cull_buried_faces.py` | Strips faces that are completely buried inside a finished model. |
 | `great_worm_shape.py` | The great worm's segments, from a girth curve, plus the UV packing. Prints JSON. |
 | `great_worm_texture.py` | `great_worm.png` - the worm's skin, one texel at a time. Writes the shipped file. |
+| `texture_kit.py` | The shared ramps and the drawing primitives. Produces nothing on its own. |
+| `burrow_textures.py` | The ten block textures for the burrow and the dimension. Writes the shipped files. |
+| `worm_item_textures.py` | `fat_worm.png` and `glow_worm.png`. Writes the shipped files. |
 
 ## The great worm
 
@@ -32,6 +35,38 @@ band instead of a stack of slightly offset ones.
 older texture scripts, which write into `art/` and leave a second copy to be
 synced by hand. There is no reason for the working copy - the script is the
 source, and two PNGs that have to agree eventually will not.
+
+## The burrow blocks
+
+Nine blocks borrowed vanilla textures - rooted dirt, mangrove roots,
+shroomlight, barrel staves, spruce planks - and together they made the mod look
+like a pile of other mods. `burrow_textures.py` replaces them, and
+`texture_kit.py` is what keeps them a set: one ramp for soil, one for root, one
+for worked wood, one for mycelium, and no generator gets its own colours.
+
+Two things were learnt the hard way and are worth not relearning.
+
+**Curves, not walks.** Roots and mycelium threads started as random walks. A
+4-connected walk can only turn ninety degrees, and however gently it is steered
+the eye reads the corners: every attempt came out as a maze. They are sine
+curves now (`texture_kit.wave`), with the frequency a whole number of periods
+across the tile so the curve leaves one edge exactly where it re-enters the
+opposite one.
+
+**Structure above one pixel.** Per-pixel noise on its own fizzes at 16 px. The
+soil textures get their body from clods - two and three pixel patches with a
+shadow along the lower edge - exactly as `mound_texture.py` builds the mound.
+
+`shrink_post`, `grunting_post` and `colony_board` are atlases: a post, its
+collar and its end grain are different things at different sizes, and a 16x16
+image holds all of them side by side. The `ATLASES` table in the script is the
+authority on the layout and the `uv` arrays in the model JSONs are copies of it.
+`python art/generators/burrow_textures.py --atlas` prints the rectangles so the
+two can be checked against each other after either side moves.
+
+`--preview PNG` writes a magnified contact sheet with the tiling textures shown
+as a 3x3 wall. Judge them there, not at 16 px: a seam or a motif that repeats
+too obviously is invisible on the single tile and glaring on a corridor wall.
 
 ## How the shapes are made
 
