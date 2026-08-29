@@ -78,6 +78,32 @@ GLOW = [
     (0xEE, 0xF9, 0xC8),
 ]
 
+#: The animal itself, read off `textures/entity/mole.png`. Nearly neutral but
+#: not quite - it is a blue-grey, and matching that matters more than the exact
+#: values, because a warm grey next to the soil ramps looks like dirty wood.
+MOLE = [
+    (0x2A, 0x27, 0x2C),
+    (0x36, 0x33, 0x3B),
+    (0x45, 0x41, 0x4B),
+    (0x51, 0x4D, 0x57),
+    (0x68, 0x64, 0x6E),
+]
+
+#: The mole's only two spots of colour, both sampled from the entity texture.
+#: They are what makes a dark grey blob read as an animal at item size.
+MOLE_NOSE = (0xBE, 0x7E, 0x86)
+MOLE_CLAW = (0xDA, 0xD0, 0xBA)
+
+#: Sackcloth: root fibre beaten out and woven. Paler and a good deal less red
+#: than `WOOD`, on purpose - a sack in the plank colours reads as a crate.
+SACK = [
+    (0x3B, 0x31, 0x22),
+    (0x5B, 0x4E, 0x36),
+    (0x7C, 0x6D, 0x4C),
+    (0x9A, 0x8A, 0x64),
+    (0xB8, 0xA9, 0x83),
+]
+
 #: Straight out of `earthworm_texture.py`.
 WORM_RIM = (0x5E, 0x30, 0x35)
 WORM_BODY = (0x9E, 0x5C, 0x5C)
@@ -164,6 +190,13 @@ def walk(rng, start, length, direction, wander=0.3, min_run=1):
         y += dy
         path.append((x, y))
     return path
+
+
+def smooth(u):
+    """Smoothstep, clamped. Used to shape profiles, never to blend colours -
+    the ramps are stepped and stay stepped."""
+    u = max(0.0, min(1.0, u))
+    return u * u * (3.0 - 2.0 * u)
 
 
 def wave(centre, amplitude, frequency, phase, axis="x", size=SIZE):
