@@ -7,6 +7,8 @@ excludes `*.bbmodel` from the jar, and this directory is not part of any source 
 |---|---|
 | `mole.bbmodel` | Blockbench project for the mole. Format: Java "Modded Entity". |
 | `mole_blockbench_export.java.txt` | Raw Blockbench export, kept for reference only. |
+| `great_worm.bbmodel` | Blockbench project for the great worm. Same format. |
+| `great_worm_blockbench_export.java.txt` | Raw Blockbench export, kept for reference only. |
 
 The matching texture lives at
 `src/main/resources/assets/moleverse/textures/entity/mole.png` (64x32) and *is*
