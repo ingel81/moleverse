@@ -197,3 +197,28 @@ and proves nothing about whether a corridor is walkable.
   -60, a mountain at 140 - and carving at a height that does not exist fails
   silently and buries whoever arrives. The test caught the clamp's own side
   effect one run later, which is the whole argument for having tests at all.
+
+### Third wave - something to meet down there
+
+* **The great worm.** The earthworm that is farmed above ground, at the scale
+  the burrow is built to: about four blocks long, harmless, slow, and it crawls
+  with a wave running down its segments rather than walking. Its shape came out
+  of a generator script under `art/generators/` rather than being placed cuboid
+  by cuboid - the same reasoning as the mole's animations.
+* **The burrow stocks itself.** Spawning is not a biome rule, because the burrow
+  borrows a vanilla biome and anything added there would appear in the overworld
+  too. Instead a chamber that a player opens gets up to two worms in the
+  corridors around it, counted first so that walking in and out ten times does
+  not produce ten worms.
+
+### Still open when this stopped
+
+* The review agent set on the burrow never reported. The two things it was meant
+  to catch were checked by hand instead: carving happens before the teleport and
+  the destination chunks are loaded first, and the way back refuses when the
+  mound above has gone. The rest of its list is unchecked.
+* Textures are vanilla stand-ins - `deep_earth` borrows rooted dirt, the lantern
+  borrows the vanilla lantern, the larder borrows muddy mangrove roots. Only the
+  great worm has a texture of its own.
+* Nothing sets the price of a shrink post. It is placed from the creative tab,
+  because what the way in should cost is the one design question still open.
