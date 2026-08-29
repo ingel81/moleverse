@@ -14,6 +14,7 @@ import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.PreparedMoleMound;
 import net.sgeht.moleverse.block.ShaftLantern;
 import net.sgeht.moleverse.block.ShrinkPost;
+import net.sgeht.moleverse.block.WormBox;
 import net.sgeht.moleverse.block.WormLarder;
 
 /** Every block of this mod. */
@@ -162,6 +163,18 @@ public final class ModBlocks {
                     .strength(0.8F)
                     .sound(SoundType.WOOD)
                     .noOcclusion());
+
+    /**
+     * Soil and plant matter in, worms out, slowly. A relative of the composter,
+     * and the only source of the mod's currency that does not involve breaking
+     * somebody's molehill.
+     */
+    public static final DeferredBlock<WormBox> WORM_BOX = REGISTER.registerBlock(
+            "worm_box",
+            WormBox::new,
+            props -> props.mapColor(MapColor.WOOD)
+                    .strength(0.7F)
+                    .sound(SoundType.WOOD));
 
     private ModBlocks() {
     }

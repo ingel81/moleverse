@@ -43,6 +43,9 @@ public final class ModLanguageProvider extends LanguageProvider {
         addBlock(ModBlocks.DEEP_EARTH, "Deep Earth");
         addItem(ModItems.MOLE_PELT, "Mole Pelt");
         addItem(ModItems.EARTHWORM, "Earthworm");
+        addItem(ModItems.FAT_WORM, "Fat Worm");
+        addItem(ModItems.GLOW_WORM, "Glow Worm");
+        addBlock(ModBlocks.WORM_BOX, "Worm Box");
         addItem(ModItems.MOLE_SPAWN_EGG, "Mole Spawn Egg");
         addItem(ModItems.GREAT_WORM_SPAWN_EGG, "Great Worm Spawn Egg");
         addEntityType(ModEntities.MOLE, "Mole");

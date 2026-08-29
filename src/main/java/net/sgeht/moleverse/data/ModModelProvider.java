@@ -19,6 +19,7 @@ import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.GruntingPost;
 import net.sgeht.moleverse.block.ShaftLantern;
+import net.sgeht.moleverse.block.WormBox;
 import net.sgeht.moleverse.registry.ModBlocks;
 import net.sgeht.moleverse.registry.ModItems;
 
@@ -63,11 +64,24 @@ public final class ModModelProvider extends ModelProvider {
                                 .select(true, post)));
         blockModels.registerSimpleItemModel(ModBlocks.GRUNTING_POST.get(),
                 Moleverse.id("block/grunting_post"));
+
+        // Nine fill levels, one model. What the box holds shows in the sound and
+        // in what it gives back, not yet in the lid.
+        MultiVariant box = BlockModelGenerators.variant(new Variant(Moleverse.id("block/worm_box")));
+        PropertyDispatch.C1<MultiVariant, Integer> fill = PropertyDispatch.initial(WormBox.FILL);
+        for (int level = 0; level <= 8; level++) {
+            fill = fill.select(level, box);
+        }
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.WORM_BOX.get()).with(fill));
+        blockModels.registerSimpleItemModel(ModBlocks.WORM_BOX.get(), Moleverse.id("block/worm_box"));
         handModelled(blockModels, ModBlocks.GLOW_MYCELIUM.get(), "glow_mycelium");
         handModelled(blockModels, ModBlocks.SHRINK_POST.get(), "shrink_post");
 
         itemModels.generateFlatItem(ModItems.MOLE_PELT.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.FAT_WORM.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.GLOW_WORM.get(), ModelTemplates.FLAT_ITEM);
 
         // Spawn eggs carry their own texture in this version rather than the
         // old two-layer tinted template, so a flat item model is all it needs.

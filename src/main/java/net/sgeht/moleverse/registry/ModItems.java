@@ -39,6 +39,21 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> WORM_LARDER =
             REGISTER.registerSimpleBlockItem(ModBlocks.WORM_LARDER);
 
+    /**
+     * The second worm. Better mole food, and what buys the better finds once the
+     * exchange station grades its input.
+     */
+    public static final DeferredItem<Item> FAT_WORM = REGISTER.registerSimpleItem("fat_worm");
+
+    /**
+     * The third, and the bridge to what lights the burrow: the same fungal glow
+     * that grows on a corridor ceiling.
+     */
+    public static final DeferredItem<Item> GLOW_WORM = REGISTER.registerSimpleItem("glow_worm");
+
+    public static final DeferredItem<BlockItem> WORM_BOX =
+            REGISTER.registerSimpleBlockItem(ModBlocks.WORM_BOX);
+
     public static final DeferredItem<BlockItem> EXCHANGE_STATION =
             REGISTER.registerSimpleBlockItem(ModBlocks.EXCHANGE_STATION);
 

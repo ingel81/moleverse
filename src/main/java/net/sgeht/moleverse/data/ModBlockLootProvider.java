@@ -44,6 +44,7 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
         dropSelf(ModBlocks.EXCHANGE_STATION.get());
         dropSelf(ModBlocks.GRUNTING_POST.get());
         dropSelf(ModBlocks.COLONY_BOARD.get());
+        dropSelf(ModBlocks.WORM_BOX.get());
 
         // The point of a larder is what is in it. Two to four worms, and the
         // block itself does not come back - it is a hole in a wall, not a crate.
