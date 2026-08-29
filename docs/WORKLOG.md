@@ -108,8 +108,19 @@ line of it has been seen working.
    like a molehill - travel to it, open its shaft, come up out of it. If the
    point-of-interest type is wrong it will be invisible to every colony, and that
    is the most likely thing to be broken here.
-4. Dispersal needs a full colony and two moles, so it will not show up by
+4. A shaft lantern on that prepared mound: it should light up as a mole surfaces
+   and go dark five seconds later, and pop off when the mound under it is broken.
+   Its model uses the vanilla lantern texture as a placeholder and will look
+   rough.
+5. Dispersal needs a full colony and two moles, so it will not show up by
    accident. `/moleverse colony list` before and after.
+
+### Also built
+
+* **The attachment socket** (`ATTACHMENTS.md` phase B) and a **shaft lantern**
+  on it - a lamp that lights while a mole is coming out of the mound beneath it.
+  It is the smallest thing that proves the socket, and it doubles as the first
+  way to watch a colony work without a debug overlay.
 
 ### Deliberately not done
 

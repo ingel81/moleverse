@@ -67,14 +67,24 @@ recipe or interaction that turns one into the other. Nothing sits on it yet.
 exactly as before - travels to it, opens its shaft, comes up out of it - and
 `/moleverse colony links` still shows runs ending there.
 
-### Phase B - the socket
+### Phase B - the socket *(built, untested)*
 
-An abstract attachment block: support rules, breaking with its support, and the
-`moleSurfaced` hook wired into the burrow goal. Plus one trivial attachment to
-prove the mechanism, whose only job is to be visible and to react.
+`MoundAttachment` carries the three things every fitting needs: a prepared mound
+underneath, falling away when that mound goes, and `moleSurfaced`, which the
+burrow goal calls at the position it is standing on anyway.
+
+The first fitting is a **shaft lantern**: it lights when a mole comes up out of
+the mound below it and goes dark again after five seconds, timed by a scheduled
+tick rather than a block entity. Deliberately the smallest thing that proves the
+socket - no inventory, no state worth losing.
+
+It also answers a real problem rather than only a technical one. A network is
+invisible: the mounds sit quiet and the animals are underground. A row of
+lanterns makes a colony something you can watch working from a distance, at
+night, without a debug overlay.
 
 **Done when** an attachment placed on a prepared mound reacts to a mole coming
-up, and pops off when the mound below it goes.
+up, and pops off when the mound below it goes. Neither has been seen yet.
 
 ### Phase C - the first real attachment
 
