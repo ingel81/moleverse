@@ -161,6 +161,22 @@ shows why, and the log names the refusal.
 Write a link on arrival, read it back after a reload, prune it lazily when either
 endpoint is no longer a mound. A dump command prints what is stored.
 
+Two rules that have to hold from the first version, because retrofitting either
+one means rewriting every link ever stored:
+
+* **The depth field exists before depths do.** Phase 3 fills it; phase 2 writes
+  the feeding level into it. A store built without the field would have to be
+  migrated a week later.
+* **A link keeps the depth it was dug at.** When a pair of mounds already has a
+  link, a later trip between them reuses its level instead of rolling a new one.
+  Otherwise the same pair alternates between two depths and the burrow below
+  gets two corridors where the colony has one run.
+
+Only a clean arrival is recorded. A trip that ended early - open air, water, the
+edge of the ticking area, a landing the roof guard sent back to the entry - has
+geometry that does not describe any run, and writing it down would put corridors
+below where no mole ever went.
+
 **Done when** links survive a world reload, a broken mound removes its links on
 the next query, and the dump matches what the overlay draws.
 
@@ -186,11 +202,48 @@ colony on a hillside mirrors as a burrow that climbs.
 separate instead of merging, and a colony on sloping ground produces a profile
 that follows the slope.
 
+### Phase 3b - showing what is stored
+
+Depth levels break the network overlay, and the fix belongs in the same stretch
+of work. The overlay rebuilds routes on the client from the heightmap, which
+works only while every route uses the one depth the client knows. A main run at
+four would still be drawn at two: a line that no longer proves anything.
+
+The truth lives in the link store, which is server side. Rather than sending it
+over the wire - a payload, a stream codec, a client cache, and a trigger, since
+`/moleverse network` is a client command the server never hears about - the
+stored links are drawn the way colony borders already are: server-side
+particles, one colour per depth level, on a toggle. The client overlay keeps its
+own reconstruction for what it is good for, and its javadoc has to say plainly
+that it assumes the feeding depth.
+
+**Done when** a main run and a feeding run between the same pair of mounds are
+distinguishable at a glance, and the drawn line matches the dump.
+
 ### Phase 4 - dispersal
 
 A saturated colony sends a mole out to found a new core beyond
 `COLONY_MIN_SEPARATION`. The trap-and-release path the player will use later is
 the same code with a different trigger.
+
+Saturation is not a new query: `MoundNetwork.build` already stops at
+`NETWORK_MAX_MEMBERS`, so a network that comes back full, together with a fresh
+site search that found nothing, is the signal. Anything else - a crowded patch, a
+cooldown - is a refusal, not a reason to leave home.
+
+Emigration is a walk, not a trip. Burrowing cannot carry a mole a hundred and
+fifty blocks: a route is bounded by `NEW_TRAVEL_MAX` and by the entity-ticking
+area, and a mole that leaves that area mid-trip surfaces where it stopped. So the
+mole walks, in stages, towards a bearing away from its core, and stops when it
+stands on ground no colony owns and no core is within reach. Then it is an
+ordinary mole again, and the first hole it digs founds a colony by the rule that
+already exists.
+
+Two things this must not do: strip a colony of its last mole, and send every mole
+of a colony at once. A cooldown after each attempt covers the second; the first
+needs the colony to have more than one animal in it, which today it usually does
+not - so in practice this fires rarely, and that is the honest state of it until
+moles multiply on their own.
 
 **Done when** a saturated colony produces a second one at distance, both persist,
 and neither adopts the other's mounds.
