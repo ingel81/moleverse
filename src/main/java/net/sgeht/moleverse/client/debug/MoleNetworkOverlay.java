@@ -17,6 +17,7 @@ import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.entity.Mole;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
+import net.sgeht.moleverse.entity.burrow.BurrowRoute;
 import net.sgeht.moleverse.registry.ModBlocks;
 
 /**
@@ -77,7 +78,15 @@ public final class MoleNetworkOverlay {
     private record Mound(BlockPos pos, boolean open) {
     }
 
-    private record Link(Vec3 from, Vec3 to) {
+    /**
+     * A tunnel between two mounds, as a chain of points rather than a straight
+     * line. Built on the client with {@link BurrowRoute#between}, the same call
+     * the server makes: the route is derived from the heightmap and the
+     * heightmap is the same on both sides, so this is where the mole really
+     * travels, at the depth it really travels at - not a line drawn between two
+     * holes.
+     */
+    private record Link(List<Vec3> path) {
     }
 
     /**
@@ -142,7 +151,7 @@ public final class MoleNetworkOverlay {
     private static void rebuild(ClientLevel level, Vec3 around) {
         int radius = scanRadius();
         mounds = findMounds(level, BlockPos.containing(around), radius);
-        links = linkMounds(mounds);
+        links = linkMounds(level, mounds);
         trails = extendTrails(level, around, radius);
     }
 
@@ -184,7 +193,7 @@ public final class MoleNetworkOverlay {
      * following them, and seeing which pairs are joined is what explains a mole
      * surfacing sixty blocks away from a network it reached in four hops.
      */
-    private static List<Link> linkMounds(List<Mound> found) {
+    private static List<Link> linkMounds(ClientLevel level, List<Mound> found) {
         List<Link> drawn = new ArrayList<>();
         int maxSqr = BurrowConstants.NETWORK_LINK_MAX * BurrowConstants.NETWORK_LINK_MAX;
 
@@ -193,7 +202,7 @@ public final class MoleNetworkOverlay {
             for (int j = i + 1; j < found.size(); j++) {
                 BlockPos b = found.get(j).pos();
                 if (a.distSqr(b) <= maxSqr) {
-                    drawn.add(new Link(a.getCenter(), b.getCenter()));
+                    drawn.add(new Link(BurrowRoute.between(level, a, b).waypoints()));
                 }
             }
         }
@@ -237,7 +246,10 @@ public final class MoleNetworkOverlay {
         }
 
         for (Link link : links) {
-            Gizmos.line(link.from(), link.to(), LINK_COLOUR, LINK_WIDTH).setAlwaysOnTop();
+            List<Vec3> path = link.path();
+            for (int i = 1; i < path.size(); i++) {
+                Gizmos.line(path.get(i - 1), path.get(i), LINK_COLOUR, LINK_WIDTH).setAlwaysOnTop();
+            }
         }
 
         for (List<Vec3> trail : trails.values()) {

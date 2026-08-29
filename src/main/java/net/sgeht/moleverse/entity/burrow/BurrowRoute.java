@@ -1,12 +1,14 @@
 package net.sgeht.moleverse.entity.burrow;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -79,7 +81,7 @@ public final class BurrowRoute {
      * its own local depth, following the terrain rather than whatever is
      * standing on it.
      */
-    public static BurrowRoute between(ServerLevel level, BlockPos entry, BlockPos exit) {
+    public static BurrowRoute between(LevelReader level, BlockPos entry, BlockPos exit) {
         Vec3 from = entry.getCenter();
         Vec3 to = exit.getCenter();
         double horizontal = Math.hypot(to.x - from.x, to.z - from.z);
@@ -119,7 +121,7 @@ public final class BurrowRoute {
     }
 
     /** Centre of the block {@link BurrowConstants#ROUTE_DEPTH} below the ground surface. */
-    private static double depthAt(ServerLevel level, double x, double z) {
+    private static double depthAt(LevelReader level, double x, double z) {
         BlockPos surface = MoundNetwork.surfaceAt(level, (int) Math.floor(x), (int) Math.floor(z));
         // getHeight returns the first free spot, so the topmost solid block is
         // one below it and the route runs ROUTE_DEPTH blocks under that.
@@ -138,6 +140,15 @@ public final class BurrowRoute {
 
     public double length() {
         return this.totalLength;
+    }
+
+    /**
+     * The route as a chain of points. Read by the debug overlay, which builds
+     * the same route on the client to draw where a tunnel actually runs - the
+     * heightmap it needs is the same one on both sides.
+     */
+    public List<Vec3> waypoints() {
+        return Collections.unmodifiableList(this.waypoints);
     }
 
     public int waypointCount() {
