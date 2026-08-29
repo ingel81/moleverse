@@ -1,0 +1,39 @@
+# Scenario: is a prepared mound still chosen as an exit?
+#
+# Reported from play: a molehill shored up with loose soil stopped being
+# travelled to. Moles stood seven blocks away and ignored it while working
+# other mounds in the same colony.
+#
+# The selection path reads as block-agnostic - MoundNetwork.chooseExit filters
+# on colony membership, distance and isPositionEntityTicking, nothing else, and
+# the mounds come from a point-of-interest query whose type covers both blocks.
+# So either the reading is wrong or the point of interest does not survive the
+# block being replaced. This decides it.
+#
+# The fixture is symmetric on purpose. Two mounds, same distance from the mole,
+# same everything except that one is shored up. Over an hour of game time a
+# fair chooser hits both. If the log names only one, the difference is the block.
+#
+#   SEARCH_RADIUS 16   - both mounds must be inside it to be scanned at all
+#   MIN_EXIT_DISTANCE 12 - and outside it, or neither can serve as an exit
+#
+# 14 satisfies both, so each mound is a legal exit from the other.
+
+forceload add -128 -128 127 127
+
+say SOAK-CHECK empty-world
+moleverse colony list
+
+# Plain mound west, shored-up mound east, the mole in the middle.
+setblock -14 -3 0 moleverse:mole_mound
+setblock 14 -3 0 moleverse:prepared_mole_mound
+say SOAK-MARK mounds-placed
+
+summon moleverse:mole 0 -2 0
+say SOAK-MARK setup-done
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK finished
+moleverse colony list
+moleverse colony links
