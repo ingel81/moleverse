@@ -1,0 +1,82 @@
+# Scenario: two moles, one colony, left alone for a long time.
+#
+# This is the situation a fresh world actually produces. The spawn entry says
+# minCount 1, maxCount 2, and NaturalSpawner offsets each group member by at
+# most five blocks in x and z, so a pair standing together is the common case
+# rather than an accident. What they then do to each other has never been
+# watched.
+#
+# The questions it is here to answer:
+#   - do two moles sharing one colony cooperate, or get in each other's way?
+#   - does a colony ever reach NETWORK_MAX_MEMBERS, which is 32?
+#   - and if it does, does the full-colony half of MoleEmigrateGoal fire? That
+#     path needs `hasCompany` to find a second grown mole at home, which is
+#     exactly what a pair provides and a lone mole never can. It has never run.
+
+# 2048 chunks, x -512..511 and z -256..255. Bigger than the colony scenario
+# because a dispersal aims COLONY_MIN_SEPARATION + EMIGRATION_MARGIN away - 272
+# blocks - in whatever direction the bearing lands, and all of it has to be
+# ticking or the run measures the edge of the square.
+forceload add -512 -256 -257 -1
+forceload add -256 -256 -1 -1
+forceload add 0 -256 255 -1
+forceload add 256 -256 511 -1
+forceload add -512 0 -257 255
+forceload add -256 0 -1 255
+forceload add 0 0 255 255
+forceload add 256 0 511 255
+
+# Nothing may exist yet. Believe nothing below unless this says so.
+say SOAK-CHECK empty-world
+moleverse colony list
+
+# Three blocks apart, which is what a spawn group looks like.
+summon moleverse:mole 0 -2 0
+summon moleverse:mole 3 -2 0
+
+say SOAK-MARK setup-done
+
+# Eight hours of game time, looked at every hour. A colony took two hours to
+# reach twenty mounds with six moles spread over three colonies, so a pair
+# working one colony needs the long form to have any chance of filling it.
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-1
+moleverse colony list
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-2
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-3
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-4
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-5
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-6
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK hour-7
+moleverse colony links
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK finished
+moleverse colony list
+moleverse colony links
