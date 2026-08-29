@@ -16,6 +16,7 @@ import net.sgeht.moleverse.debug.BurrowCommand;
 import net.sgeht.moleverse.debug.ColonyOutline;
 import net.sgeht.moleverse.debug.MoleServerCommand;
 import net.sgeht.moleverse.debug.TunnelView;
+import net.sgeht.moleverse.dimension.BurrowRescue;
 
 /**
  * Handlers on the NeoForge game bus, meaning runtime events rather than the
@@ -50,6 +51,9 @@ public final class MoleverseGameEvents {
         if (event.getLevel() instanceof ServerLevel level) {
             ColonyOutline.tick(level);
             TunnelView.tick(level);
+            // Only ever does anything for a player who is in the burrow with no
+            // door left, which is nearly never.
+            BurrowRescue.tick(level);
         }
     }
 
