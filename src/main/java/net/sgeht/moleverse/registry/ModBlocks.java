@@ -11,6 +11,7 @@ import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.PreparedMoleMound;
 import net.sgeht.moleverse.block.ShaftLantern;
 import net.sgeht.moleverse.block.ShrinkPost;
+import net.sgeht.moleverse.block.WormLarder;
 
 /** Every block of this mod. */
 public final class ModBlocks {
@@ -113,6 +114,21 @@ public final class ModBlocks {
                     .sound(SoundType.ROOTED_DIRT)
                     .noOcclusion()
                     .lightLevel(state -> 5));
+
+    /**
+     * A colony's cache of worms, in the wall of a chamber.
+     *
+     * <p>Moles really do this: a bite paralyses an earthworm without killing it,
+     * and a larder of them keeps through a winter. At the scale of the burrow
+     * that is not a detail, it is furniture - and breaking one gives the worms
+     * back, which is the only thing down there worth carrying home so far.</p>
+     */
+    public static final DeferredBlock<WormLarder> WORM_LARDER = REGISTER.registerBlock(
+            "worm_larder",
+            WormLarder::new,
+            props -> props.mapColor(MapColor.DIRT)
+                    .strength(0.6F)
+                    .sound(SoundType.SLIME_BLOCK));
 
     private ModBlocks() {
     }

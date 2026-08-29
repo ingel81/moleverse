@@ -36,6 +36,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> SHRINK_POST =
             REGISTER.registerSimpleBlockItem(ModBlocks.SHRINK_POST);
 
+    public static final DeferredItem<BlockItem> WORM_LARDER =
+            REGISTER.registerSimpleBlockItem(ModBlocks.WORM_LARDER);
+
     public static final DeferredItem<BlockItem> ROOT_BEAM =
             REGISTER.registerSimpleBlockItem(ModBlocks.ROOT_BEAM);
 

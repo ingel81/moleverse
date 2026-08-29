@@ -48,6 +48,7 @@ public final class ModModelProvider extends ModelProvider {
         // template would insist on a texture of our own that does not exist yet.
         handModelled(blockModels, ModBlocks.DEEP_EARTH.get(), "deep_earth");
         handModelled(blockModels, ModBlocks.ROOT_BEAM.get(), "root_beam");
+        handModelled(blockModels, ModBlocks.WORM_LARDER.get(), "worm_larder");
         handModelled(blockModels, ModBlocks.GLOW_MYCELIUM.get(), "glow_mycelium");
         handModelled(blockModels, ModBlocks.SHRINK_POST.get(), "shrink_post");
 

@@ -32,6 +32,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.PREPARED_MOLE_MOUND.get());
                         output.accept(ModItems.SHAFT_LANTERN.get());
                         output.accept(ModItems.SHRINK_POST.get());
+                        output.accept(ModItems.WORM_LARDER.get());
                         output.accept(ModItems.ROOT_BEAM.get());
                         output.accept(ModItems.GLOW_MYCELIUM.get());
                         output.accept(ModItems.DEEP_EARTH.get());

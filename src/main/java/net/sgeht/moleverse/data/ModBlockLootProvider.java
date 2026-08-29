@@ -7,6 +7,7 @@ import net.minecraft.data.loot.BlockLootSubProvider;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
@@ -40,6 +41,13 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
         dropSelf(ModBlocks.SHAFT_LANTERN.get());
         dropSelf(ModBlocks.SHRINK_POST.get());
         dropSelf(ModBlocks.ROOT_BEAM.get());
+
+        // The point of a larder is what is in it. Two to four worms, and the
+        // block itself does not come back - it is a hole in a wall, not a crate.
+        add(ModBlocks.WORM_LARDER.get(), block -> LootTable.lootTable()
+                .withPool(applyExplosionCondition(block, LootPool.lootPool()
+                        .setRolls(UniformGenerator.between(2.0F, 4.0F))
+                        .add(LootItem.lootTableItem(ModItems.EARTHWORM.get())))));
         dropSelf(ModBlocks.GLOW_MYCELIUM.get());
         // Unbreakable in play; the table exists so the generator does not complain
         // about a block it knows nothing about.
