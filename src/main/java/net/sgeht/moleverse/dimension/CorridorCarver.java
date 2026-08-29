@@ -1,5 +1,8 @@
 package net.sgeht.moleverse.dimension;
 
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
@@ -38,6 +41,13 @@ import net.sgeht.moleverse.registry.ModBlocks;
  * second mole travelling the same run must not eat it. That also makes carving
  * idempotent, so {@link #alreadyCarved} is an optimisation rather than a
  * correctness requirement.</p>
+ *
+ * <p><strong>A ledge is earth that was never carved.</strong> The galleries and
+ * staircases in a chamber are not built; they are what is left when the room is
+ * cut around them. That is the only form a fitting can take here that survives
+ * the rule above - anything written into the air would be a block a later carve
+ * is forbidden to touch, and so would hang in the middle of the next, deeper
+ * chamber.</p>
  */
 public final class CorridorCarver {
 
@@ -56,6 +66,45 @@ public final class CorridorCarver {
      * shaft.</p>
      */
     private static final int CHAMBER_DOME = 4;
+
+    /**
+     * Innermost radius the ledge may occupy. Everything closer to the axis stays
+     * clear.
+     *
+     * <p>The way home is on that axis: the transit post stands on the chamber's
+     * centre block and the deepest run leaves through the same column, a corridor
+     * {@link #CORRIDOR_RADIUS} wide. Two blocks of margin on top of that means no
+     * step can ever be cut across it.</p>
+     */
+    private static final int LEDGE_INNER_RADIUS = CORRIDOR_RADIUS + 2;
+
+    /**
+     * Blocks of air a gallery needs above its floor.
+     *
+     * <p>Two, because that is how tall a player is. It is not a taste setting: a
+     * gallery with one block of headroom is a crawlspace you cannot walk along,
+     * which defeats the entire point of cutting it.</p>
+     */
+    private static final int GALLERY_HEADROOM = 2;
+
+    /**
+     * How many staircases join one gallery to the next.
+     *
+     * <p>Two, opposite each other. A run leaving the chamber carves through
+     * whatever stands in its way, so a single staircase can be cut in half by a
+     * corridor that happens to point at it. Two cannot both be lost: a corridor
+     * is one straight line and they are 180 degrees apart.</p>
+     */
+    private static final int STAIR_BANDS = 2;
+
+    /** Blocks of arc per step. Slightly over one, so a step is a step and not a ladder. */
+    private static final double STAIR_STEP_ARC = 1.2;
+
+    /** The radius the staircase's arc is measured at - the middle of the ledge. */
+    private static final double STAIR_MID_RADIUS = (LEDGE_INNER_RADIUS + BurrowGeometry.CHAMBER_RADIUS) / 2.0;
+
+    /** A chamber nobody has told about its runs. Carves the bare room. */
+    private static final int[] NO_MOUTHS = new int[0];
 
     /**
      * Clients yes, neighbour updates no.
@@ -134,7 +183,20 @@ public final class CorridorCarver {
     }
 
     /**
-     * Carves a chamber where a mound maps to.
+     * Carves a bare chamber, with no way up to anything above its floor.
+     *
+     * <p>Only correct where every run leaving the mound was dug at the same
+     * level. Prefer {@link #carveChamber(ServerLevel, BlockPos, int[])} and hand
+     * it the heights - a chamber whose runs sit at different levels needs
+     * galleries, or the shallower runs are doorways nobody can reach.</p>
+     */
+    public static int carveChamber(ServerLevel burrow, BlockPos burrowCentre) {
+        return carveChamber(burrow, burrowCentre, NO_MOUTHS);
+    }
+
+    /**
+     * Carves a chamber where a mound maps to, with a gallery at every height a
+     * run leaves from.
      *
      * <p>{@code burrowCentre} is already in burrow space and names the
      * <em>walking surface</em> at the middle of the chamber, the same convention
@@ -142,18 +204,63 @@ public final class CorridorCarver {
      * The caller decides where that is, because the height a mound maps to and
      * the height the runs leaving it were dug at are not the same number.</p>
      *
+     * <p><strong>Why the heights have to be passed in.</strong> A run leaves the
+     * chamber through the centre column at its own height and exits the wall in
+     * whatever direction the far mound lies. Inside the chamber that mouth has no
+     * floor under it - the room already cleared it - so it can only be entered
+     * from the wall, at that height, <em>in that direction</em>. A spiral ramp is
+     * at one height per direction and so misses almost every mouth; a terrace at
+     * every height would need the radius to be at least the height, and six is
+     * not nine. A full ring has no direction at all, which is why the galleries
+     * are rings. Rings need to know which heights matter, and the carver cannot
+     * see the runs from here.</p>
+     *
+     * <p>Each ring doubles as the corridor's own floor: a gallery at height
+     * {@code L} is solid at layer {@code L - 1}, which is exactly the layer a
+     * corridor at {@code L} never carves. The two meet without either knowing
+     * about the other. Rings also survive being cut - a corridor crossing one
+     * takes a five block bite out of it and you walk round the other way, where
+     * the same bite would have severed a spiral.</p>
+     *
      * <p>No decoration is applied. Corridor furniture in a chamber would fight
      * with whatever the mound's own way out puts there.</p>
      *
+     * @param mouthLayers heights above the chamber floor, in burrow blocks, at
+     *                    which runs leave - {@code burrowY(runEnd) -
+     *                    burrowY(deepestRunEnd)} for each run touching the mound.
+     *                    The floor itself is implied; values outside the chamber
+     *                    and repeats are ignored, so an unsorted array with a zero
+     *                    in it is fine.
      * @return how many blocks were actually cleared
      */
-    public static int carveChamber(ServerLevel burrow, BlockPos burrowCentre) {
+    public static int carveChamber(ServerLevel burrow, BlockPos burrowCentre, int[] mouthLayers) {
+        int[] levels = galleryLevels(mouthLayers);
+        int highest = levels[levels.length - 1];
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         int cleared = 0;
 
+        // The room. Everything the ledge keeps is simply never carved, so the
+        // galleries and their staircases are deep earth that was left standing
+        // rather than blocks written into the air - which is what keeps them
+        // clear of clear()'s rule that only deep earth may be replaced, and what
+        // lets a later, deeper chamber absorb an older ledge instead of leaving
+        // it hanging.
         for (int layer = 0; layer < BurrowGeometry.CHAMBER_HEIGHT; layer++) {
-            cleared += disc(burrow, burrowCentre.getX(), burrowCentre.getY() + layer, burrowCentre.getZ(),
-                    chamberRadiusAt(layer), cursor);
+            cleared += chamberLayer(burrow, burrowCentre, layer, 0, chamberRadiusAt(layer), levels, highest, cursor);
+        }
+
+        // Headroom over each gallery. A mouth at the top of the chamber puts its
+        // gallery against the ceiling, so this cuts the last layer or two into
+        // the roof - out at the ledge only, where the dome had already pulled
+        // back. A gallery you cannot stand up in is not a gallery.
+        for (int level : levels) {
+            if (level == 0) {
+                continue;
+            }
+            for (int layer = level; layer < level + GALLERY_HEADROOM; layer++) {
+                cleared += chamberLayer(burrow, burrowCentre, layer, LEDGE_INNER_RADIUS,
+                        BurrowGeometry.CHAMBER_RADIUS, levels, highest, cursor);
+            }
         }
 
         return cleared;
@@ -288,6 +395,95 @@ public final class CorridorCarver {
     }
 
     // --- geometry -------------------------------------------------------------
+
+    /**
+     * One layer of a chamber, minus whatever the ledge keeps solid.
+     *
+     * <p>{@code innerRadius} is what the headroom pass uses to stay out of the
+     * middle of the room: widening the ceiling over the whole floor would turn
+     * the dome into a lid, and only the ring itself needs the air.</p>
+     */
+    private static int chamberLayer(ServerLevel burrow, BlockPos centre, int layer, int innerRadius,
+            int outerRadius, int[] levels, int highestLevel, BlockPos.MutableBlockPos cursor) {
+        int cleared = 0;
+        for (int dx = -outerRadius; dx <= outerRadius; dx++) {
+            for (int dz = -outerRadius; dz <= outerRadius; dz++) {
+                if (!withinDisc(dx, dz, outerRadius) || dx * dx + dz * dz < innerRadius * innerRadius) {
+                    continue;
+                }
+                if (isLedge(layer, dx, dz, levels, highestLevel)) {
+                    continue;
+                }
+                cursor.set(centre.getX() + dx, centre.getY() + layer, centre.getZ() + dz);
+                if (clear(burrow, cursor)) {
+                    cleared++;
+                }
+            }
+        }
+        return cleared;
+    }
+
+    /** Whether this block of the chamber is ledge, and so is left standing. */
+    private static boolean isLedge(int layer, int dx, int dz, int[] levels, int highestLevel) {
+        if (dx * dx + dz * dz < LEDGE_INNER_RADIUS * LEDGE_INNER_RADIUS) {
+            return false;
+        }
+
+        for (int level : levels) {
+            if (level > 0 && layer == level - 1) {
+                return true;
+            }
+        }
+
+        return isStairStep(layer, dx, dz, highestLevel);
+    }
+
+    /**
+     * The staircases, as a wedge of earth against the wall that grows one block
+     * taller every step round.
+     *
+     * <p>A wedge rather than a run of floating slabs, so the thing is visibly
+     * built out of the floor, and so a corridor cutting through it takes a notch
+     * rather than dropping a step into mid-air.</p>
+     *
+     * <p>The stair climbs past every gallery on its way up and merges into each
+     * one where the two heights coincide, which they do by construction: the
+     * step whose top is at layer {@code L - 1} is the same layer as the ring of
+     * the gallery at {@code L}.</p>
+     */
+    private static boolean isStairStep(int layer, int dx, int dz, int highestLevel) {
+        if (highestLevel <= 0) {
+            return false;
+        }
+
+        double slot = STAIR_STEP_ARC / STAIR_MID_RADIUS;
+        double angle = Math.atan2(dz, dx);
+
+        for (int band = 0; band < STAIR_BANDS; band++) {
+            double base = band * (2.0 * Math.PI / STAIR_BANDS);
+            int step = (int) (Mth.positiveModulo(angle - base, 2.0 * Math.PI) / slot) + 1;
+            if (step <= highestLevel && layer < step) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The heights that get a gallery: the floor, plus every mouth height inside
+     * the chamber, sorted and without repeats.
+     *
+     * <p>The floor is always in the list so the staircase has something to start
+     * from, and so the array is never empty for the caller that asks for its
+     * highest entry.</p>
+     */
+    private static int[] galleryLevels(int[] mouthLayers) {
+        return IntStream.concat(IntStream.of(0), Arrays.stream(mouthLayers))
+                .filter(level -> level >= 0 && level < BurrowGeometry.CHAMBER_HEIGHT)
+                .distinct()
+                .sorted()
+                .toArray();
+    }
 
     /**
      * Radius of chamber layer {@code layer}, counted up from the floor.

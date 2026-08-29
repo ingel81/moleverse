@@ -9,8 +9,10 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.sgeht.moleverse.client.BurrowAmbience;
 import net.sgeht.moleverse.client.debug.MoleDebugCommand;
 import net.sgeht.moleverse.client.debug.MoleNetworkOverlay;
 import net.sgeht.moleverse.client.render.MoleModel;
@@ -65,5 +67,20 @@ public final class MoleverseClient {
     @SubscribeEvent
     static void onClientTick(ClientTickEvent.Post event) {
         MoleNetworkOverlay.tick();
+        BurrowAmbience.tick();
+    }
+
+    /**
+     * The burrow's own fog. Both hooks return immediately anywhere else, so this
+     * costs one dimension check per frame in the overworld.
+     */
+    @SubscribeEvent
+    static void onComputeFogColour(ViewportEvent.ComputeFogColor event) {
+        BurrowAmbience.onComputeFogColour(event);
+    }
+
+    @SubscribeEvent
+    static void onRenderFog(ViewportEvent.RenderFog event) {
+        BurrowAmbience.onRenderFog(event);
     }
 }
