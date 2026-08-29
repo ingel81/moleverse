@@ -144,3 +144,36 @@ watched doing any of it.
   from the creative tab.
 * No recipe, no cost, and no texture of their own. The lantern borrows the
   vanilla one.
+
+## 2026-08-29, deep night - the burrow exists
+
+Six modules, six commits, each one droppable without the others - see
+`BURROW.md` for the map and the seams.
+
+* **The dimension.** `moleverse:burrow`, solid `deep_earth` from bedrock to 256,
+  flat generator with no features, no lakes and no structures. Dark, ceilinged,
+  no skylight, coordinate scale 1 because the mod does its own mapping. The
+  dimension type in 1.21.11 uses an `attributes` block rather than the flat field
+  list every older example shows - worth knowing before touching that file.
+* **Geometry.** Four times horizontally, two vertically. The vertical is smaller
+  on purpose: runs follow the ground, and at the full scale a three block dip
+  becomes a twelve block drop.
+* **Carving.** A stored run becomes a 5x6 corridor along its waypoints,
+  interpolated so it comes out as a tunnel rather than a string of boxes. Only
+  ever eats `deep_earth` or air, skips unloaded chunks, and answers "already
+  carved" by looking rather than by remembering.
+* **Decoration.** Everything is decided from the block position, so a corridor
+  keeps its character between visits. Pools of glow mycelium with dark stretches
+  between them, root beams to duck under, gravel and clay underfoot, a seep every
+  sixty blocks, mineral speckle in the walls.
+* **Transit.** A shrink post on a prepared mound takes a player down, carving the
+  chamber and the runs that meet there; the same post in the chamber brings them
+  back, and refuses when the mound above has been broken.
+* **Preparing a mound** is now a player action: right-click a molehill with loose
+  soil. It was creative-tab only before.
+* **`/moleverse burrow enter | leave | carve | info`** for getting down there
+  without playing for it.
+
+Verified: compiles, data generators run, and `runGameTestServer` boots with the
+dimension registered and no parse errors - which proves the datapack is correct
+and proves nothing about whether a corridor is walkable.
