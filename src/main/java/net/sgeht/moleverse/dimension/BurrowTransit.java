@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
+import net.sgeht.moleverse.entity.burrow.Colony;
 import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
 import net.sgeht.moleverse.registry.ModBlocks;
@@ -102,7 +103,8 @@ public final class BurrowTransit {
         // The runs that end at this mound, so a player arrives at a junction
         // rather than in a sealed room. Everything further along is dug as they
         // walk into it.
-        List<BurrowLink> runs = runsAt(ColonyStore.get(overworld), mound);
+        ColonyStore store = ColonyStore.get(overworld);
+        List<BurrowLink> runs = runsAt(store, mound);
         int floor = chamberFloor(mound, runs);
         BlockPos chamber = BurrowGeometry.toBurrow(mound).atY(floor);
 
@@ -112,12 +114,21 @@ public final class BurrowTransit {
             CorridorCarver.carve(burrow, run);
         }
 
+        // Both of these want the colony's whole set of runs, not the handful
+        // that end at this mound. Two runs sharing an endpoint cross only at
+        // that endpoint, and both cutters reject a crossing that sits on a
+        // mound - so fed the local list they would find nothing, every time,
+        // silently. Only runs that have been carved are worth cutting through,
+        // but carving is idempotent and the next visit finishes the rest.
+        Colony colony = store.at(mound);
+        List<BurrowLink> colonyRuns = colony == null ? runs : store.linksOf(colony.id());
+
         // Feeding runs and main runs lie four blocks apart down here, one over
         // the other. Without this the burrow is two networks that never meet.
-        LevelShafts.connect(burrow, runs);
+        LevelShafts.connect(burrow, colonyRuns);
         // And where two runs of the same level meet, a place rather than an
         // overlap: the difference between a network you can navigate and a maze.
-        Junctions.cut(burrow, runs);
+        Junctions.cut(burrow, colonyRuns);
 
         placeWayOut(burrow, chamber);
         BurrowLife.stock(burrow, chamber);

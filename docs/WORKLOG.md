@@ -265,3 +265,13 @@ and proves nothing about whether a corridor is walkable.
 * Caught by the tests again: the carving test asserted the old global width and
   failed on a change that was correct. It now measures against the profile of the
   level it carved.
+
+### One bug found by an agent reading somebody else's wiring
+
+`BurrowTransit.enter` handed the shaft and junction cutters only the runs that
+end at the mound being entered. Two runs sharing an endpoint cross only at that
+endpoint, and both cutters reject a crossing sitting on a mound - so from that
+call site neither could ever cut anything, silently, forever. Both now get the
+colony's whole set of runs, and the debug carve command cuts through what it
+carves. Worth remembering as a shape: a filter that is correct for one caller and
+fatal for another, with no error either way.

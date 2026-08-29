@@ -15,6 +15,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.sgeht.moleverse.dimension.BurrowGeometry;
 import net.sgeht.moleverse.dimension.CorridorCarver;
+import net.sgeht.moleverse.dimension.Junctions;
+import net.sgeht.moleverse.dimension.LevelShafts;
 import net.sgeht.moleverse.dimension.ModDimensions;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
 import net.sgeht.moleverse.entity.burrow.Colony;
@@ -117,6 +119,8 @@ public final class BurrowCommand {
             carved += CorridorCarver.carve(burrow, link);
         }
         carved += CorridorCarver.carveChamber(burrow, BurrowGeometry.toBurrow(colony.core()));
+        LevelShafts.connect(burrow, links);
+        Junctions.cut(burrow, links);
 
         int total = carved;
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
