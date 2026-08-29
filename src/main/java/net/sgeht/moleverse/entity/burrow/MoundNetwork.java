@@ -21,6 +21,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiRecord;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
@@ -191,11 +192,16 @@ public final class MoundNetwork {
      *         holds none that is far enough away and reachable
      */
     public static @Nullable BlockPos chooseExit(ServerLevel level, RandomSource random, Members network,
-            BlockPos entry, @Nullable Vec3 threat) {
+            BlockPos entry, Colony colony, @Nullable Vec3 threat) {
         int minSqr = BurrowConstants.MIN_EXIT_DISTANCE * BurrowConstants.MIN_EXIT_DISTANCE;
         List<BlockPos> candidates = new ArrayList<>();
         for (BlockPos mound : network.mounds()) {
-            if (!mound.equals(entry) && mound.distSqr(entry) >= minSqr && canTravelTo(level, mound)) {
+            // The chain search knows nothing of colonies: it follows whatever
+            // mounds lie within reach of one another, and near a border that
+            // reaches into the neighbour. Travelling there would make one colony
+            // out of two, which is the drift this whole boundary is against.
+            if (!mound.equals(entry) && colony.contains(mound)
+                    && mound.distSqr(entry) >= minSqr && canTravelTo(level, mound)) {
                 candidates.add(mound);
             }
         }
@@ -256,7 +262,7 @@ public final class MoundNetwork {
      *         {@link BurrowConstants#FRESH_SITE_ATTEMPTS} unusable tries
      */
     public static @Nullable BlockPos findFreshSite(ServerLevel level, RandomSource random, BlockPos entry,
-            @Nullable Vec3 threat) {
+            Colony colony, @Nullable Vec3 threat) {
         // Straight away from the threat, with the search spread over the half
         // circle centred on that bearing.
         double awayFrom = threat == null ? 0.0
@@ -281,7 +287,10 @@ public final class MoundNetwork {
                 continue;
             }
 
-            if (hasRoomForMound(level, site) && MoleMound.canPlaceAt(level, site)) {
+            // Outside the colony's ground the site is simply not on offer. This
+            // is the one place a colony could grow beyond its box, because every
+            // other exit is picked from mounds that already exist.
+            if (colony.contains(site) && hasRoomForMound(level, site) && MoleMound.canPlaceAt(level, site)) {
                 return site;
             }
         }
@@ -297,7 +306,7 @@ public final class MoundNetwork {
      * what a mound replaces. Asking for the first non-air block would put the
      * mound on top of the grass instead of in it.</p>
      */
-    public static BlockPos surfaceAt(ServerLevel level, int x, int z) {
+    public static BlockPos surfaceAt(LevelReader level, int x, int z) {
         return new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
     }
 

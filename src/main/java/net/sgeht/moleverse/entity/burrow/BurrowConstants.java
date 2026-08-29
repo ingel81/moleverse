@@ -198,6 +198,28 @@ public final class BurrowConstants {
      */
     public static final int REFUSAL_RETRY_DELAY = 3 * TICKS_PER_SECOND;
 
+    /**
+     * Half the width of a colony's ground, so 128 by 128 blocks around its core.
+     *
+     * <p>The figure is already in this file as {@link #NETWORK_SCAN_MAX}, which
+     * bounds how far the chain search reaches. What it lacked was a fixed point
+     * to measure from - measured from whichever mole happens to ask, a limit on
+     * reach is not a limit on where the colony ends up.</p>
+     */
+    public static final int COLONY_EXTENT = 64;
+
+    /**
+     * How far apart two colony cores have to be, measured as a square.
+     *
+     * <p>It has to exceed twice {@link #COLONY_EXTENT}, so that boxes never
+     * touch and a position belongs to at most one colony. Only just, though: the
+     * surplus is a band around every colony where no new one may start, and a
+     * mole living in that band refuses every trip and does nothing but pace. At
+     * 144 the band is sixteen blocks wide; at 192 it would be a hundred and
+     * twenty-eight, which is a lot of meadow where moles never dig.</p>
+     */
+    public static final int COLONY_MIN_SEPARATION = 144;
+
     /** Random surface points tried before a fresh dig is given up on. */
     public static final int FRESH_SITE_ATTEMPTS = 8;
 

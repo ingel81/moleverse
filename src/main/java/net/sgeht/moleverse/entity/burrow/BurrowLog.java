@@ -92,6 +92,14 @@ public final class BurrowLog {
                 String.format("%.1f", routeLength), waypoints);
     }
 
+    /** A colony came into being. Rare enough that every one of them is worth a line. */
+    public static void colonyFounded(Entity mole, int id, BlockPos core) {
+        if (off()) {
+            return;
+        }
+        LOG.info("{} founded colony #{} at {}", who(mole), id, where(core));
+    }
+
     /** The most important line in the table. Every refusal names its cause. */
     public static void refused(Entity mole, String why) {
         if (off()) {

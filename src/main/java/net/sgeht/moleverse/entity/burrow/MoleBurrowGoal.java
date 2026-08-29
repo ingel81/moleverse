@@ -80,6 +80,9 @@ public class MoleBurrowGoal extends Goal {
      */
     private int surfacedTick;
 
+    /** The colony this trip belongs to. Resolved when the entry is known. */
+    private Colony colony;
+
     /**
      * When the mole first found itself on ground it cannot dig, or -1 while it
      * stands on soil. Only the span matters: a mole that walks off a path block
@@ -355,6 +358,7 @@ public class MoleBurrowGoal extends Goal {
 
         this.entry = null;
         this.exit = null;
+        this.colony = null;
         this.emergeAt = null;
         this.openedMound = null;
         this.route = null;
@@ -486,6 +490,24 @@ public class MoleBurrowGoal extends Goal {
             this.entryIsNew = true;
         }
 
+        // Which colony's ground this is, and if none, whether one may start
+        // here. The entry decides it rather than where the mole stands: an
+        // existing mound just outside a border belongs to whoever owns the
+        // ground it sits on, not to the animal that walked up to it.
+        ColonyStore colonies = ColonyStore.get(level);
+        this.colony = colonies.at(this.entry);
+        if (this.colony == null) {
+            this.colony = colonies.found(this.entry, level.getGameTime());
+            if (this.colony == null) {
+                // The unclaimed band around an existing colony. Walking on is
+                // the answer, and it is what pushes a new colony far enough away
+                // to be one.
+                this.refuseAndMoveOn("too near another colony to start one here");
+                return false;
+            }
+            BurrowLog.colonyFounded(this.mole, this.colony.id(), this.colony.core());
+        }
+
         MoundNetwork.Members network = MoundNetwork.build(level, this.entry);
         BurrowLog.networkBuilt(this.mole, network.mounds().size(), network.chainDepth(), network.farthest());
 
@@ -511,7 +533,7 @@ public class MoleBurrowGoal extends Goal {
 
         BlockPos chosen = explore
                 ? null
-                : MoundNetwork.chooseExit(level, this.random, network, this.entry, threat);
+                : MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
         if (chosen != null) {
             this.exit = chosen;
             this.exitIsNew = false;
@@ -520,14 +542,14 @@ public class MoleBurrowGoal extends Goal {
             // and without the check it would dig the very hole the timer is
             // there to ration.
             this.exit = mayDig
-                    ? MoundNetwork.findFreshSite(level, this.random, this.entry, threat)
+                    ? MoundNetwork.findFreshSite(level, this.random, this.entry, this.colony, threat)
                     : null;
 
             // Exploring is a preference, not a demand. If no fresh site is free,
             // fall back to the network rather than refusing a trip that was
             // perfectly possible.
             if (this.exit == null && explore) {
-                this.exit = MoundNetwork.chooseExit(level, this.random, network, this.entry, threat);
+                this.exit = MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
                 if (this.exit != null) {
                     this.exitIsNew = false;
                     this.route = BurrowRoute.between(level, this.entry, this.exit);
