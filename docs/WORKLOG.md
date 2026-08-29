@@ -299,3 +299,46 @@ Worth keeping, because each of these cost rounds:
 The great worm was the outlier the audit caught: 3965 colours across 128x128,
 where the mole uses 150 and a block uses 7. Regenerated at 9. It looked fine on
 its own, which is exactly why nobody noticed - it only fails next to the rest.
+
+## Handover - testing starts here
+
+Nothing below has been played. Work through it in this order; each step depends
+on the one before actually having worked.
+
+**1. A colony forms.** New world, then `/moleverse mole log on` before the first
+mole digs, or the colony is founded silently. Expect `founded colony #1`. Then
+`/moleverse colony show on` for its border and `/moleverse colony links` once a
+few trips have happened.
+
+**2. Runs are recorded and have depths.** `/moleverse colony links` must show
+feeding runs and main runs at different levels. If every run is a feeding run,
+`MAIN_RUN_CHANCE` never fired.
+
+**3. A prepared mound is still a mound.** Right-click a molehill with loose soil,
+then watch a mole travel to it, open its shaft and come up. **This is the most
+likely thing to be broken**: if the point-of-interest type does not cover both
+blocks, a prepared mound is invisible to every colony and everything downstream
+silently stops.
+
+**4. Fittings answer.** Shaft lantern lights when a mole surfaces. Colony board
+reports. Exchange station takes a worm and gives something back. Grunting post
+brings worms up and goes on cooldown.
+
+**5. Down.** Shrink post on a prepared mound, right-click. Expect a chamber, the
+runs of that colony carved, a way out standing in the middle, up to two great
+worms. Then: is the corridor walkable, is the light enough, can you get from a
+feeding run to a main run through a shaft, do junctions read as places.
+
+**6. Back up.** Right-click the post below. Then break the mound above while
+somebody is down there and check the rescue.
+
+**7. Dispersal** needs a full colony and two moles, so it will not show up by
+accident.
+
+The **advancement tree is the checklist**: one that never fires is a feature that
+never ran.
+
+Known unknowns, in likely order of trouble: the point of interest covering both
+mound blocks; whether carving keeps up with a player walking a long run; whether
+the burrow is navigable at all in the dark; the exchange station's screen syncing
+its two inventories; and the mole trap's stored animal surviving a reload.
