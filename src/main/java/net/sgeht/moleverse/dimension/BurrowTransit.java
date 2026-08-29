@@ -113,6 +113,7 @@ public final class BurrowTransit {
         }
 
         placeWayOut(burrow, chamber);
+        BurrowLife.stock(burrow, chamber);
 
         return teleport(player, burrow, arrivalIn(chamber));
     }
