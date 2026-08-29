@@ -275,3 +275,27 @@ call site neither could ever cut anything, silently, forever. Both now get the
 colony's whole set of runs, and the debug carve command cuts through what it
 carves. Worth remembering as a shape: a filter that is correct for one caller and
 fatal for another, with no error either way.
+
+### What the texture pass taught
+
+Worth keeping, because each of these cost rounds:
+
+* **A hard outline all the way round eats everything small.** At 16 pixels a
+  drawstring and a snout become one black clump. Shade from the silhouette
+  instead.
+* **Tapering is a factor on the whole width, not a subtraction from it.**
+  Subtract and the flanks stay vertical: the sack comes out a crate.
+* **Random walks with right-angle turns always read as a maze.** Roots and
+  mycelium sit on sine curves with whole-number frequencies instead, which also
+  makes them tile.
+* **Pure pixel noise flickers at 16 pixels.** Soil gets its body from clumps.
+* **Two blocks of the same material need different grain**, or they are two names
+  for one block - the trap lays its planks vertically because the worm box lays
+  its slats flat.
+* An item has to be tellable from its neighbours in a hotbar **on every axis at
+  once**: the sack against the pelt is tall rather than round, warm rather than
+  cold grey, and its accent sits low at the neck rather than across the top.
+
+The great worm was the outlier the audit caught: 3965 colours across 128x128,
+where the mole uses 150 and a block uses 7. Regenerated at 9. It looked fine on
+its own, which is exactly why nobody noticed - it only fails next to the rest.
