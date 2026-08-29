@@ -15,6 +15,8 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.sgeht.moleverse.client.BurrowAmbience;
 import net.sgeht.moleverse.client.debug.MoleDebugCommand;
 import net.sgeht.moleverse.client.debug.MoleNetworkOverlay;
+import net.sgeht.moleverse.client.render.GreatWormModel;
+import net.sgeht.moleverse.client.render.GreatWormRenderer;
 import net.sgeht.moleverse.client.render.MoleModel;
 import net.sgeht.moleverse.client.render.MoleRenderer;
 import net.sgeht.moleverse.network.ModPayloads;
@@ -45,11 +47,13 @@ public final class MoleverseClient {
     @SubscribeEvent
     static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(MoleModel.LAYER, MoleModel::createBodyLayer);
+        event.registerLayerDefinition(GreatWormModel.LAYER, GreatWormModel::createBodyLayer);
     }
 
     @SubscribeEvent
     static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.MOLE.get(), MoleRenderer::new);
+        event.registerEntityRenderer(ModEntities.GREAT_WORM.get(), GreatWormRenderer::new);
     }
 
     /** Development aid, see {@link MoleDebugCommand}. Runs entirely on the client. */

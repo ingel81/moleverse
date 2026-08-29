@@ -58,6 +58,7 @@ public final class ModModelProvider extends ModelProvider {
         // Spawn eggs carry their own texture in this version rather than the
         // old two-layer tinted template, so a flat item model is all it needs.
         itemModels.generateFlatItem(ModItems.MOLE_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.GREAT_WORM_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
     }
 
     /**

@@ -8,6 +8,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.sgeht.moleverse.Moleverse;
+import net.sgeht.moleverse.entity.GreatWorm;
 import net.sgeht.moleverse.entity.Mole;
 import net.sgeht.moleverse.registry.ModEntities;
 
@@ -27,6 +28,7 @@ public final class MoleverseModEvents {
     @SubscribeEvent
     public static void onEntityAttributeCreation(EntityAttributeCreationEvent event) {
         event.put(ModEntities.MOLE.get(), Mole.createAttributes().build());
+        event.put(ModEntities.GREAT_WORM.get(), GreatWorm.createAttributes().build());
     }
 
     /**

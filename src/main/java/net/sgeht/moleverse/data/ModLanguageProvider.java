@@ -35,7 +35,9 @@ public final class ModLanguageProvider extends LanguageProvider {
         addItem(ModItems.MOLE_PELT, "Mole Pelt");
         addItem(ModItems.EARTHWORM, "Earthworm");
         addItem(ModItems.MOLE_SPAWN_EGG, "Mole Spawn Egg");
+        addItem(ModItems.GREAT_WORM_SPAWN_EGG, "Great Worm Spawn Egg");
         addEntityType(ModEntities.MOLE, "Mole");
+        addEntityType(ModEntities.GREAT_WORM, "Great Worm");
 
         add("message." + Moleverse.MOD_ID + ".greeting", "Hello, mole. The tunnels are waiting.");
 

@@ -60,6 +60,11 @@ public final class ModItems {
             SpawnEggItem::new,
             props -> props.spawnEgg(ModEntities.MOLE.get()));
 
+    public static final DeferredItem<SpawnEggItem> GREAT_WORM_SPAWN_EGG = REGISTER.registerItem(
+            "great_worm_spawn_egg",
+            SpawnEggItem::new,
+            props -> props.spawnEgg(ModEntities.GREAT_WORM.get()));
+
     private ModItems() {
     }
 }

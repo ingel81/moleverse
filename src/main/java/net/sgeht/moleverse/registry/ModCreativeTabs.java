@@ -37,6 +37,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.GLOW_MYCELIUM.get());
                         output.accept(ModItems.DEEP_EARTH.get());
                         output.accept(ModItems.MOLE_SPAWN_EGG.get());
+                        output.accept(ModItems.GREAT_WORM_SPAWN_EGG.get());
                     })
                     .build());
 

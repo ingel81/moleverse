@@ -7,6 +7,7 @@ import net.minecraft.data.loot.EntityLootSubProvider;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
@@ -35,6 +36,14 @@ public final class ModEntityLootProvider extends EntityLootSubProvider {
                         .setRolls(ConstantValue.exactly(1.0F))
                         .add(LootItem.lootTableItem(ModItems.MOLE_PELT.get())
                                 .apply(SetItemCountFunction.setCount(ConstantValue.exactly(1.0F))))));
+
+        // A great worm is an earthworm at the burrow's scale, so what it leaves
+        // is earthworms - several, because there is a great deal of it.
+        add(ModEntities.GREAT_WORM.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1.0F))
+                        .add(LootItem.lootTableItem(ModItems.EARTHWORM.get())
+                                .apply(SetItemCountFunction.setCount(UniformGenerator.between(2.0F, 4.0F))))));
     }
 
     @Override
