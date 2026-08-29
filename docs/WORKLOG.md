@@ -252,3 +252,16 @@ and proves nothing about whether a corridor is walkable.
   for it.
 * **Own textures**, generated from scripts under `art/generators/` rather than
   drawn by hand. Only the shaft lantern still borrows from vanilla.
+
+### Fifth wave - the burrow reads as a network
+
+* **A main run no longer looks like a feeding run.** Corridor size is a profile
+  per level rather than one constant, so a colony's backbone is visibly the
+  backbone and a feeding run is a side passage. The width stays odd, because a
+  corridor without a centre line has nowhere to lay a floor.
+* **Junctions.** Where two runs of a level cross, a place instead of an overlap.
+  Capped per colony, never on top of a chamber - one continuous cavern would be
+  worse than no junctions at all.
+* Caught by the tests again: the carving test asserted the old global width and
+  failed on a change that was correct. It now measures against the profile of the
+  level it carved.
