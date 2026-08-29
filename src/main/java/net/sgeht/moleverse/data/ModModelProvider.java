@@ -17,6 +17,7 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.world.level.block.Block;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.GruntingPost;
 import net.sgeht.moleverse.block.ShaftLantern;
 import net.sgeht.moleverse.registry.ModBlocks;
 import net.sgeht.moleverse.registry.ModItems;
@@ -49,6 +50,19 @@ public final class ModModelProvider extends ModelProvider {
         handModelled(blockModels, ModBlocks.DEEP_EARTH.get(), "deep_earth");
         handModelled(blockModels, ModBlocks.ROOT_BEAM.get(), "root_beam");
         handModelled(blockModels, ModBlocks.WORM_LARDER.get(), "worm_larder");
+        handModelled(blockModels, ModBlocks.EXCHANGE_STATION.get(), "exchange_station");
+        handModelled(blockModels, ModBlocks.COLONY_BOARD.get(), "colony_board");
+
+        // Both states share one model for now: spent shows in the chat line and
+        // in the sound, not yet in the wood.
+        MultiVariant post = BlockModelGenerators.variant(new Variant(Moleverse.id("block/grunting_post")));
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.GRUNTING_POST.get())
+                        .with(PropertyDispatch.initial(GruntingPost.SPENT)
+                                .select(false, post)
+                                .select(true, post)));
+        blockModels.registerSimpleItemModel(ModBlocks.GRUNTING_POST.get(),
+                Moleverse.id("block/grunting_post"));
         handModelled(blockModels, ModBlocks.GLOW_MYCELIUM.get(), "glow_mycelium");
         handModelled(blockModels, ModBlocks.SHRINK_POST.get(), "shrink_post");
 

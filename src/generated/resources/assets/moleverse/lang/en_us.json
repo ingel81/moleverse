@@ -1,6 +1,9 @@
 {
+  "block.moleverse.colony_board": "Colony Board",
   "block.moleverse.deep_earth": "Deep Earth",
+  "block.moleverse.exchange_station": "Exchange Station",
   "block.moleverse.glow_mycelium": "Glow Mycelium",
+  "block.moleverse.grunting_post": "Grunting Post",
   "block.moleverse.loose_soil": "Loose Soil",
   "block.moleverse.mole_mound": "Mole Mound",
   "block.moleverse.prepared_mole_mound": "Prepared Mole Mound",

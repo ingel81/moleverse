@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "mound_attachment",
+  "key": {
+    "R": "minecraft:stick",
+    "S": "moleverse:loose_soil",
+    "T": "minecraft:torch"
+  },
+  "pattern": [
+    " R ",
+    "RTR",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "moleverse:shaft_lantern"
+  }
+}

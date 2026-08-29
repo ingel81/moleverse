@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "mound_attachment",
+  "key": {
+    "P": "moleverse:mole_pelt",
+    "R": "minecraft:stick",
+    "S": "moleverse:loose_soil",
+    "W": "moleverse:earthworm"
+  },
+  "pattern": [
+    "PWP",
+    "WSW",
+    "WRW"
+  ],
+  "result": {
+    "count": 1,
+    "id": "moleverse:shrink_post"
+  }
+}

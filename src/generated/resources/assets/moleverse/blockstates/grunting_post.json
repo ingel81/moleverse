@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "spent=false": {
+      "model": "moleverse:block/grunting_post"
+    },
+    "spent=true": {
+      "model": "moleverse:block/grunting_post"
+    }
+  }
+}

@@ -29,6 +29,9 @@ public final class ModLanguageProvider extends LanguageProvider {
         addBlock(ModBlocks.SHAFT_LANTERN, "Shaft Lantern");
         addBlock(ModBlocks.SHRINK_POST, "Shrink Post");
         addBlock(ModBlocks.WORM_LARDER, "Worm Larder");
+        addBlock(ModBlocks.EXCHANGE_STATION, "Exchange Station");
+        addBlock(ModBlocks.GRUNTING_POST, "Grunting Post");
+        addBlock(ModBlocks.COLONY_BOARD, "Colony Board");
         addBlock(ModBlocks.ROOT_BEAM, "Root Beam");
         addBlock(ModBlocks.GLOW_MYCELIUM, "Glow Mycelium");
         addBlock(ModBlocks.DEEP_EARTH, "Deep Earth");

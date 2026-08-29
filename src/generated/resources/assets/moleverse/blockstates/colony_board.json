@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "moleverse:block/colony_board"
+    }
+  }
+}

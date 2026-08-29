@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_loose_soil": {
+      "conditions": {
+        "items": [
+          {
+            "items": "moleverse:loose_soil"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "moleverse:prepared_mole_mound"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_loose_soil"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "moleverse:prepared_mole_mound"
+    ]
+  }
+}

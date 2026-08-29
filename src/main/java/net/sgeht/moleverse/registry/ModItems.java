@@ -39,6 +39,15 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> WORM_LARDER =
             REGISTER.registerSimpleBlockItem(ModBlocks.WORM_LARDER);
 
+    public static final DeferredItem<BlockItem> EXCHANGE_STATION =
+            REGISTER.registerSimpleBlockItem(ModBlocks.EXCHANGE_STATION);
+
+    public static final DeferredItem<BlockItem> GRUNTING_POST =
+            REGISTER.registerSimpleBlockItem(ModBlocks.GRUNTING_POST);
+
+    public static final DeferredItem<BlockItem> COLONY_BOARD =
+            REGISTER.registerSimpleBlockItem(ModBlocks.COLONY_BOARD);
+
     public static final DeferredItem<BlockItem> ROOT_BEAM =
             REGISTER.registerSimpleBlockItem(ModBlocks.ROOT_BEAM);
 

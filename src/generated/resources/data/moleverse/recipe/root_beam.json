@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "R": "minecraft:stick",
+    "S": "moleverse:loose_soil"
+  },
+  "pattern": [
+    " R ",
+    "RSR",
+    " R "
+  ],
+  "result": {
+    "count": 2,
+    "id": "moleverse:root_beam"
+  }
+}

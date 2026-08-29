@@ -7,6 +7,9 @@ import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
+import net.sgeht.moleverse.block.ColonyBoard;
+import net.sgeht.moleverse.block.ExchangeStation;
+import net.sgeht.moleverse.block.GruntingPost;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.PreparedMoleMound;
 import net.sgeht.moleverse.block.ShaftLantern;
@@ -129,6 +132,36 @@ public final class ModBlocks {
             props -> props.mapColor(MapColor.DIRT)
                     .strength(0.6F)
                     .sound(SoundType.SLIME_BLOCK));
+
+    /** Worms in one side, whatever the moles bring back out of the other. */
+    public static final DeferredBlock<ExchangeStation> EXCHANGE_STATION = REGISTER.registerBlock(
+            "exchange_station",
+            ExchangeStation::new,
+            props -> props.mapColor(MapColor.WOOD)
+                    .strength(1.4F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion());
+
+    /**
+     * A stake to rasp across. Worm grunting is a real technique and the only way
+     * to earthworms that does not involve breaking somebody's molehill.
+     */
+    public static final DeferredBlock<GruntingPost> GRUNTING_POST = REGISTER.registerBlock(
+            "grunting_post",
+            GruntingPost::new,
+            props -> props.mapColor(MapColor.PODZOL)
+                    .strength(0.7F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion());
+
+    /** What the debug command says, said in the world instead. */
+    public static final DeferredBlock<ColonyBoard> COLONY_BOARD = REGISTER.registerBlock(
+            "colony_board",
+            ColonyBoard::new,
+            props -> props.mapColor(MapColor.WOOD)
+                    .strength(0.8F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion());
 
     private ModBlocks() {
     }

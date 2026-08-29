@@ -12,7 +12,10 @@ import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.sgeht.moleverse.client.BurrowAmbience;
+import net.sgeht.moleverse.client.screen.ExchangeStationScreen;
+import net.sgeht.moleverse.registry.ModMenus;
 import net.sgeht.moleverse.client.debug.MoleDebugCommand;
 import net.sgeht.moleverse.client.debug.MoleNetworkOverlay;
 import net.sgeht.moleverse.client.render.GreatWormModel;
@@ -41,6 +44,18 @@ public final class MoleverseClient {
         // class - so the handler is a slot and this is where it gets filled.
         ModPayloads.setLinkSink(MoleNetworkOverlay::acceptLinks);
         Moleverse.LOGGER.debug("Client setup finished.");
+    }
+
+    /**
+     * Binds the station's screen to its menu.
+     *
+     * <p>Through NeoForge's event rather than {@code MenuScreens.register},
+     * which is private in this version - the map it writes into is handed out
+     * here and nowhere else.</p>
+     */
+    @SubscribeEvent
+    static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenus.EXCHANGE_STATION.get(), ExchangeStationScreen::new);
     }
 
     /** Bakes the geometry produced by {@link MoleModel#createBodyLayer()}. */

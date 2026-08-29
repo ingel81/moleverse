@@ -23,5 +23,9 @@ public final class ModRegistries {
         ModCreativeTabs.REGISTER.register(modBus);
         // After blocks: a point of interest names the blockstates it matches.
         ModPoi.REGISTER.register(modBus);
+        // After blocks, for the same reason: a block entity type names the
+        // blocks it may sit in.
+        ModBlockEntities.REGISTER.register(modBus);
+        ModMenus.REGISTER.register(modBus);
     }
 }
