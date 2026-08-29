@@ -134,7 +134,12 @@ def surface(cube, face, x, y, z):
     # Pale ventral side at the top of the ramp, dark red-brown dorsal at the
     # bottom of it. Smoothstepped so the belly and the back each get a band of
     # their own rather than the whole flank being one long fade.
-    level = 7.0 - 5.0 * smooth(up)
+    #
+    # The back stops two and a half levels short of the bottom rather than at
+    # it. Taking the dorsal side all the way down leaves the rings and the
+    # blood vessel nowhere to go - both subtract, both clamp, and the whole
+    # back comes out as one flat darkest tone with the pattern gone.
+    level = 7.0 - 4.4 * smooth(up)
 
     # The head end is darker and browner, the tail end paler and greyer. Both
     # narrow enough to leave the middle of the animal alone.
@@ -154,7 +159,7 @@ def surface(cube, face, x, y, z):
     # band around the joint, which is the one place a worm never has one.
     joint = face in ("north", "south") or (z - Z_FRONT) % RING_PITCH < RING_WIDTH
     if joint and not on_clitellum:
-        level -= 2.2
+        level -= 1.6
 
     # The dorsal blood vessel showing through, along the spine only. Its width
     # is a fraction of the segment's, not a fixed number of units: the tail
