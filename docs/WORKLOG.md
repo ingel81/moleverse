@@ -69,9 +69,12 @@ to pick the thread up again without rereading a diff.
 
 ## 2026-08-29, night - phases two to four, and a socket
 
-Built while nobody was watching, so everything below is **untested in game**. It
-compiles, the data generators run, and a review pass found nothing, but not one
-line of it has been seen working.
+Built while nobody was watching, so everything below is **untested in play**. It
+compiles, the data generators run, a review pass found nothing, and
+`runGameTestServer` boots a dedicated server to completion - which proves
+registration, tags, the two-block point of interest, the payload handler and
+world loading, and proves nothing at all about behaviour. Not one mole has been
+watched doing any of it.
 
 ### Built
 
