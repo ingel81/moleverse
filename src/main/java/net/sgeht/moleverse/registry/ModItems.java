@@ -3,10 +3,13 @@ package net.sgeht.moleverse.registry;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.SpawnEggItem;
+import net.minecraft.world.level.block.Block;
+import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.item.MoleInSack;
+import net.sgeht.moleverse.item.MoundAttachmentItem;
 
 /** Every item of this mod, including the block items from {@link ModBlocks}. */
 public final class ModItems {
@@ -31,11 +34,11 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> PREPARED_MOLE_MOUND =
             REGISTER.registerSimpleBlockItem(ModBlocks.PREPARED_MOLE_MOUND);
 
-    public static final DeferredItem<BlockItem> SHAFT_LANTERN =
-            REGISTER.registerSimpleBlockItem(ModBlocks.SHAFT_LANTERN);
+    public static final DeferredItem<MoundAttachmentItem> SHAFT_LANTERN =
+            attachment(ModBlocks.SHAFT_LANTERN);
 
-    public static final DeferredItem<BlockItem> SHRINK_POST =
-            REGISTER.registerSimpleBlockItem(ModBlocks.SHRINK_POST);
+    public static final DeferredItem<MoundAttachmentItem> SHRINK_POST =
+            attachment(ModBlocks.SHRINK_POST);
 
     public static final DeferredItem<BlockItem> WORM_LARDER =
             REGISTER.registerSimpleBlockItem(ModBlocks.WORM_LARDER);
@@ -62,20 +65,20 @@ public final class ModItems {
             MoleInSack::new,
             props -> props.stacksTo(1));
 
-    public static final DeferredItem<BlockItem> MOLE_TRAP =
-            REGISTER.registerSimpleBlockItem(ModBlocks.MOLE_TRAP);
+    public static final DeferredItem<MoundAttachmentItem> MOLE_TRAP =
+            attachment(ModBlocks.MOLE_TRAP);
 
     public static final DeferredItem<BlockItem> WORM_BOX =
             REGISTER.registerSimpleBlockItem(ModBlocks.WORM_BOX);
 
-    public static final DeferredItem<BlockItem> EXCHANGE_STATION =
-            REGISTER.registerSimpleBlockItem(ModBlocks.EXCHANGE_STATION);
+    public static final DeferredItem<MoundAttachmentItem> EXCHANGE_STATION =
+            attachment(ModBlocks.EXCHANGE_STATION);
 
     public static final DeferredItem<BlockItem> GRUNTING_POST =
             REGISTER.registerSimpleBlockItem(ModBlocks.GRUNTING_POST);
 
-    public static final DeferredItem<BlockItem> COLONY_BOARD =
-            REGISTER.registerSimpleBlockItem(ModBlocks.COLONY_BOARD);
+    public static final DeferredItem<MoundAttachmentItem> COLONY_BOARD =
+            attachment(ModBlocks.COLONY_BOARD);
 
     public static final DeferredItem<BlockItem> ROOT_BEAM =
             REGISTER.registerSimpleBlockItem(ModBlocks.ROOT_BEAM);
@@ -104,5 +107,19 @@ public final class ModItems {
             props -> props.spawnEgg(ModEntities.GREAT_WORM.get()));
 
     private ModItems() {
+    }
+
+    /**
+     * A fitting for a prepared mound, with the item that says so.
+     *
+     * <p>Mirrors {@code registerSimpleBlockItem}, which is
+     * {@code registerItem(name, BlockItem::new, props.useBlockDescriptionPrefix())}
+     * - the description prefix is what makes the item take the block's name, and
+     * leaving it off renames every fitting to {@code item.moleverse.*}.</p>
+     */
+    private static DeferredItem<MoundAttachmentItem> attachment(DeferredBlock<? extends Block> block) {
+        return REGISTER.registerItem(block.getId().getPath(),
+                props -> new MoundAttachmentItem(block.get(), props),
+                (java.util.function.UnaryOperator<Item.Properties>) Item.Properties::useBlockDescriptionPrefix);
     }
 }

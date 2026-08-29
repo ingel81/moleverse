@@ -55,6 +55,14 @@ public final class ModLanguageProvider extends LanguageProvider {
 
         add("message." + Moleverse.MOD_ID + ".greeting", "Hello, mole. The tunnels are waiting.");
 
+        // Every fitting refuses a position with no prepared mound under it, and
+        // vanilla refuses in silence. The hint is on the item so it is read
+        // before the attempt; the message is for whoever did not read it.
+        add("item." + Moleverse.MOD_ID + ".mound_attachment.hint",
+                "Sits on a prepared mole mound");
+        add("message." + Moleverse.MOD_ID + ".mound_attachment.refused",
+                "Needs a prepared mole mound underneath - shore a molehill up with loose soil.");
+
         // The advancement tree doubles as a checklist: one that never fires is a
         // feature that never ran.
         advancement("root", "Something Has Been Digging",
