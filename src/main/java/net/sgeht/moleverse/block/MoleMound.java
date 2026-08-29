@@ -8,7 +8,14 @@ import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -23,6 +30,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.sgeht.moleverse.registry.ModBlocks;
+import net.sgeht.moleverse.registry.ModItems;
 import net.sgeht.moleverse.tag.ModTags;
 
 /**
@@ -108,6 +116,36 @@ public class MoleMound extends Block {
         if (state.is(ModTags.Blocks.MOLE_MOUNDS) && state.getValue(OPEN) != open) {
             level.setBlock(pos, state.setValue(OPEN, open), Block.UPDATE_ALL);
         }
+    }
+
+    /**
+     * Shoring a molehill up into something a fitting can sit on.
+     *
+     * <p>Loose soil is the price, and it is the mod's own material rather than a
+     * vanilla one on purpose: preparing a mound should cost something that came
+     * out of the ground the moles work, not a plank. One block of it, which is
+     * about what a molehill drops - so preparing is roughly the cost of the heap
+     * next door.</p>
+     *
+     * <p>The open flag is carried over. A mound can be prepared while a mole is
+     * down its shaft, and losing that would leave the animal underground with no
+     * way marked out.</p>
+     */
+    @Override
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+            Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (this instanceof PreparedMoleMound || !stack.is(ModItems.LOOSE_SOIL.get())) {
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+        }
+
+        if (level instanceof ServerLevel serverLevel) {
+            BlockState prepared = ModBlocks.PREPARED_MOLE_MOUND.get().defaultBlockState()
+                    .setValue(OPEN, state.getValue(OPEN));
+            serverLevel.setBlock(pos, prepared, Block.UPDATE_ALL);
+            serverLevel.playSound(null, pos, SoundEvents.ROOTED_DIRT_PLACE, SoundSource.BLOCKS, 1.0F, 0.9F);
+            stack.consume(1, player);
+        }
+        return InteractionResult.SUCCESS;
     }
 
     @Override
