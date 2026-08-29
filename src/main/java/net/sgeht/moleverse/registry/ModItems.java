@@ -10,6 +10,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.item.MoleInSack;
 import net.sgeht.moleverse.item.MoundAttachmentItem;
+import net.sgeht.moleverse.item.PreparedMoundItem;
 
 /** Every item of this mod, including the block items from {@link ModBlocks}. */
 public final class ModItems {
@@ -31,8 +32,11 @@ public final class ModItems {
     /** Mounds drop nothing, but the item exists so they can be placed by hand. */
     public static final DeferredItem<BlockItem> MOLE_MOUND = REGISTER.registerSimpleBlockItem(ModBlocks.MOLE_MOUND);
 
-    public static final DeferredItem<BlockItem> PREPARED_MOLE_MOUND =
-            REGISTER.registerSimpleBlockItem(ModBlocks.PREPARED_MOLE_MOUND);
+    /** Goes onto an existing molehill and nowhere else - see {@link PreparedMoundItem}. */
+    public static final DeferredItem<PreparedMoundItem> PREPARED_MOLE_MOUND = REGISTER.registerItem(
+            "prepared_mole_mound",
+            props -> new PreparedMoundItem(ModBlocks.PREPARED_MOLE_MOUND.get(), props),
+            (java.util.function.UnaryOperator<Item.Properties>) Item.Properties::useBlockDescriptionPrefix);
 
     public static final DeferredItem<MoundAttachmentItem> SHAFT_LANTERN =
             attachment(ModBlocks.SHAFT_LANTERN);

@@ -61,7 +61,14 @@ public final class ModLanguageProvider extends LanguageProvider {
         add("item." + Moleverse.MOD_ID + ".mound_attachment.hint",
                 "Sits on a prepared mole mound");
         add("message." + Moleverse.MOD_ID + ".mound_attachment.refused",
-                "Needs a prepared mole mound underneath - shore a molehill up with loose soil.");
+                "Needs a prepared mole mound underneath.");
+
+        // The shoring goes onto a molehill and nowhere else, so the item says so
+        // and the refusal names the one thing that would have worked.
+        add("item." + Moleverse.MOD_ID + ".prepared_mole_mound.hint",
+                "Use on a mole mound to shore it up");
+        add("message." + Moleverse.MOD_ID + ".prepared_mole_mound.refused",
+                "Goes on a mole mound - use it on one to shore it up.");
 
         // The advancement tree doubles as a checklist: one that never fires is a
         // feature that never ran.

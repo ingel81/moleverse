@@ -32,5 +32,7 @@
   "item.moleverse.mole_spawn_egg": "Maulwurf-Spawn-Ei",
   "entity.moleverse.mole": "Maulwurf",
   "item.moleverse.mound_attachment.hint": "Sitzt auf einem befestigten Maulwurfshügel",
-  "message.moleverse.mound_attachment.refused": "Braucht einen befestigten Maulwurfshügel darunter - einen Hügel mit lockerer Erde befestigen."
+  "message.moleverse.mound_attachment.refused": "Braucht einen befestigten Maulwurfshügel darunter.",
+  "item.moleverse.prepared_mole_mound.hint": "Auf einen Maulwurfshügel anwenden, um ihn zu befestigen",
+  "message.moleverse.prepared_mole_mound.refused": "Gehört auf einen Maulwurfshügel - dort anwenden, um ihn zu befestigen."
 }
