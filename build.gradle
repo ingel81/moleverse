@@ -107,6 +107,14 @@ neoForge {
             // Marker: SCAN (Mod-Scan), REGISTRIES (Registry-Events), REGISTRYDUMP (Registry-Inhalte)
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
+
+            // Der moleverse.mole-Logger ist in Entwicklungslaeufen von der ersten
+            // Tick an an. Eine Kolonie wird Sekunden nach dem Betreten einer Welt
+            // gegruendet - wer erst /moleverse mole log on tippen muss, hat die
+            // Gruendung bereits verpasst. Ein ausgeliefertes Spiel sieht die
+            // Property nie und bleibt still; /moleverse mole log off schaltet
+            // trotzdem ab.
+            systemProperty 'moleverse.devLogging', 'true'
         }
     }
 
@@ -221,4 +229,12 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+// Der Dedicated Server liest seine Konsolenbefehle von stdin. Gradle verbindet
+// den Standardeingang eines JavaExec-Tasks per Default NICHT, deshalb kommen
+// gepipte Befehle sonst nirgends an. Nur fuer runServer gesetzt - betrifft
+// ausschliesslich Entwicklungslaeufe, nie das gebaute Mod.
+tasks.matching { it.name == 'runServer' }.configureEach {
+    standardInput = System.in
 }
