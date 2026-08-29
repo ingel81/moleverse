@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.config.MoleverseConfig;
 import net.sgeht.moleverse.entity.Mole;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
+import net.sgeht.moleverse.entity.burrow.BurrowLog;
 import net.sgeht.moleverse.entity.burrow.Colony;
 import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
@@ -243,6 +244,11 @@ public final class MoleServerCommand {
         // set() only touches the config held in memory and says so; without the
         // save the file and the running value would drift apart.
         MoleverseConfig.DEBUG_LOGGING.save();
+
+        // And the logger's own override, which is what a dev run reads instead of
+        // the config. Without this line the command would report success and
+        // change nothing while moleverse.devLogging is set.
+        BurrowLog.setOverride(enabled);
 
         source.sendSuccess(() -> Component
                 .literal("Moleverse debug logging is " + (enabled ? "on" : "off") + " (logger moleverse.mole).")

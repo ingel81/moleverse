@@ -118,12 +118,58 @@ public class ColonyStore extends SavedData {
      * fails it anyway.</p>
      */
     public boolean isFreeGround(BlockPos pos) {
+        return this.nearestCrowding(pos) == null;
+    }
+
+    /**
+     * The colony whose core is close enough to forbid founding one here, nearest
+     * first, or null where this ground is free.
+     *
+     * <p>This is the other half of {@link #at}. Between the two lies the
+     * unclaimed band: ground that belongs to nobody, where {@link #at} finds no
+     * colony and {@link #found} still refuses. A mole standing there is a member
+     * of nothing and may dig nothing, and until it had a way to ask <em>which</em>
+     * colony was crowding it, it had no bearing to walk away on either - so it
+     * strolled at random and could spend minutes inside an eighty-block band
+     * refusing every three seconds. This names the neighbour to walk away from.</p>
+     */
+    public @Nullable Colony nearestCrowding(BlockPos pos) {
+        return this.nearestWithin(pos, BurrowConstants.COLONY_MIN_SEPARATION);
+    }
+
+    /**
+     * Whether this ground is not merely foundable but far enough in to stay so.
+     *
+     * <p>This exists to stop an emigration ending too early, and its value is in
+     * the endings it prevents rather than the ones it causes. {@link
+     * #isFreeGround} turns true at exactly
+     * {@link BurrowConstants#COLONY_MIN_SEPARATION}, which is a line rather than
+     * a place: a mole that declared arrival there stood down, strolled, and was
+     * back inside the band a step later. Measured, before this was used:
+     * seventeen further refusals after the mole had already "arrived".</p>
+     *
+     * <p>What actually happens now is that the mole keeps walking outward and
+     * {@link MoleBurrowGoal} founds a colony under it at the first legal spot -
+     * so this method's own branch is the rarer outcome, reached only where no
+     * colony can be founded along the way. That is fine. Its job is to keep the
+     * walk going, not to be the thing that ends it.</p>
+     */
+    public boolean hasSettlingRoom(BlockPos pos) {
+        return this.nearestWithin(pos,
+                BurrowConstants.COLONY_MIN_SEPARATION + BurrowConstants.EMIGRATION_MARGIN) == null;
+    }
+
+    private @Nullable Colony nearestWithin(BlockPos pos, int distance) {
+        Colony nearest = null;
+        int shortest = Integer.MAX_VALUE;
         for (Colony colony : this.colonies) {
-            if (Colony.separation(colony.core(), pos) < BurrowConstants.COLONY_MIN_SEPARATION) {
-                return false;
+            int separation = Colony.separation(colony.core(), pos);
+            if (separation < distance && separation < shortest) {
+                shortest = separation;
+                nearest = colony;
             }
         }
-        return true;
+        return nearest;
     }
 
     public List<Colony> all() {

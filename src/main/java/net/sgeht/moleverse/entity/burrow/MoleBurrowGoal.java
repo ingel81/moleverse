@@ -543,7 +543,13 @@ public class MoleBurrowGoal extends Goal {
             if (this.colony == null) {
                 // The unclaimed band around an existing colony. Walking on is
                 // the answer, and it is what pushes a new colony far enough away
-                // to be one.
+                // to be one - but the band is eighty blocks wide, and a random
+                // stroll crosses it by luck alone. Measured: one mole spent seven
+                // and a half minutes in there, a hundred and fourteen refusals,
+                // before it stumbled out. So this asks to emigrate, exactly as a
+                // full colony does, and MoleEmigrateGoal walks it out on a
+                // bearing instead.
+                this.leaveWish = true;
                 this.refuseAndMoveOn("too near another colony to start one here");
                 return false;
             }

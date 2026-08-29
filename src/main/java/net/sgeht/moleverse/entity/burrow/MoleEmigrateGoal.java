@@ -13,13 +13,26 @@ import net.minecraft.world.phys.AABB;
 import net.sgeht.moleverse.entity.Mole;
 
 /**
- * Leaving a full colony to start one somewhere else.
+ * Walking to ground where a colony may be founded, from the two places where
+ * staying means refusing forever.
  *
- * <p>A colony stops at {@link BurrowConstants#NETWORK_MAX_MEMBERS} mounds. Before
- * this goal existed, what happened next was nothing: the burrow goal refused
- * every trip, the mole wandered its own ground for the rest of the world's life,
- * and the territory never grew again. Refusing forever is the failure mode this
- * mechanic is most prone to, and it has no visible cause at all.</p>
+ * <p>The first is a <strong>full colony</strong>, which stops at
+ * {@link BurrowConstants#NETWORK_MAX_MEMBERS} mounds. Before this goal existed,
+ * what happened next was nothing: the burrow goal refused every trip, the mole
+ * wandered its own ground for the rest of the world's life, and the territory
+ * never grew again. Refusing forever is the failure mode this mechanic is most
+ * prone to, and it has no visible cause at all.</p>
+ *
+ * <p>The second is the <strong>unclaimed band</strong> between
+ * {@link BurrowConstants#COLONY_EXTENT} and
+ * {@link BurrowConstants#COLONY_MIN_SEPARATION} around a core - ground where
+ * {@link ColonyStore#at} finds no colony to join and {@link ColonyStore#found}
+ * still refuses to start one. That band is eighty blocks wide. A mole was
+ * supposed to walk out of it, but walking out was a random stroll: in the first
+ * play session one mole managed a hundred and fourteen refusals over seven and a
+ * half minutes before chance carried it clear. The two cases differ in exactly
+ * one respect - a band mole belongs to no colony, so leaving cannot empty one and
+ * {@link #hasCompany} does not apply to it.</p>
  *
  * <p>Emigration is a walk, not a trip. A run is bounded by
  * {@link BurrowConstants#NEW_TRAVEL_MAX} and by the entity-ticking area, so
@@ -31,9 +44,12 @@ import net.sgeht.moleverse.entity.Mole;
  *
  * <p>Two things it must not do. It must not leave a colony empty, so it asks
  * whether another grown mole is at home first. And it must not send everybody at
- * once, which the cooldown after each attempt covers. Today a colony usually has
- * one animal in it - moles only breed when a player feeds them - so in practice
- * this fires rarely, and that is the honest state of it.</p>
+ * once, which the cooldown after each attempt covers.</p>
+ *
+ * <p>The full-colony case still fires rarely: a colony usually has one animal in
+ * it, moles only breed when a player feeds them, and the company check then
+ * refuses. The band case is the common one, because every mole that spawns near
+ * an established colony lands in it.</p>
  */
 public class MoleEmigrateGoal extends Goal {
 
@@ -45,6 +61,9 @@ public class MoleEmigrateGoal extends Goal {
 
     /** The current leg. Vanilla pathfinding will not plan the whole way in one go. */
     private @Nullable BlockPos hop;
+
+    /** Which of the two cases sent it walking, so the log can say which. */
+    private boolean leavingOwnColony;
 
     private int giveUpAt;
     private int nextAttemptTick;
@@ -73,20 +92,31 @@ public class MoleEmigrateGoal extends Goal {
         }
 
         ColonyStore store = ColonyStore.get(level);
-        Colony colony = store.at(this.mole.blockPosition());
-        if (colony == null) {
-            // Already somewhere unclaimed - nothing to leave.
-            burrowing.clearLeaveWish();
-            return false;
+        BlockPos here = this.mole.blockPosition();
+
+        // Two ways to want out, and they differ in one thing only: whether the
+        // mole leaving would empty a colony.
+        Colony colony = store.at(here);
+        this.leavingOwnColony = colony != null;
+        if (colony != null) {
+            if (!hasCompany(level, colony)) {
+                BurrowLog.refused(this.mole, "colony is full, but leaving would empty it");
+                this.nextAttemptTick = this.mole.tickCount + BurrowConstants.EMIGRATION_RETRY_DELAY;
+                return false;
+            }
+        } else {
+            // The unclaimed band. A mole here is nobody's member, so walking on
+            // empties nothing and no company check applies - and it must walk on,
+            // because this is the one place where staying means refusing forever.
+            colony = store.nearestCrowding(here);
+            if (colony == null) {
+                // Already on free ground - nothing to leave.
+                burrowing.clearLeaveWish();
+                return false;
+            }
         }
 
-        if (!hasCompany(level, colony)) {
-            BurrowLog.refused(this.mole, "colony is full, but leaving would empty it");
-            this.nextAttemptTick = this.mole.tickCount + BurrowConstants.EMIGRATION_RETRY_DELAY;
-            return false;
-        }
-
-        this.target = pickTarget(level, colony, this.mole.blockPosition());
+        this.target = pickTarget(level, colony, here);
         return this.target != null;
     }
 
@@ -102,7 +132,7 @@ public class MoleEmigrateGoal extends Goal {
     public void start() {
         this.giveUpAt = this.mole.tickCount + BurrowConstants.EMIGRATION_TIMEOUT;
         this.hop = null;
-        BurrowLog.emigrating(this.mole, this.target);
+        BurrowLog.emigrating(this.mole, this.target, this.leavingOwnColony);
     }
 
     @Override
@@ -112,8 +142,9 @@ public class MoleEmigrateGoal extends Goal {
         }
 
         BlockPos here = this.mole.blockPosition();
-        if (ColonyStore.get(level).isFreeGround(here)) {
-            // Far enough from every core that the next hole founds a colony.
+        if (ColonyStore.get(level).hasSettlingRoom(here)) {
+            // Far enough from every core that the next hole founds a colony, and
+            // far enough past that line that an ordinary stroll does not undo it.
             MoleBurrowGoal burrowing = this.mole.getBurrowGoal();
             if (burrowing != null) {
                 burrowing.clearLeaveWish();

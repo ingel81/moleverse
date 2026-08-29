@@ -1,5 +1,6 @@
 package net.sgeht.moleverse.entity.burrow;
 
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,11 +26,43 @@ public final class BurrowLog {
 
     private static final Logger LOG = LoggerFactory.getLogger("moleverse.mole");
 
+    /**
+     * On from the first tick in a development run, off in a shipped game.
+     *
+     * <p>Set only by the Gradle run configurations, the same way
+     * {@code moleverse.devPublish} is - a played game never sees the property.
+     * The reason it exists: the colony mechanic's failure mode is a mole that
+     * refuses silently, and a colony is founded within seconds of a world being
+     * entered. Having to type {@code /moleverse mole log on} first means the
+     * founding is already over by the time anything is being recorded, and that
+     * is the one line worth having.</p>
+     */
+    private static final boolean DEV_DEFAULT = Boolean.getBoolean("moleverse.devLogging");
+
+    /** What {@code /moleverse mole log} last said, or null while nobody has said anything. */
+    private static @Nullable Boolean override;
+
     private BurrowLog() {
     }
 
+    /**
+     * The command's answer, which outranks both the dev default and the config.
+     *
+     * <p>Without this the dev property would make {@code log off} do nothing, and
+     * turning the commentary off for a moment is exactly what it is for.</p>
+     */
+    public static void setOverride(boolean on) {
+        override = on;
+    }
+
     private static boolean off() {
-        return !MoleverseConfig.DEBUG_LOGGING.get();
+        Boolean chosen = override;
+        if (chosen != null) {
+            return !chosen;
+        }
+        // Not the config in a dev run: this is read on every line, and the
+        // property answers before a config has even been loaded.
+        return DEV_DEFAULT ? false : !MoleverseConfig.DEBUG_LOGGING.get();
     }
 
     /** {@code [#42 @-118,64,301]} - enough to follow one mole through the log. */
@@ -102,11 +135,19 @@ public final class BurrowLog {
     }
 
     /** A mole gave up on a full colony and set off. */
-    public static void emigrating(Entity mole, BlockPos target) {
+    /**
+     * @param leavingOwnColony true when a full colony is being left, false for the
+     *                         unclaimed band - where the mole is a member of
+     *                         nothing and "leaving a colony" would be a lie. The
+     *                         band is the commoner of the two.
+     */
+    public static void emigrating(Entity mole, BlockPos target, boolean leavingOwnColony) {
         if (off()) {
             return;
         }
-        LOG.info("{} leaving a full colony, heading for {}", who(mole), where(target));
+        LOG.info("{} {}, heading for {}", who(mole),
+                leavingOwnColony ? "leaving a full colony" : "walking out of the unclaimed band",
+                where(target));
     }
 
     /** And arrived somewhere a colony may be founded. */
