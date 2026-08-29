@@ -223,3 +223,32 @@ and proves nothing about whether a corridor is walkable.
   great worm has a texture of its own.
 * Nothing sets the price of a shrink post. It is placed from the creative tab,
   because what the way in should cost is the one design question still open.
+
+### Fourth wave - fittings, economy and a way out
+
+* **Exchange station** - a machine with a screen and two inventories. Worms in,
+  finds out, moved across by a mole surfacing through the mound beneath it. A
+  full station never eats a worm. The find table is a placeholder until the worm
+  tiers grade it.
+* **Grunting post** - the one fitting that needs no mound: a stake driven into
+  soil, rasped across, and worms come up. Real technique, and the first source of
+  worms that does not involve breaking somebody's molehill.
+* **Colony board** - what `/moleverse colony info` says, said in the world.
+* **Worm box and two more worms.** Soil and plant matter in, worms out, slowly -
+  a composter's relative with no block entity at all. The fat worm buys better
+  finds, the glow worm is the bridge to what lights the burrow.
+* **Mole trap and mole in a sack.** Baited with a worm, springs on the next mole
+  to surface, and the catch is carried in an item that survives a reload.
+  Releasing it somewhere far enough away is how a colony gets founded on purpose.
+  A trap blocks its mound while it stands - catching costs the network a door.
+* **Recipes**, so none of this is creative-only any more, and an **advancement
+  tree** that doubles as tomorrow's checklist: an advancement that never fires is
+  a feature that never ran.
+* **Level shafts.** Feeding runs and main runs lie four blocks apart down there,
+  one above the other, and until now nothing connected them - the burrow was two
+  networks that never met. Shafts are cut where two runs cross.
+* **A way out when the door closes.** Breaking the mound above a visitor used to
+  trap them with no exit, no beds and unbreakable fill. Now the burrow watches
+  for it.
+* **Own textures**, generated from scripts under `art/generators/` rather than
+  drawn by hand. Only the shaft lantern still borrows from vanilla.
