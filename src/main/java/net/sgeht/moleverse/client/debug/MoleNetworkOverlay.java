@@ -15,13 +15,14 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.MoundAttachment;
 import net.sgeht.moleverse.entity.Mole;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
 import net.sgeht.moleverse.entity.burrow.BurrowRoute;
 import net.sgeht.moleverse.entity.burrow.RunLevel;
 import net.sgeht.moleverse.network.BurrowLinksPayload;
-import net.sgeht.moleverse.registry.ModBlocks;
+import net.sgeht.moleverse.tag.ModTags;
 
 /**
  * Draws the mound network the way the client can see it: every mound around the
@@ -217,10 +218,16 @@ public final class MoleNetworkOverlay {
      * Sweeps the columns around the player and looks at the one block a mound
      * could occupy in each.
      *
-     * <p>That block is exactly what {@code MOTION_BLOCKING_NO_LEAVES} reports,
-     * because the mound has no collision and therefore does not raise the
-     * heightmap itself - the same identity the server's {@code MoundNetwork}
-     * relies on when it places one.</p>
+     * <p>{@code MOTION_BLOCKING_NO_LEAVES} reports that block, because a mound
+     * has no collision and so raises no heightmap of its own - the same identity
+     * the server's {@code MoundNetwork} relies on when it places one.</p>
+     *
+     * <p><strong>A fitting breaks that identity</strong>, because a fitting is
+     * solid. On a mound wearing one the sweep lands two blocks high and finds
+     * air, so the mound and every line ending at it went missing from the
+     * picture - which is how a working colony came to look like it had lost its
+     * exchange stations. The server made the same mistake in the same week for
+     * the same reason; see {@link MoundAttachment#moundUnder}.</p>
      */
     private static List<Mound> findMounds(ClientLevel level, BlockPos centre, int radius) {
         List<Mound> found = new ArrayList<>();
@@ -236,8 +243,22 @@ public final class MoleNetworkOverlay {
                 int z = centre.getZ() + dz;
                 cursor.set(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
 
+                // A fitting is solid and does raise the heightmap, so a mound
+                // wearing one sits two blocks below what the sweep just found -
+                // and looking only at the top block finds air there. The same
+                // mistake the server made in beginEmerging, for the same reason.
+                BlockPos underFitting = MoundAttachment.moundUnder(level, cursor);
+                if (underFitting != null) {
+                    cursor.set(underFitting);
+                }
+
                 BlockState state = level.getBlockState(cursor);
-                if (state.is(ModBlocks.MOLE_MOUND.get())) {
+                // The tag, not the plain block. Naming one of the two mound
+                // blocks here made every shored-up mound vanish from the overlay,
+                // and with it every line that ended at one - which reads exactly
+                // like the colony having lost them. It had not: the server asks
+                // the point-of-interest index, and that covers both.
+                if (state.is(ModTags.Blocks.MOLE_MOUNDS)) {
                     found.add(new Mound(cursor.immutable(), state.getValue(MoleMound.OPEN)));
                 }
             }

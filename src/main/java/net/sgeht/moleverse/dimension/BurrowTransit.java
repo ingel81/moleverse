@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.MoundAttachment;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
 import net.sgeht.moleverse.entity.burrow.Colony;
@@ -284,6 +285,17 @@ public final class BurrowTransit {
     private static @Nullable BlockPos moundAbove(ServerLevel overworld, BlockPos burrowPos) {
         BlockPos mapped = BurrowGeometry.toOverworld(burrowPos);
         BlockPos surface = MoundNetwork.surfaceAt(overworld, mapped.getX(), mapped.getZ());
+
+        // The way down is a shrink post, the shrink post is a fitting, and a
+        // fitting is solid - so the heightmap lands above it and the mound that
+        // is plainly still there reads as gone. Every player who took the way in
+        // hit this on the way out, because the very block that let them in is
+        // what hides the mound.
+        BlockPos underFitting = MoundAttachment.moundUnder(overworld, surface);
+        if (underFitting != null) {
+            surface = underFitting;
+        }
+
         return MoleMound.isMound(overworld, surface) ? surface : null;
     }
 

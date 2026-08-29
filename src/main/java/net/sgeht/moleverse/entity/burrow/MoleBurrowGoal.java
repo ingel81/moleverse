@@ -795,6 +795,15 @@ public class MoleBurrowGoal extends Goal {
         int z = Mth.floor(at.z);
         BlockPos surfaced = MoundNetwork.surfaceAt(level, x, z);
 
+        // A fitting on a prepared mound is solid, so the heightmap - and with it
+        // surfaceAt - lands above the fitting instead of on the mound. Resolve
+        // back down to the mound before anything is judged, or the checks below
+        // see a hollow block in the column and call the fitting a roof.
+        BlockPos underFitting = MoundAttachment.moundUnder(level, surfaced);
+        if (underFitting != null) {
+            surfaced = underFitting;
+        }
+
         // A hill the route climbed into and a roof both put the heightmap far
         // above the mole; only one of them has a room in between, and surfacing
         // through a room means standing on someone's house. Walking the column

@@ -1,5 +1,7 @@
 package net.sgeht.moleverse.block;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -53,6 +55,32 @@ public abstract class MoundAttachment extends Block {
         if (state.getBlock() instanceof MoundAttachment attachment) {
             attachment.moleSurfaced(level, above, state, mole);
         }
+    }
+
+    /**
+     * The mound under a fitting, given the free space above that fitting.
+     *
+     * <p>Both mound blocks are {@code noCollision} and so raise no heightmap.
+     * Every fitting except the lantern is solid and does, which puts
+     * {@code MoundNetwork.surfaceAt} two blocks above the mound rather than on
+     * it - and a mole told to surface there walks up a column that has the
+     * hollow mound in it, fails the solid-column test, and is turned back as
+     * though somebody had built over its hole.</p>
+     *
+     * <p>Measured in play: an exchange station on a prepared mound turned four
+     * consecutive deliveries away. That station exists so a mole can surface
+     * through the mound beneath it, so the fitting was making the one thing
+     * impossible that it is for.</p>
+     *
+     * @return the mound below, or null when this is not a fitting standing on one
+     */
+    public static @Nullable BlockPos moundUnder(LevelReader level, BlockPos above) {
+        BlockPos fitting = above.below();
+        if (!(level.getBlockState(fitting).getBlock() instanceof MoundAttachment)) {
+            return null;
+        }
+        BlockPos mound = fitting.below();
+        return MoleMound.isMound(level, mound) ? mound : null;
     }
 
     @Override
