@@ -30,6 +30,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> PREPARED_MOLE_MOUND =
             REGISTER.registerSimpleBlockItem(ModBlocks.PREPARED_MOLE_MOUND);
 
+    public static final DeferredItem<BlockItem> SHAFT_LANTERN =
+            REGISTER.registerSimpleBlockItem(ModBlocks.SHAFT_LANTERN);
+
     // --- Spawn eggs -------------------------------------------------------
     // The properties operator runs during item registration, not at class init.
     // Entity types are registered before items, so the type resolves by then.

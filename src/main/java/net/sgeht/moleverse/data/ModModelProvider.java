@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.block.model.Variant;
 import net.minecraft.data.PackOutput;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.ShaftLantern;
 import net.sgeht.moleverse.registry.ModBlocks;
 import net.sgeht.moleverse.registry.ModItems;
 
@@ -39,6 +40,7 @@ public final class ModModelProvider extends ModelProvider {
 
         registerMoleMound(blockModels);
         registerPreparedMoleMound(blockModels);
+        registerShaftLantern(blockModels);
 
         itemModels.generateFlatItem(ModItems.MOLE_PELT.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
@@ -94,6 +96,28 @@ public final class ModModelProvider extends ModelProvider {
 
         blockModels.registerSimpleItemModel(ModBlocks.PREPARED_MOLE_MOUND.get(),
                 Moleverse.id("block/prepared_mole_mound"));
+    }
+
+    /**
+     * One shape for both states of the lamp.
+     *
+     * <p>Lit and unlit share a model on purpose for now: what changes is the
+     * light level, which comes from the block properties rather than from the
+     * model. A second texture can be added later without touching anything
+     * else.</p>
+     */
+    private void registerShaftLantern(BlockModelGenerators blockModels) {
+        MultiVariant shape = BlockModelGenerators.variants(
+                new Variant(Moleverse.id("block/shaft_lantern")));
+
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.SHAFT_LANTERN.get())
+                        .with(PropertyDispatch.initial(ShaftLantern.LIT)
+                                .select(false, shape)
+                                .select(true, shape)));
+
+        blockModels.registerSimpleItemModel(ModBlocks.SHAFT_LANTERN.get(),
+                Moleverse.id("block/shaft_lantern"));
     }
 
     /** Every given shape in all four Y rotations, picked at random in world. */

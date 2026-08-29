@@ -37,6 +37,7 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
         // into it is the point, and losing it to a misplaced click would make
         // anybody stop building them.
         dropSelf(ModBlocks.PREPARED_MOLE_MOUND.get());
+        dropSelf(ModBlocks.SHAFT_LANTERN.get());
 
         // A mound gives back the earth a mole pushed up, and now and then what
         // the mole was after in the first place. That second pool is the reason

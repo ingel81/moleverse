@@ -30,6 +30,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.LOOSE_SOIL.get());
                         output.accept(ModItems.MOLE_MOUND.get());
                         output.accept(ModItems.PREPARED_MOLE_MOUND.get());
+                        output.accept(ModItems.SHAFT_LANTERN.get());
                         output.accept(ModItems.MOLE_SPAWN_EGG.get());
                     })
                     .build());

@@ -20,6 +20,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.MoundAttachment;
 import net.sgeht.moleverse.entity.Mole;
 import net.sgeht.moleverse.registry.ModSounds;
 import net.sgeht.moleverse.tag.ModTags;
@@ -754,6 +755,8 @@ public class MoleBurrowGoal extends Goal {
 
         this.placeExitMound(level);
         this.recordLink(level);
+        // Whatever a player has fitted to this mound hears about the arrival.
+        MoundAttachment.notifySurfaced(level, this.emergeAt, this.mole);
         level.playSound(null, this.mole.getX(), this.mole.getY(), this.mole.getZ(),
                 ModSounds.MOLE_SURFACE.get(), SoundSource.NEUTRAL, 1.0F, 1.0F);
         this.mole.setBurrowState(BurrowState.WANDERING, "emerge animation finished");

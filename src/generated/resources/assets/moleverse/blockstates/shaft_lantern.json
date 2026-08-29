@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "lit=false": {
+      "model": "moleverse:block/shaft_lantern"
+    },
+    "lit=true": {
+      "model": "moleverse:block/shaft_lantern"
+    }
+  }
+}

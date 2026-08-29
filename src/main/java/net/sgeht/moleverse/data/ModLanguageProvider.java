@@ -26,6 +26,7 @@ public final class ModLanguageProvider extends LanguageProvider {
         addBlock(ModBlocks.LOOSE_SOIL, "Loose Soil");
         addBlock(ModBlocks.MOLE_MOUND, "Mole Mound");
         addBlock(ModBlocks.PREPARED_MOLE_MOUND, "Prepared Mole Mound");
+        addBlock(ModBlocks.SHAFT_LANTERN, "Shaft Lantern");
         addItem(ModItems.MOLE_PELT, "Mole Pelt");
         addItem(ModItems.EARTHWORM, "Earthworm");
         addItem(ModItems.MOLE_SPAWN_EGG, "Mole Spawn Egg");
