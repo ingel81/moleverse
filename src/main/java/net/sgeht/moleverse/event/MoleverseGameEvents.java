@@ -12,6 +12,7 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.config.MoleverseConfig;
+import net.sgeht.moleverse.debug.BurrowCommand;
 import net.sgeht.moleverse.debug.ColonyOutline;
 import net.sgeht.moleverse.debug.MoleServerCommand;
 import net.sgeht.moleverse.debug.TunnelView;
@@ -37,6 +38,7 @@ public final class MoleverseGameEvents {
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         MoleServerCommand.register(event.getDispatcher());
+        BurrowCommand.register(event.getDispatcher());
     }
 
     /**
