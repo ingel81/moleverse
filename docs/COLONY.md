@@ -1,7 +1,9 @@
 # Colonies, links and route depth
 
-Status: planned, not built. The foundation `IDEAS.md` keeps calling for - the one
-thing the burrow below, the exchange chest and the main runs all stand on.
+Status: **all four phases are built and none of them has been tested in play.**
+Written as a plan, kept as the record of why each piece is shaped the way it is.
+This is the foundation `IDEAS.md` keeps calling for - the one thing the burrow
+below and the main runs both stand on.
 
 ## The short version
 
@@ -32,8 +34,8 @@ crossing links occupy the same space, and once that is scaled up for the burrow
 below every crossing stops being two corridors and becomes a plaza - the dense
 part of a colony would mirror as one cleared hall rather than a network. Depth
 separation is what keeps a crossing a crossing: a feeding run at two and a main
-run at twelve pass over and under each other, and the vertical structure that
-makes the burrow worth walking comes from exactly that.
+run at four pass over and under each other, and the vertical structure that makes
+the burrow worth walking comes from exactly that.
 
 ## Why this is the foundation and not a feature
 
@@ -105,10 +107,9 @@ stops this foundation from turning into a rewrite.
 
 | Field | Note |
 |---|---|
-| a, b | mound positions, stored in a canonical order so the pair is one key |
-| steps | waypoint count; with a and b this reconstructs every x and z |
-| depth class | feeding run, main run, deep run |
-| depths | one value per waypoint, the only thing that cannot be recomputed |
+| a, b | mound positions, in the order they were dug; matching tries both ways round |
+| level | feeding run, main run, chamber - the last one is reserved, nothing digs it yet |
+| depths | one value per waypoint, the only thing that cannot be recomputed. Their count is the step count, so that is not stored either |
 | uses | how often it has been travelled; main runs and decay hang off this |
 | last used | game time, for pruning and for the burrow to age a corridor |
 
@@ -123,9 +124,9 @@ policy is needed.
 `SavedData` on the overworld, holding every colony. Chunk-bound storage is wrong:
 a link spans chunks by definition, and a colony spans many.
 
-The registration shape for `SavedData` changed to a codec-based form in the 1.21
-line. **Look it up in the decompiled sources before writing it**, the way the
-rest of this project does, because every tutorial still shows the old API.
+The registration is the codec-based form the 1.21 line uses - a `SavedDataType`
+with an id, a constructor and a codec - not the `load`/`save` pair every tutorial
+still shows.
 
 ## Constants to add
 
@@ -135,7 +136,7 @@ figures below and get a slider where a slider helps.
 | Name | Start | Reason |
 |---|---|---|
 | `COLONY_EXTENT` | 64 | half-width; matches the existing scan radius |
-| `COLONY_MIN_SEPARATION` | 256 | so two colonies do not overlap boxes or share ground |
+| `COLONY_MIN_SEPARATION` | 144 | boxes never touch, and the band where nobody may found stays 16 blocks wide rather than 128 |
 | `DEPTH_FEEDING` | 2 | today's `ROUTE_DEPTH`; the everyday run just under the turf |
 | `DEPTH_MAIN` | 4 | the backbone a colony keeps and reuses |
 | `DEPTH_CHAMBER` | 6 | the main burrow and its chambers, the deepest anything goes |
