@@ -89,12 +89,36 @@ night, without a debug overlay.
 **Done when** an attachment placed on a prepared mound reacts to a mole coming
 up, and pops off when the mound below it goes. Neither has been seen yet.
 
-### Phase C - the first real attachment
+### Phase C - the fittings that do something
 
-Whichever of the three is wanted first. The exchange chest needs worm tiers to
-trade against, the trap needs a mole in a sack to put the catch into, and the
-entrance needs the burrow below. None of them is blocked by the socket once
-phases A and B stand, which is the point of doing them in this order.
+The entrance came first, out of order, because the burrow needed a door: the
+**shrink post** is an attachment like any other.
+
+Then three, chosen deliberately:
+
+* **Exchange station.** Not a chest - a machine, with a screen and two
+  inventories. Worms go in one side, finds come out the other, and a mole that
+  surfaces through the mound underneath is what moves one to the other. A full
+  station must never eat a worm.
+* **Grunting post.** The one fitting that needs no mound at all: a stake driven
+  into soil, rasped across, and earthworms come up. Real technique, and it is the
+  first source of worms that does not involve breaking molehills.
+* **Colony board.** What `/moleverse colony info` says, said in the world
+  instead: whose ground this is, how many runs are stored, how deep they go. A
+  debug command that a player is allowed to have.
+
+Left for later, with reasons: the **trap** needs a mole in a sack to put a catch
+into, and that item is also the relocation mechanic, so it is worth doing
+properly rather than as an attachment's side effect. The **feeding trough**
+overlaps with the exchange station until worms have tiers. The **aeration pipe**
+is the soil-fertility idea and belongs with farming, not with sockets.
+
+### The find table is a placeholder
+
+The station returns clay, bone, flint, amethyst, the odd echo shard, and things
+the mod already has. None of that is designed - it is there so the machine has
+something to hand back before worm tiers exist to grade it. Expect to replace it
+whole.
 
 ## Open
 
