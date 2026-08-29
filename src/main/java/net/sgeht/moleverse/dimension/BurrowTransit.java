@@ -47,7 +47,7 @@ import net.sgeht.moleverse.registry.ModBlocks;
  * nothing else, so there is no index to keep in sync with a world people dig in
  * - {@link #isWayOut} is a question asked of the ground. Only the horizontal is
  * a mapping; the height a chamber is carved at is a decision, and
- * {@link #chamberCentre} is where that decision lives.</p>
+ * {@link #chamberFloor} is where that decision lives.</p>
  */
 public final class BurrowTransit {
 
@@ -163,7 +163,7 @@ public final class BurrowTransit {
     }
 
     /**
-     * The walking surface of the chamber this mound opens into.
+     * The walking surface of the chamber this mound opens into, in burrow space.
      *
      * <p>Not the mapped mound position, which is the obvious answer and the wrong
      * one. A mound sits on the surface; the runs leaving it were dug two to six
@@ -183,13 +183,62 @@ public final class BurrowTransit {
      * a deeper run appears later, the next arrival carves a deeper chamber and the
      * post is placed again at that new floor - the old one stays up in the ceiling,
      * harmless, and still maps back to this same mound.</p>
+     *
+     * <p>The minimum is taken after mapping, not before. {@code burrowY} clamps to
+     * the dimension's own range, and while the clamp is monotonic - so it cannot
+     * reorder two runs - doing the arithmetic in the space the answer is used in
+     * means {@link #mouthLayers} can never come out negative, whatever the clamp
+     * does to a colony on a mountain or in a superflat world.</p>
      */
-    private static BlockPos chamberCentre(BlockPos mound, List<BurrowLink> runs) {
-        int deepest = mound.getY() - BurrowConstants.DEPTH_FEEDING;
+    private static int chamberFloor(BlockPos mound, List<BurrowLink> runs) {
+        int floor = BurrowGeometry.burrowY(mound.getY() - BurrowConstants.DEPTH_FEEDING);
         for (BurrowLink run : runs) {
-            deepest = Math.min(deepest, runEndY(run, mound));
+            floor = Math.min(floor, BurrowGeometry.burrowY(runEndY(run, mound)));
         }
-        return BurrowGeometry.toBurrow(mound.atY(deepest));
+        return floor;
+    }
+
+    /**
+     * How far above the chamber floor each run leaves, which is what the carver
+     * puts a gallery at.
+     *
+     * <p>A mouth has no floor under it - the room cleared that - so it can only be
+     * entered from the wall, at its own height, on its own bearing. Without these
+     * the chamber is carved bare and a player standing on the floor can see the
+     * shallower corridors and not reach them.</p>
+     *
+     * <p>Duplicates and a zero are left in. The carver ignores both, and filtering
+     * here would only hide which run produced which gallery.</p>
+     *
+     * <p>A layer past the top of the chamber is dropped by the carver, which is
+     * the right thing to do - a gallery clamped down to the ceiling would only put
+     * the player four blocks closer to a mouth still out of reach. Dropping it
+     * silently is the problem, so it is logged here. The run keeps its corridor,
+     * so what the world ends up with is a real tunnel above the chamber with no
+     * way up to it, and nothing else in the game would ever say so.</p>
+     *
+     * <p>It takes a changed surface to happen at all: the depth of a run is
+     * sampled when that run is recorded and only re-measured when it is travelled
+     * again, so two runs at one mound can be measured against two different
+     * ground heights if somebody raised the ground or a tree grew between the two
+     * recordings. Rare, and not self-announcing, which is exactly the combination
+     * worth a line in the log.</p>
+     */
+    private static int[] mouthLayers(BlockPos mound, List<BurrowLink> runs, int floor) {
+        int[] layers = runs.stream()
+                .mapToInt(run -> BurrowGeometry.burrowY(runEndY(run, mound)) - floor)
+                .toArray();
+
+        for (int layer : layers) {
+            if (layer >= BurrowGeometry.CHAMBER_HEIGHT) {
+                LOG.warn("mound {}: a run leaves {} blocks above the chamber floor, "
+                        + "past the {} the chamber is tall - it gets no gallery, "
+                        + "so its corridor cannot be reached from inside",
+                        mound, layer, BurrowGeometry.CHAMBER_HEIGHT);
+            }
+        }
+
+        return layers;
     }
 
     /**
