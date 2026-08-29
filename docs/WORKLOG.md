@@ -451,5 +451,19 @@ Added by the runs:
 * **`ground is not diggable` never names the block.** The most common refusal in
   the first run, 1373 times, and undiagnosable: `passesGuards` refuses at
   `MoleBurrowGoal:290` and the block name is written at 299.
-* **Dispersal from a full colony is still untested.** No colony has reached
-  `NETWORK_MAX_MEMBERS`, so only the band half of the goal has ever run.
+* **Dispersal from a full colony cannot fire, and that is a design question.**
+  Two moles on one colony filled it to `NETWORK_MAX_MEMBERS` inside the first
+  hour and then made 2578 trips over seven more without one refusal. `leaveWish`
+  is set only where `exit == null`, so the condition is "full *and* no trip at
+  all" - and a full colony is the least likely place to run out of trips. The
+  full-colony half of `MoleEmigrateGoal` has therefore never run. Whether a full
+  colony should push somebody out at all is undecided; if it should, the wish has
+  to hang on fullness rather than on being stuck.
+* **Nothing caps moles per colony.** `NETWORK_MAX_MEMBERS` bounds mounds, not
+  animals, and with dispersal unreachable a fed pair breeds an unbounded
+  population into one territory of thirty-two mounds. Slow - five minutes between
+  breedings, twenty for a juvenile to grow - but with no ceiling.
+* **A juvenile follows the nearest adult, not its parent.**
+  `MoleFollowMotherGoal.findDivingAdult` takes whichever grown mole is nearest and
+  diving. Cosmetic while both adults do the same thing, wrong as soon as they do
+  not.

@@ -608,10 +608,20 @@ public class MoleBurrowGoal extends Goal {
             }
 
             if (this.exit == null) {
-                // A colony that has run out of members as well as out of room is
-                // finished growing, and a mole that stays is a mole that refuses
-                // every three seconds for the rest of the world's life. That is
-                // the one refusal worth leaving over.
+                // The wish to leave is guarded by the `exit == null` above, and
+                // that makes it far narrower than "the colony is full". It means
+                // full *and* no trip available at all - and a full colony is the
+                // least likely place to run out of trips, because being full is
+                // having thirty-two destinations.
+                //
+                // Measured: two moles, one colony, eight hours of game time.
+                // The colony reached the cap inside the first hour and then made
+                // 2578 trips without a single refusal, so this branch was never
+                // entered and no mole ever wanted to leave. The full-colony half
+                // of MoleEmigrateGoal has therefore never run; only the band half
+                // has. Whether a full colony *should* push somebody out is an
+                // open design question rather than a bug, and it is recorded as
+                // one in docs/WORKLOG.md.
                 boolean full = network.mounds().size() >= BurrowConstants.NETWORK_MAX_MEMBERS;
                 if (full) {
                     this.leaveWish = true;

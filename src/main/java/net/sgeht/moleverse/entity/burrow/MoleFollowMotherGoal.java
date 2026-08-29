@@ -20,9 +20,17 @@ import net.sgeht.moleverse.entity.Mole;
  * both entities without a line of code here. {@link MoleBurrowGoal} is therefore
  * untouched by any of this: it never learns that anyone is following.</p>
  *
- * <p>"Mother" is the nearest adult mole, not a remembered parent. Moles do not
- * breed yet, so there is no parentage to remember; when there is, this is the one
- * method that has to change.</p>
+ * <p><strong>"Mother" is the nearest adult mole, not a remembered parent.</strong>
+ * This used to say that moles do not breed yet, so there was no parentage to
+ * remember - and that stopped being true when {@code BreedGoal} and the earthworm
+ * {@code TemptGoal} went into {@code Mole.registerGoals}. A fed pair produces
+ * young, and {@link #findDivingAdult} still picks whichever grown mole is nearest
+ * and diving within {@link BurrowConstants#BABY_FOLLOW_RADIUS}. With two adults
+ * working the same colony that is regularly the wrong one.</p>
+ *
+ * <p>It is only cosmetic while both adults do the same thing, which is why it has
+ * been left: the baby travels correctly either way. {@link #findDivingAdult} is
+ * still the one method that has to change when it stops being cosmetic.</p>
  *
  * <p>Every failure ends the same way, which is the fallback the plan asks for:
  * the baby stops following, comes back to the surface if it was already under,
