@@ -2,14 +2,17 @@ package net.sgeht.moleverse.event;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.config.MoleverseConfig;
+import net.sgeht.moleverse.debug.ColonyOutline;
 import net.sgeht.moleverse.debug.MoleServerCommand;
 
 /**
@@ -33,6 +36,17 @@ public final class MoleverseGameEvents {
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         MoleServerCommand.register(event.getDispatcher());
+    }
+
+    /**
+     * Only the colony outline hangs off this, and it returns immediately while
+     * switched off - which is every tick of a normal game.
+     */
+    @SubscribeEvent
+    public static void onLevelTick(LevelTickEvent.Post event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            ColonyOutline.tick(level);
+        }
     }
 
     @SubscribeEvent

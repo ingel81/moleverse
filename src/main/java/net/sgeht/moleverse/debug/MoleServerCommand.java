@@ -1,5 +1,8 @@
 package net.sgeht.moleverse.debug;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 
 import org.jetbrains.annotations.Nullable;
@@ -10,12 +13,15 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.config.MoleverseConfig;
 import net.sgeht.moleverse.entity.Mole;
+import net.sgeht.moleverse.entity.burrow.Colony;
+import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
 
 /**
@@ -58,7 +64,70 @@ public final class MoleServerCommand {
                                 .then(Commands.literal("on")
                                         .executes(ctx -> setLogging(ctx.getSource(), true)))
                                 .then(Commands.literal("off")
-                                        .executes(ctx -> setLogging(ctx.getSource(), false))))));
+                                        .executes(ctx -> setLogging(ctx.getSource(), false)))))
+                .then(Commands.literal("colony")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.literal("info")
+                                .executes(MoleServerCommand::colonyInfo))
+                        .then(Commands.literal("list")
+                                .executes(MoleServerCommand::colonyList))
+                        .then(Commands.literal("show")
+                                .then(Commands.literal("on")
+                                        .executes(ctx -> setOutline(ctx.getSource(), true)))
+                                .then(Commands.literal("off")
+                                        .executes(ctx -> setOutline(ctx.getSource(), false))))));
+    }
+
+    /** Which colony owns the ground the caller is standing on, if any. */
+    private static int colonyInfo(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        BlockPos here = BlockPos.containing(source.getPosition());
+        Colony colony = ColonyStore.get(source.getLevel()).at(here);
+
+        if (colony == null) {
+            source.sendSuccess(() -> Component.literal("Unclaimed ground - no colony owns this spot.")
+                    .withStyle(ChatFormatting.GRAY), false);
+            return 0;
+        }
+
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Colony #%d - core %d,%d, ground x %d..%d z %d..%d",
+                colony.id(), colony.core().getX(), colony.core().getZ(),
+                colony.minX(), colony.maxX(), colony.minZ(), colony.maxZ())), false);
+        return 1;
+    }
+
+    /** Every colony of this level, nearest first. */
+    private static int colonyList(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        Vec3 from = source.getPosition();
+        List<Colony> colonies = new ArrayList<>(ColonyStore.get(source.getLevel()).all());
+
+        if (colonies.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No colonies yet.").withStyle(ChatFormatting.GRAY), false);
+            return 0;
+        }
+
+        colonies.sort(Comparator.comparingDouble(colony -> colony.core().getCenter().distanceToSqr(from)));
+        for (Colony colony : colonies) {
+            double away = Math.sqrt(colony.core().getCenter().distanceToSqr(from));
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "#%d at %d,%d - %.0f blocks away",
+                    colony.id(), colony.core().getX(), colony.core().getZ(), away)), false);
+        }
+        return colonies.size();
+    }
+
+    /**
+     * Turns the colony outline on or off. It stays on and covers every colony,
+     * not only the one underfoot - the point of looking at a border is comparing
+     * it with the next one.
+     */
+    private static int setOutline(CommandSourceStack source, boolean on) {
+        ColonyOutline.setEnabled(on);
+        source.sendSuccess(() -> Component.literal("Colony outline " + (on ? "on" : "off"))
+                .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.GRAY), false);
+        return 1;
     }
 
     /**
