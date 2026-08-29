@@ -1,6 +1,7 @@
 # Prepared mounds and attachments
 
-Status: planned. The infrastructure is what matters here - the exchange chest,
+Status: phases A and B are built and untested; the rest is planned. The
+infrastructure is what matters here - the exchange chest,
 the trap and the way into the burrow below are all the same socket, and getting
 the socket wrong means rebuilding three features rather than one.
 
@@ -58,10 +59,12 @@ decision.
 
 ## Phases
 
-### Phase A - the prepared mound
+### Phase A - the prepared mound *(built, untested)*
 
-The block, its model, the point of interest covering both mound blocks, and the
-recipe or interaction that turns one into the other. Nothing sits on it yet.
+The block, its model and the point of interest covering both mound blocks are
+in. What is missing is the interaction that turns a molehill into a prepared one:
+until it is decided what preparing costs, the block is placed from the creative
+tab.
 
 **Done when** a prepared mound can be made from a plain one, a mole treats it
 exactly as before - travels to it, opens its shaft, comes up out of it - and

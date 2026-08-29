@@ -125,5 +125,7 @@ line of it has been seen working.
 ### Deliberately not done
 
 * No interaction turns a molehill into a prepared one yet - what preparing costs
-  is still open, so for now it is placed from the creative tab.
-* No attachment block exists, only the thing one would sit on.
+  is still open, so for now both the prepared mound and the lantern are placed
+  from the creative tab.
+* No recipe, no cost, and no texture of their own. The lantern borrows the
+  vanilla one.
