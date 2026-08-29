@@ -396,9 +396,13 @@ public final class CorridorCarver {
      * {@code setBlock}, which is safe because NeoForge patches {@code Level}
      * to call {@code immutable()} on the position before storing it anywhere.</p>
      *
+     * <p>Package visible because {@link LevelShafts} sinks its wells with it. The
+     * rule about what may be replaced is the safety model of the whole dimension
+     * and there must only ever be one copy of it.</p>
+     *
      * @return true when something was actually turned into air
      */
-    private static boolean clear(ServerLevel burrow, BlockPos.MutableBlockPos pos) {
+    static boolean clear(ServerLevel burrow, BlockPos.MutableBlockPos pos) {
         if (!burrow.isInsideBuildHeight(pos.getY()) || !burrow.isLoaded(pos)) {
             return false;
         }
@@ -548,8 +552,15 @@ public final class CorridorCarver {
         return (int) Math.round(BurrowGeometry.CHAMBER_RADIUS * Math.sqrt(1.0 - t * t));
     }
 
-    /** Waypoint {@code index} of the run, in burrow space. */
-    private static BlockPos burrowPoint(BurrowLink link, int index) {
+    /**
+     * Waypoint {@code index} of the run, in burrow space.
+     *
+     * <p>Package visible so {@link LevelShafts} can find a crossing at the exact
+     * places this carve wrote the run. A second copy of the mapping would be a
+     * second thing to keep in step, and a shaft a block beside its corridor opens
+     * into nothing.</p>
+     */
+    static BlockPos burrowPoint(BurrowLink link, int index) {
         Vec3 overworld = link.pointAt(index);
         return BurrowGeometry.toBurrow(BlockPos.containing(overworld));
     }

@@ -1,0 +1,31 @@
+{
+  "variants": {
+    "fill=0": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=1": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=2": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=3": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=4": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=5": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=6": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=7": {
+      "model": "moleverse:block/worm_box"
+    },
+    "fill=8": {
+      "model": "moleverse:block/worm_box"
+    }
+  }
+}
