@@ -54,10 +54,9 @@ being a second world to hold in sync. The player is shrunk to a quarter, which i
 what turns a mole run into a gallery and the small life of the soil into the
 large life down there.
 
-Getting in at all is the midgame gate: the gift, which needs the breeding chain,
-the exchange chest and a colony deep enough to yield a deep find - all three at
-once, none of them skippable. The full argument, the layered limits and the open
-questions are in `IDEAS.md`.
+Getting in at all is a midgame gate handed over by the animals themselves. What
+that gate is made of is still open - see `IDEAS.md`, along with the layered
+limits and the rest of the open questions.
 
 ## 0.5 - Life below
 Corridors alone get dull. Worm larders, root growth, the matriarch in a large

@@ -127,8 +127,27 @@ between dimensions.
 
 ### Open questions
 
-* How large is `S`? Four turns a mole run into a 4x4 gallery, which may already
-  be too grand; three feels more like an animal built it.
+* How large is `S`? It is three knobs rather than one, and they only look like
+  the same number - nobody in the game can measure the ratio between them.
+  * **Position** decides how far it is between chambers. A typical route of
+    thirty blocks becomes a 120 block walk at four and a 240 block walk at eight.
+  * **Cross-section** decides how much there is to author. An empty 4x4 run reads
+    as tight and therefore plausible; an empty 8x8 run reads as an unfinished
+    hall. The larger the scale, the less it forgives emptiness.
+  * **Vertical** is what actually breaks at a large factor. Routes wander a few
+    blocks in Y, so at eight a three block dip is a 24 block drop. Either ramps
+    everywhere, or Y scales weaker than X and Z.
+
+  Carving volume grows with the cube: the same route is roughly 1,900 blocks of
+  air at four and 15,400 at eight. Settled by walking it rather than by
+  arithmetic - a debug command that digs a sample stretch with given values in a
+  test world, in the spirit of the pose panel. This is a question to look at, not
+  to calculate.
+
+  Working assumption: the corridor cross-section lands **somewhere between 4x4
+  and 8x8**. So the test walks that range rather than comparing its two ends, and
+  the carver takes the width as a parameter from the start rather than baking one
+  in.
 * What is down there besides corridors? Empty galleries get dull fast. The burrow
   structure planned for 0.5 probably belongs here rather than in the overworld,
   with worm larders, root growth and a matriarch in a large node.
@@ -144,12 +163,15 @@ between dimensions.
 A chest set on a mound becomes a trading post. Worms go in, finds come out. It
 needs no taming and no command: moles surface at that mound anyway.
 
-What lifts it above a copy of the sniffer: **the find depends on the route the
-mole just travelled.** Deepest point and biome crossed pick the loot table, so
-extending the network changes what the network yields. A net that only runs
-through meadow soil returns roots and clay; one that reaches a deep seam returns
-ore. Prospecting is tied to the visible network rather than to an invisible
-vector - dig where the mounds are.
+**What you put in decides what comes back.** The trade reads the offering, not
+the courier: a better worm buys a better return, the way bartering works
+elsewhere in the game. Where the delivering mole had been was tried as the rule
+and dropped - it makes the same worm worth different things for reasons a player
+cannot see, and an exchange nobody can predict is not an exchange.
+
+Everything past that - which tiers exist, what each one returns, whether rarity
+comes from the worm alone or from something else offered with it - is
+deliberately left open until the worm chain itself is settled.
 
 Open: does every arriving mole deliver, or only against a worm? Must the shaft be
 open? What happens when the chest is full - does the mole stop delivering or
@@ -172,6 +194,49 @@ version.
 
 Lantern, marker, and the entrance fitting for the burrow below. All the same
 socket.
+
+### How an attachment is represented
+
+Settled early, because everything later leans on it: **an attachment is its own
+block**, not a property of the mound and not a block entity every mound carries.
+And it does not go straight onto a molehill - the mound is prepared first.
+
+* A block state property would multiply the mound's states - it already has an
+  open flag and two variants - and a chest needs a block entity regardless.
+* A block entity on every mound is the expensive one: a colony grows two dozen
+  mounds in an hour and hundreds over a world's life, and almost none of them
+  will ever carry an attachment.
+* A separate block keeps plain mounds dumb and cheap, gives every attachment its
+  own model, behaviour and loot, and puts a block entity only where one is
+  actually needed.
+
+**The mound is prepared first.** A molehill is a flat heap - the first element of
+its model is one pixel of sixteen tall - so anything set on the block above it
+would hang in the air with most of a block of nothing underneath. The step
+between is a **prepared mound**: the player shores the heap up into a block with
+a rim and a level top, and only that takes a fitting. Two things fall out of it
+at once. The gap disappears, because the fitting now rests on something. And not
+every molehill in a meadow is a trading post: preparing one costs material and is
+a decision, which is exactly the gate the sockets needed and did not have.
+
+So the chain is **mound - prepared mound - attachment**, and each step is a
+player's doing except the first.
+
+What the family shares: a fitting needs a prepared mound under it, it breaks when
+that goes, and all of them answer the same hook when a mole surfaces there -
+which `MoleBurrowGoal` already visits when it opens an entry or places an exit.
+
+Consequences to handle when it gets built:
+
+* The point-of-interest type is currently built from the mound block's own
+  states (`ModPoi`). A prepared mound is a different block and would drop out of
+  the index, and with it out of every colony. The type has to cover the whole
+  family, and `MoleMound.isMound`, `setOpen` and `canPlaceAt` with it.
+* The open flag has to survive preparation: a mound may be prepared while a mole
+  is down its shaft.
+* The mound is `noCollision`, so a surfacing mole stands inside the mound's own
+  block. A prepared one is a solid rim and has to leave that space free, or moles
+  stop being able to use the very mounds a player cares about most.
 
 ## The worm economy
 
@@ -262,21 +327,12 @@ The player really is shrunk - a quarter of their size, which is why a mole run
 reads as a gallery. The mod stays sober about how moles and worms live; the one
 fantastic step is what those animals eventually hand over.
 
-**The gift.** A mature worm out of the breeding chain closes around a find that
-only a deep network delivers, and what comes out of that is what makes a person
-small. The worm supplies the form, the moles supply what it forms around - the
-same division of labour the rest of the mod runs on.
-
-It is gated by all three systems at once, and none of them can be skipped:
-
-| Gate | Why it cannot be skipped |
-|---|---|
-| Breeding chain | the worm has to be a late tier, not one dug out of a mound |
-| Exchange chest | the core of the gift is a find, and finds come through trade |
-| A grown colony | a deep find only turns up where the network runs deep, so the colony has to be kept alive and extended |
-
-That makes it a midgame goal rather than a recipe, and it makes protecting the
-moles a progression requirement rather than a moral.
+**The gift itself is open.** What is settled is only the shape of it: the animals
+hand it over, worms or moles, and not before a midgame spent with them. What it
+is made of, how it is earned, whether it is spent per trip or kept and recharged,
+whether a mole has to be present at the mound - none of that is decided. An
+earlier attempt to pin it down leaned on trade rules that have since changed and
+was dropped with them.
 
 Rejected on the way here, so that they do not come back unexamined: the burrow
 being ancient (explains size, but not why the galleries follow a route a mole ran
