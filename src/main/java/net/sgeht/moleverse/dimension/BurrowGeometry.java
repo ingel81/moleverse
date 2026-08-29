@@ -41,10 +41,20 @@ public final class BurrowGeometry {
      *
      * <p>Somewhere between four and eight is the range worth walking; this is a
      * starting point to be judged with the sample command, not a settled number.</p>
+     *
+     * <p>This is the <em>feeding</em> run's width and the size everything else is
+     * measured against, not the width of every corridor: a run is cut to the
+     * section {@link CorridorProfile} gives its level. The pair of constants stays
+     * here because a great deal outside the carver measures itself against them -
+     * the decoration pass, the shafts, the game tests - and all of that is still
+     * asking the right question as long as they name the common case.</p>
      */
     public static final int CORRIDOR_WIDTH = 5;
 
-    /** Height of a corridor. A little more than the width reads as a burrow rather than a pipe. */
+    /**
+     * Height of a corridor. A little more than the width reads as a burrow rather
+     * than a pipe. The feeding run's height; see {@link CorridorProfile}.
+     */
     public static final int CORRIDOR_HEIGHT = 6;
 
     /** A chamber at a mound: wider than a corridor, and where the way out is. */

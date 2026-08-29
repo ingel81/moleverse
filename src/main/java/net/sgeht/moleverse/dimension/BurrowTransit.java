@@ -115,6 +115,9 @@ public final class BurrowTransit {
         // Feeding runs and main runs lie four blocks apart down here, one over
         // the other. Without this the burrow is two networks that never meet.
         LevelShafts.connect(burrow, runs);
+        // And where two runs of the same level meet, a place rather than an
+        // overlap: the difference between a network you can navigate and a maze.
+        Junctions.cut(burrow, runs);
 
         placeWayOut(burrow, chamber);
         BurrowLife.stock(burrow, chamber);

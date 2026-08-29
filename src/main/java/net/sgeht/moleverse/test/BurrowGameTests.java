@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.dimension.BurrowGeometry;
 import net.sgeht.moleverse.dimension.CorridorCarver;
+import net.sgeht.moleverse.dimension.CorridorProfile;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
 import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.RunLevel;
@@ -66,7 +67,15 @@ public final class BurrowGameTests {
     private static final int RECOGNISE_DEPTH = 100;
 
     /** Sideways reach of a corridor from its centre line. Mirrors the carver's own, which is private. */
-    private static final int CORRIDOR_RADIUS = (BurrowGeometry.CORRIDOR_WIDTH - 1) / 2;
+    /**
+     * Half the width of the run these tests carve, which is a main run.
+     *
+     * <p>Taken from the profile rather than from {@code CORRIDOR_WIDTH}: since
+     * runs got a profile per level, the geometry constant is only the default and
+     * a backbone is deliberately wider than it. The test that caught this was
+     * asserting the old constant and failing on a change that was correct.</p>
+     */
+    private static final int CORRIDOR_RADIUS = CorridorProfile.of(RunLevel.MAIN).radius();
 
     /** Deep earth left either side of the corridor: enough for the decorator to find a wall and stop. */
     private static final int SIDE_PAD = CORRIDOR_RADIUS + 4;
@@ -247,7 +256,7 @@ public final class BurrowGameTests {
         for (int side = -1; side <= 1; side += 2) {
             BlockPos wall = new BlockPos(middleX, walkY + 1, z + side * (CORRIDOR_RADIUS + 1));
             helper.assertTrue(!level.getBlockState(wall).isAir(),
-                    "the corridor is wider than CORRIDOR_WIDTH: " + wall.toShortString() + " was carved away");
+                    "the corridor is wider than its profile: " + wall.toShortString() + " was carved away");
         }
 
         // Carving is meant to be idempotent, which is what lets a mole travel the

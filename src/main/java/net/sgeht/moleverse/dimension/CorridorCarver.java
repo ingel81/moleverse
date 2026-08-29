@@ -32,9 +32,16 @@ import net.sgeht.moleverse.registry.ModBlocks;
  *
  * <p><strong>The cross-section is a disc, not a square.</strong> A square stamp
  * swept along a diagonal comes out half again as wide as the same stamp swept
- * along an axis; a disc is the same width in every direction, which is what
- * {@link BurrowGeometry#CORRIDOR_WIDTH} is supposed to mean. It also matches the
- * chambers, and a round tunnel reads as dug rather than as mined.</p>
+ * along an axis; a disc is the same width in every direction, which is what a
+ * corridor's width is supposed to mean. It also matches the chambers, and a
+ * round tunnel reads as dug rather than as mined.</p>
+ *
+ * <p><strong>How wide that disc is depends on the run.</strong> A colony's
+ * backbone is not the same thing as a feeding run and should not come out the
+ * same size; {@link CorridorProfile} holds the section per {@code RunLevel} and
+ * the reasoning behind each number. Everything else here is written against the
+ * profile rather than against a constant, so the shape of a run follows from
+ * what the colony dug it as.</p>
  *
  * <p><strong>Nothing but deep earth and air is ever replaced.</strong> Corridors
  * get furniture - roots, mycelium, whatever a later feature puts there - and a
@@ -52,13 +59,6 @@ import net.sgeht.moleverse.registry.ModBlocks;
 public final class CorridorCarver {
 
     /**
-     * Sideways reach from the centre line. An odd
-     * {@link BurrowGeometry#CORRIDOR_WIDTH} has a centre block, and this is what
-     * is left either side of it.
-     */
-    private static final int CORRIDOR_RADIUS = (BurrowGeometry.CORRIDOR_WIDTH - 1) / 2;
-
-    /**
      * How many of a chamber's topmost layers curve inwards.
      *
      * <p>Without it a chamber is a drilled silo: full radius right up to a flat
@@ -72,11 +72,14 @@ public final class CorridorCarver {
      * clear.
      *
      * <p>The way home is on that axis: the transit post stands on the chamber's
-     * centre block and the deepest run leaves through the same column, a corridor
-     * {@link #CORRIDOR_RADIUS} wide. Two blocks of margin on top of that means no
-     * step can ever be cut across it.</p>
+     * centre block and the deepest run leaves through the same column. Measured
+     * against {@link CorridorProfile#WIDEST_RADIUS} rather than against one
+     * level's width, so the claim holds for every run that can arrive here - no
+     * ledge block ever lies inside a mouth, and there is therefore no step left
+     * standing in a doorway. One block of clearance, which is all that claim
+     * needs and all a chamber of this radius can afford.</p>
      */
-    private static final int LEDGE_INNER_RADIUS = CORRIDOR_RADIUS + 2;
+    private static final int LEDGE_INNER_RADIUS = CorridorProfile.WIDEST_RADIUS + 1;
 
     /**
      * Blocks of air a gallery needs above its floor.
@@ -185,12 +188,18 @@ public final class CorridorCarver {
         RandomSource random = RandomSource.create(seedOf(link));
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
+        // The level the run was dug at decides its section. A colony's backbone
+        // is carved wider and taller than a feeding run so that it reads as the
+        // backbone from inside it - see CorridorProfile for the two caps that
+        // decide how much wider and taller it may be.
+        CorridorProfile profile = CorridorProfile.of(link.level());
+
         BlockPos previous = burrowPoint(link, 0);
-        int cleared = corridorAt(burrow, previous, cursor);
+        int cleared = corridorAt(burrow, previous, profile, cursor);
 
         for (int i = 1; i < points; i++) {
             BlockPos next = burrowPoint(link, i);
-            cleared += carveSegment(burrow, previous, next, cursor);
+            cleared += carveSegment(burrow, previous, next, profile, cursor);
 
             BlockPos centre = midpoint(previous, next);
             if (burrow.isLoaded(centre)) {
@@ -311,17 +320,16 @@ public final class CorridorCarver {
     /**
      * Clears the line between two waypoints.
      *
-     * <p>Steps of one block: the cross-section is five wide, so a coarser step
-     * would still join up, but only for as long as nobody lowers
-     * {@link BurrowGeometry#CORRIDOR_WIDTH}. A unit step is gapless whatever the
-     * width, and the cost is reads on blocks that are already air rather than
-     * extra writes.</p>
+     * <p>Steps of one block: the cross-section is several blocks wide, so a
+     * coarser step would still join up, but only for as long as no level's
+     * profile is narrow. A unit step is gapless whatever the width, and the cost
+     * is reads on blocks that are already air rather than extra writes.</p>
      *
      * <p>Starts at step 1. Step 0 is the waypoint the caller has already cleared,
      * either as the start of the run or as the end of the previous segment.</p>
      */
     private static int carveSegment(ServerLevel burrow, BlockPos from, BlockPos to,
-            BlockPos.MutableBlockPos cursor) {
+            CorridorProfile profile, BlockPos.MutableBlockPos cursor) {
         double dx = to.getX() - from.getX();
         double dy = to.getY() - from.getY();
         double dz = to.getZ() - from.getZ();
@@ -334,13 +342,14 @@ public final class CorridorCarver {
                     from.getX() + (int) Math.round(dx * t),
                     from.getY() + (int) Math.round(dy * t),
                     from.getZ() + (int) Math.round(dz * t),
-                    cursor);
+                    profile, cursor);
         }
         return cleared;
     }
 
-    private static int corridorAt(ServerLevel burrow, BlockPos centre, BlockPos.MutableBlockPos cursor) {
-        return corridorAt(burrow, centre.getX(), centre.getY(), centre.getZ(), cursor);
+    private static int corridorAt(ServerLevel burrow, BlockPos centre, CorridorProfile profile,
+            BlockPos.MutableBlockPos cursor) {
+        return corridorAt(burrow, centre.getX(), centre.getY(), centre.getZ(), profile, cursor);
     }
 
     /**
@@ -353,10 +362,11 @@ public final class CorridorCarver {
      * genuinely overlap, and writing deep earth into a floor would be writing it
      * into the middle of somebody else's corridor.</p>
      */
-    private static int corridorAt(ServerLevel burrow, int x, int y, int z, BlockPos.MutableBlockPos cursor) {
+    private static int corridorAt(ServerLevel burrow, int x, int y, int z, CorridorProfile profile,
+            BlockPos.MutableBlockPos cursor) {
         int cleared = 0;
-        for (int layer = 0; layer < BurrowGeometry.CORRIDOR_HEIGHT; layer++) {
-            cleared += disc(burrow, x, y + layer, z, CORRIDOR_RADIUS, cursor);
+        for (int layer = 0; layer < profile.height(); layer++) {
+            cleared += disc(burrow, x, y + layer, z, profile.radius(), cursor);
         }
         return cleared;
     }
