@@ -125,6 +125,18 @@ watched doing any of it.
   It is the smallest thing that proves the socket, and it doubles as the first
   way to watch a colony work without a debug overlay.
 
+### Learned about the toolchain
+
+* **Parchment was already switched on** in `gradle.properties`, and the mapped
+  sources are in `build/moddev/artifacts/neoforge-21.11.45-sources.jar` - real
+  parameter names, javadoc and NeoForge's patch comments. Every API question
+  tonight was answered from the raw neoformruntime decompile instead, which has
+  none of that. `CLAUDE.md` now points at the right file.
+* That mistake cost something concrete: the raw decompile shows `SavedDataType`
+  demanding a `DataFixTypes`, so the colony store borrowed the vanilla level type.
+  The patched record takes null and has a three-argument constructor for exactly
+  this. Fixed.
+
 ### Deliberately not done
 
 * No interaction turns a molehill into a prepared one yet - what preparing costs

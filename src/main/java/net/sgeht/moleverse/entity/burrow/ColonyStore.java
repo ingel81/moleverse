@@ -10,7 +10,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import net.sgeht.moleverse.block.MoleMound;
@@ -46,12 +45,15 @@ public class ColonyStore extends SavedData {
             .apply(instance, ColonyStore::new));
 
     /**
-     * The data fixer type is required and none of them describes mod data. The
-     * level type is the harmless choice: its fixers key on vanilla structures
-     * that never appear inside this file.
+     * No data fixer type, which is what mod data wants.
+     *
+     * <p>Vanilla's record demands one; NeoForge patches it to accept null and
+     * adds this three-argument constructor for exactly this case. Handing it a
+     * vanilla type instead would run that type's fixers over a file they were
+     * never written for.</p>
      */
     public static final SavedDataType<ColonyStore> TYPE = new SavedDataType<>(
-            "moleverse_colonies", ColonyStore::new, CODEC, DataFixTypes.LEVEL);
+            "moleverse_colonies", ColonyStore::new, CODEC);
 
     private final List<Colony> colonies = new ArrayList<>();
     private final List<BurrowLink> links = new ArrayList<>();

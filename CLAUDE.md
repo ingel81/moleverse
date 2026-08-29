@@ -61,8 +61,19 @@ outside the mod repository on purpose and is not versioned with it.
 
 ## Look the API up, do not guess
 
-After the first build the decompiled Minecraft sources sit in
-`~/.gradle/caches/neoformruntime/intermediate_results/decompile_*_output.jar`.
+The source to read is `build/moddev/artifacts/neoforge-21.11.45-sources.jar`.
+It carries Minecraft **and** NeoForge, with Parchment applied - real parameter
+names, javadoc, and NeoForge's own patch comments, which frequently say why
+something was changed. Parchment is configured in `gradle.properties`
+(`parchment_minecraft_version`, `parchment_mappings_version`).
+
+Do not read `~/.gradle/caches/neoformruntime/intermediate_results/decompile_*_output.jar`.
+That is the raw decompile from before mappings are applied: same code, but every
+parameter is called `p_401394_` and every patch comment is missing. It answers
+signatures and nothing else, and it hides things that matter - it shows
+`SavedDataType` demanding a `DataFixTypes` where the patched record accepts null
+and offers a three-argument constructor for mod data.
+
 Vanilla assets (blockstates, models, item model definitions) are in
 `~/.gradle/caches/neoformruntime/artifacts/minecraft_1.21.11_client.jar`.
 
