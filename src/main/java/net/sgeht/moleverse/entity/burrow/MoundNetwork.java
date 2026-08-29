@@ -287,6 +287,18 @@ public final class MoundNetwork {
                 continue;
             }
 
+            // And the same check upwards, which is not symmetry for its own sake.
+            // The drawn distance may be the full NEW_TRAVEL_MAX, rounding can add
+            // to it, and NETWORK_LINK_MAX is the same number - so a fresh mound
+            // lands a fraction beyond the chain reach of the very mound it was
+            // dug from. It is then an orphan: no link, no network, invisible to
+            // every later trip. Seen in play at 16.12 blocks, which cost two
+            // mounds their connection.
+            int linkSqr = BurrowConstants.NETWORK_LINK_MAX * BurrowConstants.NETWORK_LINK_MAX;
+            if (site.distSqr(entry) > linkSqr) {
+                continue;
+            }
+
             // Outside the colony's ground the site is simply not on offer. This
             // is the one place a colony could grow beyond its box, because every
             // other exit is picked from mounds that already exist.
