@@ -342,3 +342,114 @@ Known unknowns, in likely order of trouble: the point of interest covering both
 mound blocks; whether carving keeps up with a player walking a long run; whether
 the burrow is navigable at all in the dark; the exchange station's screen syncing
 its two inventories; and the mole trap's stored animal surviving a reload.
+
+## 2026-08-29, morning - the first play, and a machine to replace it
+
+The handover above was written blind. This is what happened when the mod was
+actually run, and how the running stopped needing a person.
+
+### What the first client session showed
+
+The mechanic works. A colony was founded thirty seconds in, runs were recorded at
+both levels - 162 feeding runs at depth 2 and 79 main runs at depth 4, so
+`MAIN_RUN_CHANCE` fires - and the travel estimator was exact on every single
+trip, never off by a tick.
+
+The bug was in the shape the handover predicted for something else entirely: a
+mole that does nothing, with no visible cause. Of 520 burrow attempts, 245 were
+refused with `too near another colony to start one here`, and one animal
+accounted for 114 of them across seven and a half minutes. That is the unclaimed
+band between `COLONY_EXTENT` and `COLONY_MIN_SEPARATION`, where `ColonyStore.at`
+finds no colony to join and `found` still refuses to start one.
+
+`MoleEmigrateGoal` was supposed to be the way out and could not be: `canUse`
+returned false whenever the mole belonged to no colony, which is the definition
+of standing in the band. So the only exit was `wanderNow`, an undirected stroll
+across eighty blocks. Chance eventually carried the mole out. That was the whole
+mechanism.
+
+### Then the client became the bottleneck
+
+Finding that took a person playing for sixteen minutes and a grep across eight
+thousand lines. Everything after it was found by a server nobody watched.
+`tools/soak/soak.sh` runs a scenario headless; `docs/TESTING_AUTOMATION.md` has
+the reasoning and the traps. The short version is four facts:
+
+* `/forceload` takes a ticket at level 15 and entity ticking starts at 31, so
+  forced chunks simulate with nobody logged in.
+* `pause-when-empty-seconds` defaults to 60 and then returns before
+  `tickChildren`. An empty server ticks *nothing* until that is set to 0.
+* `/tick sprint` is equivalent to waiting, because nothing here reads a clock -
+  `currentTimeMillis`, `nanoTime` and `Instant` appear nowhere in `src/main/java`
+  and every duration is a multiple of `TICKS_PER_SECOND`. Measured at 3000 to
+  6000 ticks per second: an hour of game time in ten to twenty seconds.
+* Nothing spawns without a player, so scenarios summon at fixed coordinates -
+  which is the only way to get the same starting state twice anyway.
+
+Two hours of game time, six moles, about two minutes of real time.
+
+### Three more bugs, each found by a run
+
+* **The emigration stopped on the line.** Arrival was `isFreeGround`, which turns
+  true at exactly `COLONY_MIN_SEPARATION` - a line, not a place. The mole stood
+  down there, strolled, and was back in the band a step later: seventeen further
+  refusals after it had "arrived".
+* **The log lied about which case it was.** `BurrowLog.emigrating` said `leaving a
+  full colony` unconditionally, including for moles that belonged to no colony at
+  all - which is now the commoner of the two.
+* **`EMIGRATION_MARGIN` never applied.** Aiming at separation plus 48, founding at
+  separation, short by exactly 48 in every run. Not a slip: `ColonyStore.found`
+  accepts at the lower threshold and `MoleBurrowGoal` asks it every three
+  seconds, while arrival is only checked while walking. The lower threshold is
+  checked more often and always wins. Colony spacing comes from
+  `COLONY_MIN_SEPARATION` alone, and the javadoc now says so instead of promising
+  otherwise.
+
+### Colonies moved apart
+
+`COLONY_MIN_SEPARATION` went from 144 to 224 with `COLONY_EXTENT` left at 64, so
+the ground between two territories went from sixteen blocks to ninety-six. The
+old note on that constant argued against exactly this, on the grounds that a mole
+in the band paces and does nothing - true when it was written, and the reason the
+number was low. That was a missing exit rather than an argument for a narrow
+band, and with the exit built the width costs a walk instead of a stall. Measured
+after: 28 refusals across two hours and six animals, against 114 from one animal
+before.
+
+### What a soak run cannot do, and two that were thrown away
+
+A run only measures what the scenario sets up, and two of the first five were
+worthless in ways that looked entirely healthy from the outside:
+
+* One used a default world and put five of six moles on a mountainside where
+  nothing is diggable. It measured geography. All five then walked out of the
+  loaded square and froze against its boundary at z=126, which the log faithfully
+  recorded as an hour of inactivity.
+* One deleted `run/saves/soak2` and started the server on `run/soak2`, because a
+  dedicated server does not use the client's `saves` directory. It ran on the
+  previous run's colonies, produced forty thousand lines and 3919 successful
+  burrows, and proved nothing at all.
+
+Neither failed. Both produced output that read as a result. The scenario file now
+checks the starting state before summoning anything, and the script aborts if the
+world it meant to delete is still there.
+
+### Still open
+
+Unchanged from the handover: the point of interest covering both mound blocks,
+carving keeping up with a walking player, whether the burrow is navigable in the
+dark, the exchange station's screen, the mole trap across a reload. None of that
+was touched today - the runs never went underground.
+
+Added by the runs:
+
+* **A mole reaches a known mound in 5% of attempts** - 454 approaches, 22
+  arrivals, 430 `path to the entry mound exhausted` recoveries. Every failure
+  ends in a fresh hole where the mole stands, which is what drove the density cap
+  and produced fourteen mounds in a heap. Seen only on uneven ground with mounds
+  packed together; flat terrain hides it entirely.
+* **`ground is not diggable` never names the block.** The most common refusal in
+  the first run, 1373 times, and undiagnosable: `passesGuards` refuses at
+  `MoleBurrowGoal:290` and the block name is written at 299.
+* **Dispersal from a full colony is still untested.** No colony has reached
+  `NETWORK_MAX_MEMBERS`, so only the band half of the goal has ever run.

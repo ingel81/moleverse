@@ -293,7 +293,33 @@ because every `runClient` tends to make a fresh one. It is gated behind the
 ./gradlew runClient       # dev client (with JEI + Jade)
 ./gradlew runData         # data generators -> src/generated/resources
 ./gradlew runGameTestServer
+
+tools/soak/soak.sh tools/soak/colonies.commands   # headless soak run
 ```
+
+## Watching behaviour without playing
+
+Every mechanic here fails the same way: an animal decides not to act, the
+decision is invisible, and nothing happens. Two things exist for that.
+
+* **The mole log is on from the first tick of any Gradle run**, through the
+  `moleverse.devLogging` system property set in `configureEach` - the same
+  pattern as `moleverse.devPublish`. A shipped game never sees the property and
+  stays quiet, and `/moleverse mole log off` still wins over both. Turning it on
+  by hand used to mean missing the colony founding, which happens seconds after
+  a world is entered.
+* **`tools/soak/soak.sh` runs a scenario against a headless server.** No client,
+  no player, no window: two hours of game time in about two minutes, because
+  `/tick sprint` runs ticks as fast as the CPU allows and nothing in this mod
+  reads a wall clock. Scenarios are text files of vanilla console commands.
+
+`docs/TESTING_AUTOMATION.md` has the mechanics and, more usefully, the traps -
+including two early runs that produced healthy-looking output and meant nothing.
+Read it before writing a scenario.
+
+Note that `build.gradle` sets `standardInput = System.in` for `runServer`.
+Without it Gradle hands a `JavaExec` task an empty standard input and every
+console command is swallowed with no error whatsoever.
 
 ## Open decisions
 

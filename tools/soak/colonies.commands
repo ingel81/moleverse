@@ -1,0 +1,45 @@
+# Scenario: do colonies form, spread and keep their distance?
+#
+# One line per server console command. Blank lines and # comments are ignored.
+# `@wait <marker>` blocks until that text appears in the server log.
+#
+# Geometry. COLONY_EXTENT is 64 and COLONY_MIN_SEPARATION is 224, so:
+#   - two moles closer than 64 to a core join that colony
+#   - between 64 and 224 is the unclaimed band: no joining, no founding
+#   - 224 or more is free ground
+# Group B sits 150 blocks from group A, which is inside the band, and is
+# therefore the case that MoleEmigrateGoal has to walk out of. Group C sits far
+# enough from both to found on its own.
+
+# 1024 chunks, x -512..511 and z -128..127. The longest emigration walk this
+# scenario can produce is about 270 blocks and has to fit inside ticking chunks,
+# or the run measures the edge of the loaded area instead of the mole.
+forceload add -512 -128 -257 127
+forceload add -256 -128 -1 127
+forceload add 0 -128 255 127
+forceload add 256 -128 511 127
+
+# Nothing may exist yet. Read this in the log before believing anything below:
+# a world that was not wiped produces a plausible run that means nothing.
+say SOAK-CHECK empty-world
+moleverse colony list
+
+summon moleverse:mole -350 -2 0
+summon moleverse:mole -345 -2 0
+summon moleverse:mole -200 -2 0
+summon moleverse:mole -195 -2 0
+summon moleverse:mole 250 -2 0
+summon moleverse:mole 255 -2 0
+
+say SOAK-MARK setup-done
+
+# 72000 ticks is an hour of game time. Two of them, with a look in between.
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK halftime
+moleverse colony list
+
+tick sprint 72000
+@wait Sprint completed
+say SOAK-MARK finished
+moleverse colony list
