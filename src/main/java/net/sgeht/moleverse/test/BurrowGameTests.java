@@ -107,6 +107,16 @@ public final class BurrowGameTests {
         helper.assertTrue(BurrowGeometry.overworldY(BurrowGeometry.BURROW_DATUM) == BurrowGeometry.OVERWORLD_DATUM,
                 "the burrow datum must land back on sea level");
 
+        // Outside the representable band the mapping clamps rather than running
+        // off the end of the dimension. What matters is that it stays inside,
+        // not that it comes back - a corridor carved at a height that does not
+        // exist fails silently and buries whoever arrives there.
+        for (int overworldY : clampedHeights()) {
+            int mapped = BurrowGeometry.burrowY(overworldY);
+            helper.assertTrue(mapped >= BurrowGeometry.MIN_BURROW_Y && mapped <= BurrowGeometry.MAX_BURROW_Y,
+                    "y=" + overworldY + " mapped out of the burrow to " + mapped);
+        }
+
         for (BlockPos overworld : overworldSamples()) {
             BlockPos burrow = BurrowGeometry.toBurrow(overworld);
             BlockPos back = BurrowGeometry.toOverworld(burrow);
@@ -152,10 +162,20 @@ public final class BurrowGameTests {
                 new BlockPos(0, BurrowGeometry.OVERWORLD_DATUM, 0),
                 new BlockPos(1, BurrowGeometry.OVERWORLD_DATUM + 1, 1),
                 new BlockPos(-1, BurrowGeometry.OVERWORLD_DATUM - 1, -1),
-                new BlockPos(7, 0, -7),
-                new BlockPos(-13, 120, 29),
-                new BlockPos(1000, -64, -1000),
-                new BlockPos(-1000, 319, 1000));
+                new BlockPos(7, 8, -7),
+                new BlockPos(-13, 110, 29),
+                new BlockPos(1000, 5, -1000),
+                new BlockPos(-1000, 115, 1000));
+    }
+
+    /**
+     * Heights outside what the burrow can hold. The mapping clamps them on
+     * purpose - the dimension is 256 blocks tall at twice the scale, so a
+     * superflat world at -60 and a mountain colony at 200 both fall off the end
+     * - and the round trip is lossy there by design.
+     */
+    private static List<Integer> clampedHeights() {
+        return List.of(-64, -60, 0, 200, 319);
     }
 
     /** Positions that are deliberately not on a multiple of the scale, and not all above the datum. */
@@ -164,8 +184,11 @@ public final class BurrowGameTests {
                 new BlockPos(0, BurrowGeometry.BURROW_DATUM, 0),
                 new BlockPos(1, BurrowGeometry.BURROW_DATUM + 1, 3),
                 new BlockPos(-1, BurrowGeometry.BURROW_DATUM - 1, -3),
-                new BlockPos(-5, 0, 5),
-                new BlockPos(4001, 255, -4003));
+                // Inside the band the mapping can represent. Outside it the
+                // clamp takes over and the snap is deliberately larger than the
+                // scale, which the clamp check above covers instead.
+                new BlockPos(-5, BurrowGeometry.MIN_BURROW_Y, 5),
+                new BlockPos(4001, BurrowGeometry.MAX_BURROW_Y, -4003));
     }
 
     // --- 2. Carving -----------------------------------------------------------

@@ -66,7 +66,7 @@ public final class BurrowGeometry {
     public static Vec3 toBurrow(Vec3 overworld) {
         return new Vec3(
                 overworld.x * SCALE,
-                BURROW_DATUM + (overworld.y - OVERWORLD_DATUM) * VERTICAL_SCALE,
+                burrowY(net.minecraft.util.Mth.floor(overworld.y)) + (overworld.y - Math.floor(overworld.y)),
                 overworld.z * SCALE);
     }
 
@@ -78,8 +78,33 @@ public final class BurrowGeometry {
                 Math.floorDiv(burrow.getZ(), SCALE));
     }
 
+    /**
+     * Lowest and highest a corridor may sit, leaving room for its own height and
+     * for the ground above and below it.
+     */
+    public static final int MIN_BURROW_Y = 8;
+
+    public static final int MAX_BURROW_Y = 232;
+
+    /**
+     * The overworld height that maps to the middle, and the clamp that keeps
+     * everything else inside the dimension.
+     *
+     * <p>Without the clamp the arithmetic runs straight out of the world. The
+     * burrow is 256 blocks tall, the vertical scale is two, so only overworld
+     * heights within about sixty of sea level map inside it - and a superflat
+     * test world sits at -60, a mountain colony at 140. Both would carve at a
+     * height that does not exist, which fails silently and leaves a player
+     * teleported into solid earth.</p>
+     *
+     * <p>Clamping means two very different heights can share one burrow level.
+     * That is the right trade: colonies are hundreds of blocks apart
+     * horizontally, so a collision in the vertical costs nothing, while running
+     * off the end of the world costs everything.</p>
+     */
     public static int burrowY(int overworldY) {
-        return BURROW_DATUM + (overworldY - OVERWORLD_DATUM) * VERTICAL_SCALE;
+        int mapped = BURROW_DATUM + (overworldY - OVERWORLD_DATUM) * VERTICAL_SCALE;
+        return Math.clamp(mapped, MIN_BURROW_Y, MAX_BURROW_Y);
     }
 
     public static int overworldY(int burrowY) {

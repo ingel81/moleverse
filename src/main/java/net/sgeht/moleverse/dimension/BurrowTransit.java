@@ -103,10 +103,11 @@ public final class BurrowTransit {
         // rather than in a sealed room. Everything further along is dug as they
         // walk into it.
         List<BurrowLink> runs = runsAt(ColonyStore.get(overworld), mound);
-        BlockPos chamber = chamberCentre(mound, runs);
+        int floor = chamberFloor(mound, runs);
+        BlockPos chamber = BurrowGeometry.toBurrow(mound).atY(floor);
 
         loadChamberChunks(burrow, chamber);
-        CorridorCarver.carveChamber(burrow, chamber);
+        CorridorCarver.carveChamber(burrow, chamber, mouthLayers(mound, runs, floor));
         for (BurrowLink run : runs) {
             CorridorCarver.carve(burrow, run);
         }

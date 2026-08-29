@@ -88,20 +88,41 @@ public final class CorridorCarver {
     private static final int GALLERY_HEADROOM = 2;
 
     /**
-     * How many staircases join one gallery to the next.
+     * Where the ramps start. Inside this the ledge is gallery and nothing else.
+     *
+     * <p>The lane this reserves is what makes a gallery a complete circle. A ramp
+     * climbing away from a gallery has to stand on the layers above it, and a ramp
+     * wide enough to cover the whole ledge would bury the ring it just left - which
+     * is exactly what the first attempt did, leaving the middle gallery walkable on
+     * sixteen bearings out of seventy-two. Ramps are kept outboard so the ring
+     * behind them always survives.</p>
+     */
+    private static final int RAMP_INNER_RADIUS = LEDGE_INNER_RADIUS + 1;
+
+    /**
+     * How many ramps join one gallery to the next.
      *
      * <p>Two, opposite each other. A run leaving the chamber carves through
-     * whatever stands in its way, so a single staircase can be cut in half by a
-     * corridor that happens to point at it. Two cannot both be lost: a corridor
-     * is one straight line and they are 180 degrees apart.</p>
+     * whatever stands in its way, so a single ramp can be cut in half by a
+     * corridor that happens to point at it; two cannot both be lost to one run.
+     * More than two is worse rather than better - every ramp eats a slice of the
+     * gallery it climbs from, and at four the rings are more hole than ring.</p>
      */
-    private static final int STAIR_BANDS = 2;
+    private static final int RAMPS_PER_GAP = 2;
 
-    /** Blocks of arc per step. Slightly over one, so a step is a step and not a ladder. */
-    private static final double STAIR_STEP_ARC = 1.2;
+    /**
+     * Blocks of arc per step, measured at {@link #RAMP_MID_RADIUS}.
+     *
+     * <p>Just under one, so that on a block grid every step of the ramp gets a
+     * column of its own and none is skipped into a two block riser nobody can
+     * climb.</p>
+     */
+    private static final double RAMP_STEP_ARC = 0.8;
 
-    /** The radius the staircase's arc is measured at - the middle of the ledge. */
-    private static final double STAIR_MID_RADIUS = (LEDGE_INNER_RADIUS + BurrowGeometry.CHAMBER_RADIUS) / 2.0;
+    /** The radius a ramp's arc is measured at - the middle of the ledge. */
+    private static final double RAMP_MID_RADIUS = (LEDGE_INNER_RADIUS + BurrowGeometry.CHAMBER_RADIUS) / 2.0;
+
+    private static final double TAU = Math.PI * 2.0;
 
     /** A chamber nobody has told about its runs. Carves the bare room. */
     private static final int[] NO_MOUTHS = new int[0];
@@ -249,18 +270,14 @@ public final class CorridorCarver {
             cleared += chamberLayer(burrow, burrowCentre, layer, 0, chamberRadiusAt(layer), levels, highest, cursor);
         }
 
-        // Headroom over each gallery. A mouth at the top of the chamber puts its
-        // gallery against the ceiling, so this cuts the last layer or two into
-        // the roof - out at the ledge only, where the dome had already pulled
-        // back. A gallery you cannot stand up in is not a gallery.
-        for (int level : levels) {
-            if (level == 0) {
-                continue;
-            }
-            for (int layer = level; layer < level + GALLERY_HEADROOM; layer++) {
-                cleared += chamberLayer(burrow, burrowCentre, layer, LEDGE_INNER_RADIUS,
-                        BurrowGeometry.CHAMBER_RADIUS, levels, highest, cursor);
-            }
+        // The ledge zone again, all the way up. A mouth at the top of the chamber
+        // puts its gallery against the ceiling, so this cuts the last layer or two
+        // into the roof - out at the ledge only, where the dome had already pulled
+        // back. A gallery you cannot stand up in is not a gallery, and neither is
+        // the top step of a ramp.
+        for (int layer = 0; layer < highest + GALLERY_HEADROOM; layer++) {
+            cleared += chamberLayer(burrow, burrowCentre, layer, LEDGE_INNER_RADIUS,
+                    BurrowGeometry.CHAMBER_RADIUS, levels, highest, cursor);
         }
 
         return cleared;
@@ -423,10 +440,42 @@ public final class CorridorCarver {
         return cleared;
     }
 
-    /** Whether this block of the chamber is ledge, and so is left standing. */
+    /**
+     * Whether this block of the chamber is ledge, and so is left standing.
+     *
+     * <p>Two zones. Out from {@link #RAMP_INNER_RADIUS} the ramps run, and where
+     * a ramp climbs it replaces the ring of the gallery it is climbing <em>to</em>
+     * - only that one, because a ramp that suppressed every ring it passed would
+     * dismantle the galleries it exists to connect. Inside that, the lane is ring
+     * and nothing else, so every gallery is a complete circle whatever the ramps
+     * are doing.</p>
+     */
     private static boolean isLedge(int layer, int dx, int dz, int[] levels, int highestLevel) {
-        if (dx * dx + dz * dz < LEDGE_INNER_RADIUS * LEDGE_INNER_RADIUS) {
+        int distanceSqr = dx * dx + dz * dz;
+        if (distanceSqr < LEDGE_INNER_RADIUS * LEDGE_INNER_RADIUS) {
             return false;
+        }
+
+        if (distanceSqr >= RAMP_INNER_RADIUS * RAMP_INNER_RADIUS && highestLevel > 0) {
+            double angle = Math.atan2(dz, dx);
+            boolean replaced = false;
+
+            for (int gap = 0; gap + 1 < levels.length; gap++) {
+                int top = rampTop(gap, levels[gap], levels[gap + 1], angle);
+                if (top < 0) {
+                    continue;
+                }
+                if (layer >= Math.max(0, levels[gap] - 1) && layer <= top) {
+                    return true;
+                }
+                if (layer == levels[gap + 1] - 1) {
+                    replaced = true;
+                }
+            }
+
+            if (replaced) {
+                return false;
+            }
         }
 
         for (int level : levels) {
@@ -434,39 +483,36 @@ public final class CorridorCarver {
                 return true;
             }
         }
-
-        return isStairStep(layer, dx, dz, highestLevel);
+        return false;
     }
 
     /**
-     * The staircases, as a wedge of earth against the wall that grows one block
-     * taller every step round.
+     * The topmost layer a ramp keeps solid at this bearing, or -1 where this gap
+     * has no ramp here.
      *
-     * <p>A wedge rather than a run of floating slabs, so the thing is visibly
-     * built out of the floor, and so a corridor cutting through it takes a notch
-     * rather than dropping a step into mid-air.</p>
+     * <p>A ramp is a wedge of earth growing out of the gallery below it, one
+     * block taller every step round, until its top step lands level with the
+     * gallery above. Wedge rather than a run of floating slabs, so a corridor
+     * cutting through takes a notch out of it rather than leaving a step hanging
+     * in mid-air.</p>
      *
-     * <p>The stair climbs past every gallery on its way up and merges into each
-     * one where the two heights coincide, which they do by construction: the
-     * step whose top is at layer {@code L - 1} is the same layer as the ring of
-     * the gallery at {@code L}.</p>
+     * <p>Consecutive gaps are offset by half a spacing so that one run cannot
+     * line up with a ramp of every gap at once and cut the whole climb.</p>
      */
-    private static boolean isStairStep(int layer, int dx, int dz, int highestLevel) {
-        if (highestLevel <= 0) {
-            return false;
-        }
+    private static int rampTop(int gap, int from, int to, double angle) {
+        int rise = to - from;
+        double width = rise * RAMP_STEP_ARC / RAMP_MID_RADIUS;
+        int ramps = Math.max(1, Math.min(RAMPS_PER_GAP, (int) (TAU / width)));
 
-        double slot = STAIR_STEP_ARC / STAIR_MID_RADIUS;
-        double angle = Math.atan2(dz, dx);
-
-        for (int band = 0; band < STAIR_BANDS; band++) {
-            double base = band * (2.0 * Math.PI / STAIR_BANDS);
-            int step = (int) (Mth.positiveModulo(angle - base, 2.0 * Math.PI) / slot) + 1;
-            if (step <= highestLevel && layer < step) {
-                return true;
+        for (int ramp = 0; ramp < ramps; ramp++) {
+            double base = ramp * (TAU / ramps) + gap * (Math.PI / ramps);
+            double offset = Mth.positiveModulo(angle - base, TAU);
+            if (offset < width) {
+                int step = Math.min(rise, (int) (offset / (width / rise)) + 1);
+                return from + step - 1;
             }
         }
-        return false;
+        return -1;
     }
 
     /**
