@@ -166,6 +166,32 @@ def walk(rng, start, length, direction, wander=0.3, min_run=1):
     return path
 
 
+def wave(centre, amplitude, frequency, phase, axis="x", size=SIZE):
+    """A sine curve sampled on the pixel grid, and a seamless one.
+
+    `frequency` is a whole number of periods across the tile, so the curve
+    leaves one edge at exactly the height it re-enters the opposite one - which
+    is what a root or a thread has to do for a wall of these blocks to look
+    like anything but a wall of blocks. Runs steeper than one pixel per step
+    are filled in, so the result is 8-connected and survives thickening.
+
+    This replaced `walk` for roots and mycelium. A path that can only turn 90
+    degrees comes out as a maze however gently it is steered; the eye reads the
+    corners, not the drift. A curve has no corners to read.
+    """
+    values = [
+        centre + amplitude * math.sin(2.0 * math.pi * frequency * i / size + phase)
+        for i in range(size + 1)
+    ]
+    points = []
+    for i in range(size):
+        a, b = int(round(values[i])), int(round(values[i + 1]))
+        step = 1 if b >= a else -1
+        for v in range(a, b + step, step):
+            points.append((i, v) if axis == "x" else (v, i))
+    return points
+
+
 def thicken(path, radius, size=SIZE, wrap=True):
     """The set of pixels a path covers once it is `radius` px wide."""
     body = set()

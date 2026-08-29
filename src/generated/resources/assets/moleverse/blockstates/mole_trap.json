@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "state=baited": {
+      "model": "moleverse:block/mole_trap"
+    },
+    "state=empty": {
+      "model": "moleverse:block/mole_trap"
+    },
+    "state=full": {
+      "model": "moleverse:block/mole_trap"
+    }
+  }
+}

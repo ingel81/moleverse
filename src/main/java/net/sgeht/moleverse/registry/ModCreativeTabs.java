@@ -30,6 +30,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.FAT_WORM.get());
                         output.accept(ModItems.GLOW_WORM.get());
                         output.accept(ModItems.WORM_BOX.get());
+                        output.accept(ModItems.MOLE_TRAP.get());
+                        output.accept(ModItems.MOLE_IN_SACK.get());
                         output.accept(ModItems.LOOSE_SOIL.get());
                         output.accept(ModItems.MOLE_MOUND.get());
                         output.accept(ModItems.PREPARED_MOLE_MOUND.get());

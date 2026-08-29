@@ -30,6 +30,7 @@ glaring on a corridor wall.
 """
 
 import argparse
+import math
 import random
 
 from texture_kit import (
@@ -47,6 +48,7 @@ from texture_kit import (
     silhouette,
     thicken,
     walk,
+    wave,
 )
 
 BLOCKS = "D:/ai_local/minecraft_modding/moleverse/src/main/resources/assets/moleverse/textures/block"
@@ -80,13 +82,27 @@ ATLASES = {
 
 # --- shared drawing -------------------------------------------------------
 
-def soil_ground(canvas, rng, weights=(1, 2, 2, 2, 2, 3), pockets=8, crumbs=4):
+def soil_ground(canvas, rng, weights=(1, 2, 2, 2, 2, 3), clods=9, pockets=7, crumbs=4):
     """The packed earth every underground texture starts from.
 
-    Kept within one ramp step of the base tone. The whole dimension is made of
-    this; anything with more contrast than a hint turns a corridor into static.
+    Per-pixel noise alone comes out as static: at 16 px the eye has nothing to
+    hold on to and a wall of it fizzes. So the noise is only the ground, and
+    the structure is clods - two and three pixel patches a step lighter, each
+    with a shadow along its lower edge, exactly as `mound_texture.py` builds
+    the mound above. Same earth, one ramp darker.
     """
     canvas.noise((0, 0, SIZE, SIZE), SOIL, list(weights), rng, wrap=True)
+    for _ in range(clods):
+        cx, cy = rng.randrange(SIZE), rng.randrange(SIZE)
+        w, h = rng.choice([(2, 2), (3, 2), (2, 3), (3, 2)])
+        tone = SOIL[rng.choice([3, 3, 4])]
+        for dy in range(h):
+            for dx in range(w):
+                if rng.random() < 0.18:
+                    continue
+                canvas.put(cx + dx, cy + dy, tone)
+        for dx in range(w):
+            canvas.put(cx + dx, cy + h, SOIL[rng.choice([0, 1])])
     for _ in range(pockets):
         x, y = rng.randrange(SIZE), rng.randrange(SIZE)
         canvas.put(x, y, SOIL[0])
@@ -108,12 +124,20 @@ def paint_strand(canvas, body, ramp, rng, nick=0.10):
             if ((x + ox) % SIZE, (y + oy) % SIZE) not in body:
                 canvas.put(x + ox, y + oy, ramp[0])
     lit, shaded, interior = silhouette(body)
-    for group, index in ((interior, 2), (lit, 3), (shaded, 1)):
-        for x, y in group:
-            canvas.put(x, y, ramp[index])
+    # The interior is mottled rather than flat: a three pixel wide root shaded
+    # strictly lit / base / shadow comes out as a milled beam, and no amount of
+    # bending the path fixes that - the bark has to be in the fill.
+    #
+    # The shaded side stays two ramp steps above the rim. A curved root is
+    # nearly all edge - there is barely any interior left once it bends - so
+    # putting the darkest tone on the shaded half leaves the root the same
+    # value as the soil it is supposed to be growing through, and it vanishes.
+    for x, y in interior:
+        canvas.put(x, y, ramp[rng.choice([2, 3, 3, 3])])
+    for x, y in shaded:
+        canvas.put(x, y, ramp[rng.choice([1, 2, 2])])
     for x, y in lit:
-        if rng.random() < nick:
-            canvas.put(x, y, ramp[4])
+        canvas.put(x, y, ramp[4] if rng.random() < nick else ramp[3])
 
 
 def plank_grain(canvas, rect, ramp, rng, vertical=True, wrap=False):
@@ -150,7 +174,13 @@ def plank_grain(canvas, rect, ramp, rng, vertical=True, wrap=False):
 
 def end_grain(canvas, rect, core, rim, rng):
     """The cut end of a post: square rings, because at four pixels that is
-    what a circle looks like once it is actually drawn."""
+    what a circle looks like once it is actually drawn.
+
+    Only the corners get the bark rim. Ringing the whole rectangle was the
+    first attempt and it left four pale pixels in a black box - on a 4x4 face
+    the border *is* the drawing, and spending all of it on an outline leaves
+    nothing to outline.
+    """
     x0, y0, x1, y1 = rect
     cx, cy = (x0 + x1 - 1) / 2, (y0 + y1 - 1) / 2
     for y in range(y0, y1):
@@ -158,42 +188,58 @@ def end_grain(canvas, rect, core, rim, rng):
             ring = int(max(abs(x - cx), abs(y - cy)))
             index = [4, 3, 2, 1][min(ring, 3)]
             canvas.put(x, y, core[index], wrap=False)
-    for x in range(x0, x1):
-        canvas.put(x, y0, rim, wrap=False)
-        canvas.put(x, y1 - 1, rim, wrap=False)
-    for y in range(y0, y1):
-        canvas.put(x0, y, rim, wrap=False)
-        canvas.put(x1 - 1, y, rim, wrap=False)
-    canvas.put(x0 + 1, y0 + 1, core[5 if len(core) > 5 else 4], wrap=False)
+    for x, y in ((x0, y0), (x1 - 1, y0), (x0, y1 - 1), (x1 - 1, y1 - 1)):
+        canvas.put(x, y, rim, wrap=False)
+    # One split running out from the middle: a gnawed end never comes off clean.
+    for step in range(max(2, (x1 - x0) // 2)):
+        canvas.put(int(cx), int(cy) - step, core[1], wrap=False)
 
 
-def worm_end(canvas, at, rng, wrap=True):
-    """A worm coming out of a wall: either a cut end or a short stub.
+def worm_end(canvas, at, rng, sunken=False):
+    """A worm coming out of a wall: either a cut end or an elbow.
 
-    Half of them are rings - a pale body with the gut a darker dot - and half
-    are stubs, shaded off their outline like the item. The mix is what makes
-    the wall read as full of them rather than studded with identical beads.
+    The socket is drawn first - a ring of the darkest soil around wherever the
+    worm is about to go - so the animal reads as coming out of the earth rather
+    than as a bead stuck onto it. That is also most of where the unpleasantness
+    comes from; a pale shape lying flat on soil looks like a petal.
+
+    Half the ends are cut, a pale tube with the gut a dark dot in the middle,
+    and half are elbows that bend away out of the wall. Two shapes rather than
+    one, because eight copies of the same stamp read as a pattern.
+
+    A `sunken` end is the same drawing one ramp step down, so it sits deeper in
+    the wall. Without a couple of those every worm looks equally close and the
+    block reads as spotted rather than as packed full of them.
     """
     x, y = at
-    if rng.random() < 0.55:
-        for oy in range(3):
-            for ox in range(3):
-                canvas.put(x + ox, y + oy, WORM_LIT, wrap)
-        canvas.put(x + 1, y + 1, WORM_RIM, wrap)
-        canvas.put(x, y, WORM_PALE, wrap)
-        canvas.put(x + 2, y + 2, WORM_RIM, wrap)
+    pale, lit_tone, mid, rim = WORM_PALE, WORM_LIT, WORM_BODY, WORM_RIM
+    if sunken:
+        pale, lit_tone, mid, rim = WORM_LIT, WORM_BODY, WORM_RIM, SOIL[1]
+
+    if rng.random() < 0.5:
+        body = {(x + ox, y + oy) for oy in range(3) for ox in range(3)}
+        painted = {
+            (x, y): pale, (x + 1, y): pale, (x + 2, y): lit_tone,
+            (x, y + 1): pale, (x + 1, y + 1): rim, (x + 2, y + 1): mid,
+            (x, y + 2): lit_tone, (x + 1, y + 2): mid, (x + 2, y + 2): rim,
+        }
     else:
-        body = {(x + ox, y + oy) for oy in range(3) for ox in range(2)}
-        body = {(a % SIZE, b % SIZE) for a, b in body}
+        # An elbow: two pixels down, then two across, thickened to two wide.
+        spine = [(x, y), (x, y + 1), (x + 1, y + 1), (x + 2, y + 1)]
+        body = thicken(spine, 2)
         lit, shaded, interior = silhouette(body)
-        for group, colour in (
-            (interior, WORM_BODY),
-            (lit, WORM_LIT),
-            (shaded, WORM_RIM),
-        ):
-            for px, py in group:
-                canvas.put(px, py, colour, wrap)
-        canvas.put(x, y, WORM_PALE, wrap)
+        painted = {}
+        for group, colour in ((interior, mid), (shaded, rim), (lit, lit_tone)):
+            painted.update({p: colour for p in group})
+        painted[(x % SIZE, y % SIZE)] = pale
+
+    body = {(a % SIZE, b % SIZE) for a, b in body}
+    for px, py in body:
+        for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1)):
+            if ((px + ox) % SIZE, (py + oy) % SIZE) not in body:
+                canvas.put(px + ox, py + oy, SOIL[0])
+    for (px, py), colour in painted.items():
+        canvas.put(px, py, colour)
 
 
 # --- the tiling blocks ----------------------------------------------------
@@ -208,13 +254,15 @@ def deep_earth(rng):
     crack, and a crack repeats visibly the moment two blocks sit side by side.
     """
     c = Canvas()
-    soil_ground(c, rng, weights=(1, 2, 2, 2, 2, 3), pockets=9, crumbs=5)
-    for _ in range(3):
+    soil_ground(c, rng, weights=(1, 2, 2, 2, 2, 3), clods=10, pockets=8, crumbs=5)
+    for _ in range(2):
         start = (rng.randrange(SIZE), rng.randrange(SIZE))
         direction = rng.choice([(1, 0), (0, 1)])
-        for i, (x, y) in enumerate(walk(rng, start, rng.randint(6, 10), direction, 0.4)):
-            if rng.random() < 0.72:
-                c.put(x, y, SOIL[5] if i % 3 == 0 else SOIL[4])
+        for i, (x, y) in enumerate(walk(rng, start, 14, direction, 0.3, min_run=3)):
+            if rng.random() < 0.25:
+                continue
+            c.put(x, y, SOIL[5] if i % 3 else SOIL[4])
+            c.put(x, y + 1, SOIL[1])  # the seam sits proud, so it casts a line
     return c
 
 
@@ -222,17 +270,27 @@ def root_beam(rng):
     """A woody root, and the same on all six sides because it is a tangle
     rather than a log - there is no grain direction to get wrong.
 
-    Four walks over dark earth, each drawn complete with its own rim before the
-    next starts, so the later ones pass in front.
+    One thick root crossing the block and three thinner ones over it, each on a
+    single sine period so it leaves one edge exactly where it re-enters the
+    other. Each is drawn complete with its own rim before the next starts, so
+    the later ones pass in front.
+
+    The thick one sweeps shallowly and the thin ones swing wider, which is the
+    only hierarchy the block needs: a root under load stays put and the hair
+    roots wander around it. It is also drawn last, so the hair roots pass
+    behind it rather than cutting their dark rims through it.
     """
     c = Canvas()
-    c.noise((0, 0, SIZE, SIZE), SOIL, [0, 1, 1, 2], rng, wrap=True)
-    for i in range(4):
-        start = (rng.randrange(SIZE), rng.randrange(SIZE))
-        direction = (1, 0) if i % 2 else (0, 1)
-        path = walk(rng, start, 15, direction, 0.26)
-        paint_strand(c, thicken(path, 2), ROOT, rng)
-    for _ in range(5):
+    c.noise((0, 0, SIZE, SIZE), SOIL, [0, 0, 1, 1], rng, wrap=True)
+    for centre, amplitude, frequency, axis, radius in (
+        (13, 2.0, 2, "x", 1),
+        (11, 3.0, 1, "x", 2),
+        (5, 2.0, 1, "y", 3),
+    ):
+        phase = rng.uniform(0.0, 2.0 * math.pi)
+        path = wave(centre, amplitude, frequency, phase, axis)
+        paint_strand(c, thicken(path, radius), ROOT, rng)
+    for _ in range(6):
         c.put(rng.randrange(SIZE), rng.randrange(SIZE), ROOT[0])
     return c
 
@@ -240,22 +298,38 @@ def root_beam(rng):
 def glow_mycelium(rng):
     """Pale threads over dark earth: the only light in the burrow.
 
-    The glow is carried by two things and neither is a gradient. The ground is
-    pushed a ramp step darker than `deep_earth`, so the threads have the widest
-    contrast the palette allows; and every soil pixel touching a thread is
-    replaced by one flat tint, which reads as spill without becoming a falloff.
-    Brightest pixels go on the nodes, where threads meet.
+    The glow is carried by three things and none of them is a gradient. The
+    ground is pushed a ramp step darker than `deep_earth`, so the threads have
+    the widest contrast the palette allows; every soil pixel touching a thread
+    is replaced by one flat tint, which reads as spill without becoming a
+    falloff; and the brightest pixels sit on the nodes, where threads meet.
+
+    Three threads on sine curves, each crossing the whole block, with short
+    branches walked off them. One pixel wide throughout: the first attempt let
+    the threads wander and they curled into three-pixel blobs, and at this size
+    a thread is only a thread while it is going somewhere.
     """
     c = Canvas()
     c.noise((0, 0, SIZE, SIZE), SOIL, [0, 0, 1, 1, 2], rng, wrap=True)
 
     threads = set()
-    for i in range(5):
-        start = (rng.randrange(SIZE), rng.randrange(SIZE))
-        direction = (1, 0) if i % 2 else (0, 1)
+    trunks = []
+    for centre, amplitude, frequency, axis in (
+        (4, 2.5, 1, "x"), (12, 2.0, 2, "x"), (8, 3.0, 1, "y"),
+    ):
+        phase = rng.uniform(0.0, 2.0 * math.pi)
+        path = [
+            (x % SIZE, y % SIZE)
+            for x, y in wave(centre, amplitude, frequency, phase, axis)
+        ]
+        trunks.append(path)
+        threads |= set(path)
+    for _ in range(3):
+        start = rng.choice(rng.choice(trunks))
+        direction = rng.choice([(1, 0), (0, 1), (-1, 0), (0, -1)])
         threads |= {
             (x % SIZE, y % SIZE)
-            for x, y in walk(rng, start, rng.randint(9, 15), direction, 0.42)
+            for x, y in walk(rng, start, rng.randint(2, 4), direction, 0.2, min_run=2)
         }
 
     for x, y in list(threads):
@@ -263,14 +337,12 @@ def glow_mycelium(rng):
             if ((x + ox) % SIZE, (y + oy) % SIZE) not in threads:
                 c.put(x + ox, y + oy, GLOW[0])
     for x, y in threads:
-        c.put(x, y, GLOW[3] if rng.random() < 0.35 else GLOW[2])
-    for x, y in rng.sample(sorted(threads), min(4, len(threads))):
+        c.put(x, y, GLOW[rng.choice([1, 1, 2, 2, 3])])
+    for x, y in rng.sample(sorted(threads), min(3, len(threads))):
         c.put(x, y, GLOW[4])
         for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
             if ((x + ox) % SIZE, (y + oy) % SIZE) in threads:
                 c.put(x + ox, y + oy, GLOW[3])
-    for x, y in rng.sample(sorted(threads), min(6, len(threads))):
-        c.put(x, y, GLOW[1])
     return c
 
 
@@ -283,9 +355,9 @@ def worm_larder(rng):
     tile edge and read as one large pale smear on a wall.
     """
     c = Canvas()
-    soil_ground(c, rng, weights=(0, 1, 1, 2, 2, 2), pockets=12, crumbs=3)
-    for point in scatter_points(rng, 8, 4.2):
-        worm_end(c, point, rng)
+    soil_ground(c, rng, weights=(0, 1, 1, 2, 2, 2), clods=8, pockets=10, crumbs=3)
+    for i, point in enumerate(scatter_points(rng, 6, 5.0)):
+        worm_end(c, point, rng, sunken=i % 3 == 0)
     return c
 
 
@@ -309,10 +381,15 @@ def shrink_post(rng):
 
     end_grain(c, rects["post_end"], ROOT + [ROOT[4]], ROOT[0], rng)
 
-    plank_grain(c, rects["collar_side"], WOOD, rng, vertical=False)
+    # The collar band is only three rows, so it is painted outright rather than
+    # grained: a lit top, the groove, and the body. Running `plank_grain` over
+    # it spends the top row on a highlight and the bottom row on a shadow, and
+    # with the groove taking the middle there is no collar left.
     x0, y0, x1, y1 = rects["collar_side"]
     for x in range(x0, x1):
+        c.put(x, y0, WOOD[4] if rng.random() < 0.75 else WOOD[3], wrap=False)
         c.put(x, y0 + 1, WOOD[0], wrap=False)  # the groove around the collar
+        c.put(x, y0 + 2, WOOD[rng.choice([1, 2, 2, 3])], wrap=False)
 
     plank_grain(c, rects["collar_top"], WOOD, rng, vertical=False)
     x0, y0, x1, y1 = rects["collar_top"]
@@ -337,19 +414,24 @@ def grunting_post(rng):
     plank_grain(c, rects["stake_side"], WOOD, rng, vertical=True)
     end_grain(c, rects["stake_end"], WOOD, WOOD[1], rng)
 
-    def notched(rect, along_x):
-        x0, y0, x1, y1 = rect
-        plank_grain(c, rect, WOOD, rng, vertical=not along_x)
-        span = range(x0, x1) if along_x else range(y0, y1)
-        for i, v in enumerate(span):
-            if i % 2:
-                continue
-            other = range(y0, y1) if along_x else range(x0, x1)
-            for w in other:
-                c.put(v if along_x else w, w if along_x else v, WOOD[0], wrap=False)
+    def notched(rect):
+        """A comb: every other column a ridge, the ones between them cut away.
 
-    notched(rects["rasp_long"], along_x=True)
-    notched(rects["rasp_top"], along_x=True)
+        Full ramp contrast, alternating column by column. Drawing the notches
+        as dark columns over a grained bar - the first attempt - came out as a
+        dotted line, because the bar was already dark and the notch had nothing
+        to cut into.
+        """
+        x0, y0, x1, y1 = rect
+        for i, x in enumerate(range(x0, x1)):
+            for y in range(y0, y1):
+                if i % 2:
+                    c.put(x, y, WOOD[0], wrap=False)
+                else:
+                    c.put(x, y, WOOD[4] if y == y0 else WOOD[2], wrap=False)
+
+    notched(rects["rasp_long"])
+    notched(rects["rasp_top"])
     end_grain(c, rects["rasp_end"], WOOD, WOOD[1], rng)
     return c
 

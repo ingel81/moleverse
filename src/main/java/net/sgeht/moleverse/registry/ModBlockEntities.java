@@ -6,6 +6,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.entity.ExchangeStationBlockEntity;
+import net.sgeht.moleverse.block.entity.MoleTrapBlockEntity;
 
 /**
  * Block entity types of this mod.
@@ -31,6 +32,14 @@ public final class ModBlockEntities {
                     () -> new BlockEntityType<ExchangeStationBlockEntity>(
                             ExchangeStationBlockEntity::new,
                             ModBlocks.EXCHANGE_STATION.get()));
+
+    /** Holds the animal a trap has caught until somebody takes it out. */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MoleTrapBlockEntity>>
+            MOLE_TRAP = REGISTER.register(
+                    "mole_trap",
+                    () -> new BlockEntityType<MoleTrapBlockEntity>(
+                            MoleTrapBlockEntity::new,
+                            ModBlocks.MOLE_TRAP.get()));
 
     private ModBlockEntities() {
     }

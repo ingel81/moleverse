@@ -6,6 +6,7 @@ import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.sgeht.moleverse.Moleverse;
+import net.sgeht.moleverse.item.MoleInSack;
 
 /** Every item of this mod, including the block items from {@link ModBlocks}. */
 public final class ModItems {
@@ -50,6 +51,19 @@ public final class ModItems {
      * that grows on a corridor ceiling.
      */
     public static final DeferredItem<Item> GLOW_WORM = REGISTER.registerSimpleItem("glow_worm");
+
+    /**
+     * A caught mole, carried. The animal itself lives in the stack's components,
+     * so a reload does not lose it - and releasing it is how a colony gets
+     * founded somewhere on purpose.
+     */
+    public static final DeferredItem<MoleInSack> MOLE_IN_SACK = REGISTER.registerItem(
+            "mole_in_sack",
+            MoleInSack::new,
+            props -> props.stacksTo(1));
+
+    public static final DeferredItem<BlockItem> MOLE_TRAP =
+            REGISTER.registerSimpleBlockItem(ModBlocks.MOLE_TRAP);
 
     public static final DeferredItem<BlockItem> WORM_BOX =
             REGISTER.registerSimpleBlockItem(ModBlocks.WORM_BOX);

@@ -17,6 +17,7 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.world.level.block.Block;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.MoleTrap;
 import net.sgeht.moleverse.block.GruntingPost;
 import net.sgeht.moleverse.block.ShaftLantern;
 import net.sgeht.moleverse.block.WormBox;
@@ -75,6 +76,17 @@ public final class ModModelProvider extends ModelProvider {
         blockModels.blockStateOutput.accept(
                 MultiVariantGenerator.dispatch(ModBlocks.WORM_BOX.get()).with(fill));
         blockModels.registerSimpleItemModel(ModBlocks.WORM_BOX.get(), Moleverse.id("block/worm_box"));
+
+        // Three states, one model for now: whether the trap is set, sprung or
+        // empty shows in the chat and the sound rather than in the wood.
+        MultiVariant trap = BlockModelGenerators.variant(new Variant(Moleverse.id("block/mole_trap")));
+        PropertyDispatch.C1<MultiVariant, MoleTrap.State> traps = PropertyDispatch.initial(MoleTrap.STATE);
+        for (MoleTrap.State state : MoleTrap.State.values()) {
+            traps = traps.select(state, trap);
+        }
+        blockModels.blockStateOutput.accept(
+                MultiVariantGenerator.dispatch(ModBlocks.MOLE_TRAP.get()).with(traps));
+        blockModels.registerSimpleItemModel(ModBlocks.MOLE_TRAP.get(), Moleverse.id("block/mole_trap"));
         handModelled(blockModels, ModBlocks.GLOW_MYCELIUM.get(), "glow_mycelium");
         handModelled(blockModels, ModBlocks.SHRINK_POST.get(), "shrink_post");
 
@@ -82,6 +94,7 @@ public final class ModModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.FAT_WORM.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GLOW_WORM.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.MOLE_IN_SACK.get(), ModelTemplates.FLAT_ITEM);
 
         // Spawn eggs carry their own texture in this version rather than the
         // old two-layer tinted template, so a flat item model is all it needs.

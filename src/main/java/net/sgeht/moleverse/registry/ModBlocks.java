@@ -11,6 +11,7 @@ import net.sgeht.moleverse.block.ColonyBoard;
 import net.sgeht.moleverse.block.ExchangeStation;
 import net.sgeht.moleverse.block.GruntingPost;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.block.MoleTrap;
 import net.sgeht.moleverse.block.PreparedMoleMound;
 import net.sgeht.moleverse.block.ShaftLantern;
 import net.sgeht.moleverse.block.ShrinkPost;
@@ -175,6 +176,19 @@ public final class ModBlocks {
             props -> props.mapColor(MapColor.WOOD)
                     .strength(0.7F)
                     .sound(SoundType.WOOD));
+
+    /**
+     * A baited trap on a prepared mound. Catching a mole costs that mound its
+     * place in the network while the trap stands there, which is the price of
+     * taking an animal out of a colony.
+     */
+    public static final DeferredBlock<MoleTrap> MOLE_TRAP = REGISTER.registerBlock(
+            "mole_trap",
+            MoleTrap::new,
+            props -> props.mapColor(MapColor.WOOD)
+                    .strength(0.9F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion());
 
     private ModBlocks() {
     }
