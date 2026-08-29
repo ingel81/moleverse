@@ -20,7 +20,7 @@ import net.minecraft.world.phys.Vec3;
  * path as a list of waypoints rather than jumping straight from entry to exit is
  * the one concession to 0.3, which will carve exactly these lines for real. The
  * waypoints follow the terrain: each one sits
- * {@link BurrowConstants#ROUTE_DEPTH} blocks under the surface at its own
+ * {@link RunLevel} blocks under the surface at its own
  * coordinates, so a route over a hill goes over it rather than through it.</p>
  *
  * <p>The mole is moved by hand through a world that changes underneath him, and
@@ -81,7 +81,7 @@ public final class BurrowRoute {
      * its own local depth, following the terrain rather than whatever is
      * standing on it.
      */
-    public static BurrowRoute between(LevelReader level, BlockPos entry, BlockPos exit) {
+    public static BurrowRoute between(LevelReader level, BlockPos entry, BlockPos exit, RunLevel run) {
         Vec3 from = entry.getCenter();
         Vec3 to = exit.getCenter();
         double horizontal = Math.hypot(to.x - from.x, to.z - from.z);
@@ -94,7 +94,7 @@ public final class BurrowRoute {
             double x = from.x + (to.x - from.x) * t;
             double z = from.z + (to.z - from.z) * t;
 
-            double y = depthAt(level, x, z);
+            double y = depthAt(level, x, z, run.depth());
             if (!Double.isNaN(previous)) {
                 // A tunnel follows the ground, not what is standing on it. The
                 // heightmap counts a tree trunk, a wall or a stack of crates as
@@ -120,12 +120,14 @@ public final class BurrowRoute {
         return new BurrowRoute(points, lengthAt);
     }
 
-    /** Centre of the block {@link BurrowConstants#ROUTE_DEPTH} below the ground surface. */
-    private static double depthAt(LevelReader level, double x, double z) {
+    /** Centre of the block {@code depth} below the ground surface. */
+    private static double depthAt(LevelReader level, double x, double z, int depth) {
         BlockPos surface = MoundNetwork.surfaceAt(level, (int) Math.floor(x), (int) Math.floor(z));
         // getHeight returns the first free spot, so the topmost solid block is
-        // one below it and the route runs ROUTE_DEPTH blocks under that.
-        int y = surface.getY() - 1 - BurrowConstants.ROUTE_DEPTH;
+        // one below it and the run lies that many blocks under it. Measured
+        // against the local surface, not an absolute height: the runs follow the
+        // ground, and a colony on a slope has runs that follow the slope.
+        int y = surface.getY() - 1 - depth;
         return Math.max(y, level.getMinY() + 1) + 0.5;
     }
 

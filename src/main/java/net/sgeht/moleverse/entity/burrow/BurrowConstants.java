@@ -153,7 +153,34 @@ public final class BurrowConstants {
      * enough that a one-block dip in the terrain does not surface him and
      * shallow enough that the dust trail lands where he is.
      */
-    public static final int ROUTE_DEPTH = 2;
+    public static final int DEPTH_FEEDING = 2;
+
+    /**
+     * The backbone of a colony, four blocks down.
+     *
+     * <p>Two blocks below a feeding run, which is what keeps two crossing runs
+     * from being one hole - and the burrow below multiplies that gap by its own
+     * scale, so what is a hand's breadth up here is a storey down there.</p>
+     */
+    public static final int DEPTH_MAIN = 4;
+
+    /**
+     * The main burrow and its chambers, six blocks down. Nothing digs at this
+     * level yet; it is here so the set of levels is closed before the first link
+     * is written to disk.
+     */
+    public static final int DEPTH_CHAMBER = 6;
+
+    /**
+     * How often a trip between two mounds that have never been joined digs a
+     * main run rather than a feeding run.
+     *
+     * <p>A guess to be judged in play. Too high and a colony is all backbone,
+     * with nothing left near the surface; too low and the second level barely
+     * exists. Only a pair with no run yet rolls at all - an established run keeps
+     * its depth.</p>
+     */
+    public static final float MAIN_RUN_CHANCE = 0.35F;
 
     /**
      * Distance between two waypoints. The route follows the terrain by sampling

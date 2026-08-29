@@ -1,6 +1,8 @@
 package net.sgeht.moleverse.entity.burrow;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
@@ -82,6 +84,22 @@ public class MoleBurrowGoal extends Goal {
 
     /** The colony this trip belongs to. Resolved when the entry is known. */
     private Colony colony;
+
+    /**
+     * How deep this trip runs. Taken from the link when the pair has been
+     * travelled before, rolled when it has not.
+     */
+    private RunLevel run = RunLevel.FEEDING;
+
+    /**
+     * Whether the trip reached its exit rather than ending early.
+     *
+     * <p>Only a clean arrival is written down. A run that stopped in open air,
+     * in water, at the edge of the ticking area, or was sent back to its entry by
+     * the roof guard has geometry that describes no tunnel, and storing it would
+     * put a corridor in the burrow below where no mole ever went.</p>
+     */
+    private boolean arrivedCleanly;
 
     /**
      * When the mole first found itself on ground it cannot dig, or -1 while it
@@ -359,6 +377,8 @@ public class MoleBurrowGoal extends Goal {
         this.entry = null;
         this.exit = null;
         this.colony = null;
+        this.run = RunLevel.FEEDING;
+        this.arrivedCleanly = false;
         this.emergeAt = null;
         this.openedMound = null;
         this.route = null;
@@ -552,7 +572,7 @@ public class MoleBurrowGoal extends Goal {
                 this.exit = MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
                 if (this.exit != null) {
                     this.exitIsNew = false;
-                    this.route = BurrowRoute.between(level, this.entry, this.exit);
+                    this.route = this.routeTo(level, this.exit);
                     BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, false,
                             this.route.length(), this.route.waypointCount());
                     return true;
@@ -574,7 +594,7 @@ public class MoleBurrowGoal extends Goal {
             this.exitIsNew = true;
         }
 
-        this.route = BurrowRoute.between(level, this.entry, this.exit);
+        this.route = this.routeTo(level, this.exit);
         BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, this.exitIsNew,
                 this.route.length(), this.route.waypointCount());
         return true;
@@ -637,7 +657,7 @@ public class MoleBurrowGoal extends Goal {
 
         this.entry = here;
         this.entryIsNew = true;
-        this.route = BurrowRoute.between(level, this.entry, this.exit);
+        this.route = this.routeTo(level, this.exit);
         return true;
     }
 
@@ -676,7 +696,10 @@ public class MoleBurrowGoal extends Goal {
         switch (progress) {
             case TRAVELLING -> {
             }
-            case ARRIVED -> this.beginEmerging(level, "route finished");
+            case ARRIVED -> {
+                this.arrivedCleanly = true;
+                this.beginEmerging(level, "route finished");
+            }
             case NOT_ENTITY_TICKING -> {
                 BurrowLog.recovered(this.mole, "waypoint not entity-ticking");
                 this.beginEmerging(level, "route left the ticking area");
@@ -699,6 +722,7 @@ public class MoleBurrowGoal extends Goal {
         }
 
         this.placeExitMound(level);
+        this.recordLink(level);
         level.playSound(null, this.mole.getX(), this.mole.getY(), this.mole.getZ(),
                 ModSounds.MOLE_SURFACE.get(), SoundSource.NEUTRAL, 1.0F, 1.0F);
         this.mole.setBurrowState(BurrowState.WANDERING, "emerge animation finished");
@@ -743,6 +767,9 @@ public class MoleBurrowGoal extends Goal {
         if (blocked != null) {
             BurrowLog.recovered(this.mole, blocked + " - returning to the entry");
             surfaced = MoundNetwork.surfaceAt(level, this.entry.getX(), this.entry.getZ());
+            // Sent home, so the route describes nothing that exists. Whatever the
+            // travel said, this is not a run to write down.
+            this.arrivedCleanly = false;
         }
 
         this.emergeAt = surfaced;
@@ -994,6 +1021,48 @@ public class MoleBurrowGoal extends Goal {
         this.strandedSinceTick = -1;
         BurrowLog.recovered(this.mole, "stranded on ground he cannot dig - put back on soil");
         return true;
+    }
+
+    /**
+     * Builds the route to the chosen exit and settles what depth it runs at.
+     *
+     * <p>A pair of mounds that has been travelled before keeps the level of that
+     * run; only a pair with no link yet rolls. Letting an established run change
+     * depth would leave the burrow below with two corridors where the colony has
+     * one.</p>
+     */
+    private BurrowRoute routeTo(ServerLevel level, BlockPos exit) {
+        RunLevel known = ColonyStore.get(level).levelBetween(this.entry, exit);
+        this.run = known != null ? known
+                : this.random.nextFloat() < BurrowConstants.MAIN_RUN_CHANCE ? RunLevel.MAIN
+                : RunLevel.FEEDING;
+        return BurrowRoute.between(level, this.entry, exit, this.run);
+    }
+
+    /**
+     * Writes the finished run down, so the burrow below has something to mirror
+     * and a colony's backbone can be told from its everyday holes.
+     *
+     * <p>Both ends have to be mounds at this moment. The exit is placed a tick
+     * earlier and can be refused - the site filled up, a player took the mound -
+     * and a link to a hole that is not there would only be pruned again on the
+     * next query.</p>
+     */
+    private void recordLink(ServerLevel level) {
+        if (!this.arrivedCleanly || this.colony == null || this.entry == null || this.emergeAt == null) {
+            return;
+        }
+        if (!MoleMound.isMound(level, this.entry) || !MoleMound.isMound(level, this.emergeAt)) {
+            return;
+        }
+
+        List<Integer> depths = new ArrayList<>(this.route.waypointCount());
+        for (Vec3 point : this.route.waypoints()) {
+            depths.add(Mth.floor(point.y));
+        }
+
+        ColonyStore.get(level).record(level, this.colony.id(), this.entry, this.emergeAt, this.run, depths);
+        BurrowLog.linkRecorded(this.mole, this.entry, this.emergeAt, this.run, depths.size());
     }
 
     private void delayNextAttempt() {

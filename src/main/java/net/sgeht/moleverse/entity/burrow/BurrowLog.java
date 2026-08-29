@@ -92,6 +92,15 @@ public final class BurrowLog {
                 String.format("%.1f", routeLength), waypoints);
     }
 
+    /** A run was written down. The count is waypoints, which is the shape of the stored profile. */
+    public static void linkRecorded(Entity mole, BlockPos a, BlockPos b, RunLevel run, int points) {
+        if (off()) {
+            return;
+        }
+        LOG.info("{} run recorded: {} to {}, {} at depth {}, {} point(s)",
+                who(mole), where(a), where(b), run.getSerializedName(), run.depth(), points);
+    }
+
     /** A colony came into being. Rare enough that every one of them is worth a line. */
     public static void colonyFounded(Entity mole, int id, BlockPos core) {
         if (off()) {
