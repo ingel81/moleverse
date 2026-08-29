@@ -261,9 +261,19 @@ The rule from `MOLEHILL.md` holds: build the instrument, do not guess the number
 
 ## To verify before writing code
 
-* The `SavedData` registration form in this version.
-* Whether a POI query can be bounded by a box cheaply, or whether containment has
-  to be filtered after a radius query.
+* ~~The `SavedData` registration form~~ - answered and built: a `SavedDataType`
+  with an id, a constructor and a codec. Worth knowing what it does when it goes
+  wrong: a codec that cannot parse its own file is not fatal and not loud. The
+  storage logs, returns null, and the next save writes an empty store over the
+  old one - a world loses every colony without a crash. Every field therefore
+  gets `optionalFieldOf` with a default.
+* ~~Whether a point-of-interest query can be bounded by a box~~ - answered:
+  `PoiManager.getInSquare(predicate, pos, halfWidth, occupancy)` filters by
+  `abs(dx) <= r && abs(dz) <= r`, which is exactly a colony's box. Not
+  `getCountInRange`, which goes through `getInRange` and is spherical. Neither
+  loads world chunks - only the point-of-interest region file - but at half-width
+  64 a call walks 11x11 chunks with all their sections, so it belongs behind a
+  cooldown rather than in a tick.
 * How often a run at six blocks meets a cave or water. Far less often than the
   first version of this plan assumed, but the aborts `NOT_SOLID` and `LIQUID`
   already exist and a cut cave has to be either an abort or a junction - decide

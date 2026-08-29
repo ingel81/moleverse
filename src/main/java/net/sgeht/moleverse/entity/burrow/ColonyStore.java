@@ -28,6 +28,14 @@ import net.sgeht.moleverse.block.MoleMound;
  * <p>The mounds themselves stay in the point-of-interest index. This holds only
  * what the index cannot: which ground belongs to whom, since when, and which
  * pairs of mounds are joined by a run that was really dug.</p>
+ *
+ * <p><strong>A codec that cannot read its own file destroys it.</strong>
+ * {@code DimensionDataStorage} logs the parse failure and hands back null;
+ * {@code computeIfAbsent} then builds an empty store, and the next save writes it
+ * over the old file. There is no crash and no prompt - a world simply loses every
+ * colony it had. Which is why a field is added with {@code optionalFieldOf} and a
+ * default, never bare, and why the depth level was written into the record before
+ * anything could choose one.</p>
  */
 public class ColonyStore extends SavedData {
 

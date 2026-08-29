@@ -262,8 +262,10 @@ public final class BurrowConstants {
      *
      * <p>Vanilla pathfinding will not plan a hundred and fifty blocks in one
      * call - it gives up and the mole stands still, which looks exactly like a
-     * bug. Short legs always succeed, and the bearing keeps them pointing the
-     * same way.</p>
+     * bug. The limit is {@code max(FOLLOW_RANGE, 16)} and the follow range
+     * defaults to 32, so sixteen sits comfortably inside it with room for the
+     * detours a path takes around terrain. Short legs always succeed, and the
+     * bearing keeps them pointing the same way.</p>
      */
     public static final int EMIGRATION_HOP = 16;
 

@@ -27,12 +27,24 @@ import net.minecraft.world.phys.Vec3;
 public record BurrowLink(int colony, BlockPos a, BlockPos b, RunLevel level, List<Integer> depths,
         int uses, long lastUsed) {
 
+    /**
+     * Heights as an int array rather than a list of numbers.
+     *
+     * <p>{@code Codec.INT_STREAM} writes a TAG_Int_Array through {@code NbtOps},
+     * which is one tag for the whole profile instead of one per waypoint. A
+     * colony carries dozens of runs of sixteen points each, so the difference is
+     * the shape of the file rather than a rounding error.</p>
+     */
+    private static final Codec<List<Integer>> DEPTHS_CODEC = Codec.INT_STREAM.xmap(
+            stream -> stream.boxed().toList(),
+            depths -> depths.stream().mapToInt(Integer::intValue));
+
     public static final Codec<BurrowLink> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("colony").forGetter(BurrowLink::colony),
             BlockPos.CODEC.fieldOf("a").forGetter(BurrowLink::a),
             BlockPos.CODEC.fieldOf("b").forGetter(BurrowLink::b),
             RunLevel.CODEC.fieldOf("level").forGetter(BurrowLink::level),
-            Codec.INT.listOf().fieldOf("depths").forGetter(BurrowLink::depths),
+            DEPTHS_CODEC.fieldOf("depths").forGetter(BurrowLink::depths),
             Codec.INT.optionalFieldOf("uses", 1).forGetter(BurrowLink::uses),
             Codec.LONG.optionalFieldOf("last_used", 0L).forGetter(BurrowLink::lastUsed))
             .apply(instance, BurrowLink::new));
