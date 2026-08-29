@@ -265,7 +265,12 @@ public final class TunnelDecorator {
             // A seep that is already sunk here stays. Paving it over and letting
             // dressSeep dig it out again would make the result depend on the order
             // the two ran in, which is the one thing all of this is built to avoid.
-            if (level.getBlockState(cursor.set(x, floorY, z)).is(Blocks.WATER)) {
+            // Unloaded counts as "leave it alone" rather than as "not water".
+            // Reading a block across a chunk border would load - and in this
+            // dimension generate - the chunk, which is how dressing a long run
+            // turns into a freeze.
+            if (!level.isLoaded(cursor.set(x, floorY, z))
+                    || level.getBlockState(cursor).is(Blocks.WATER)) {
                 continue;
             }
             if (!replaceShell(level, cursor, material.defaultBlockState())) {
@@ -548,8 +553,15 @@ public final class TunnelDecorator {
         for (int d = 0; d <= search; d++) {
             for (int sign = -1; sign <= 1; sign += 2) {
                 int y = aroundY + d * sign;
-                if (level.getBlockState(cursor.set(x, y, z)).isAir()
-                        && !level.getBlockState(cursor.set(x, y - 1, z)).isAir()) {
+                // Both reads guarded: this probe walks up and down past the
+                // corridor and is the one place that reaches into a chunk the
+                // carver never touched. An unguarded read there loads it.
+                if (!level.isLoaded(cursor.set(x, y, z))) {
+                    continue;
+                }
+                boolean open = level.getBlockState(cursor).isAir();
+                if (open && level.isLoaded(cursor.set(x, y - 1, z))
+                        && !level.getBlockState(cursor).isAir()) {
                     return y;
                 }
                 if (d == 0) {

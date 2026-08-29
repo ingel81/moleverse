@@ -213,10 +213,11 @@ and proves nothing about whether a corridor is walkable.
 
 ### Still open when this stopped
 
-* The review agent set on the burrow never reported. The two things it was meant
-  to catch were checked by hand instead: carving happens before the teleport and
-  the destination chunks are loaded first, and the way back refuses when the
-  mound above has gone. The rest of its list is unchecked.
+* The review arrived late and found three of the same kind: block reads in the
+  decorator's probes that were not guarded by a loaded-chunk check. In this
+  dimension an unguarded read does not merely load a chunk, it generates one, so
+  dressing a long run could have turned into a freeze. Guarded, and the reviewer
+  cleared arrival, the way back, replacement rules and sides.
 * Textures are vanilla stand-ins - `deep_earth` borrows rooted dirt, the lantern
   borrows the vanilla lantern, the larder borrows muddy mangrove roots. Only the
   great worm has a texture of its own.
