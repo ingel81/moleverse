@@ -1,8 +1,12 @@
 {
+  "block.moleverse.deep_earth": "Deep Earth",
+  "block.moleverse.glow_mycelium": "Glow Mycelium",
   "block.moleverse.loose_soil": "Loose Soil",
   "block.moleverse.mole_mound": "Mole Mound",
   "block.moleverse.prepared_mole_mound": "Prepared Mole Mound",
+  "block.moleverse.root_beam": "Root Beam",
   "block.moleverse.shaft_lantern": "Shaft Lantern",
+  "block.moleverse.shrink_post": "Shrink Post",
   "entity.moleverse.mole": "Mole",
   "item.moleverse.earthworm": "Earthworm",
   "item.moleverse.mole_pelt": "Mole Pelt",

@@ -33,6 +33,22 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> SHAFT_LANTERN =
             REGISTER.registerSimpleBlockItem(ModBlocks.SHAFT_LANTERN);
 
+    public static final DeferredItem<BlockItem> SHRINK_POST =
+            REGISTER.registerSimpleBlockItem(ModBlocks.SHRINK_POST);
+
+    public static final DeferredItem<BlockItem> ROOT_BEAM =
+            REGISTER.registerSimpleBlockItem(ModBlocks.ROOT_BEAM);
+
+    public static final DeferredItem<BlockItem> GLOW_MYCELIUM =
+            REGISTER.registerSimpleBlockItem(ModBlocks.GLOW_MYCELIUM);
+
+    /**
+     * The fill of the burrow below. It cannot be broken, so this only exists to
+     * put one somewhere by hand while the dimension is being built.
+     */
+    public static final DeferredItem<BlockItem> DEEP_EARTH =
+            REGISTER.registerSimpleBlockItem(ModBlocks.DEEP_EARTH);
+
     // --- Spawn eggs -------------------------------------------------------
     // The properties operator runs during item registration, not at class init.
     // Entity types are registered before items, so the type resolves by then.

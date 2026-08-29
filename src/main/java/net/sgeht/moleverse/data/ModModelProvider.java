@@ -14,6 +14,7 @@ import net.minecraft.client.data.models.blockstates.PropertyDispatch;
 import net.minecraft.client.data.models.model.ModelTemplates;
 import net.minecraft.client.renderer.block.model.Variant;
 import net.minecraft.data.PackOutput;
+import net.minecraft.world.level.block.Block;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.ShaftLantern;
@@ -41,6 +42,14 @@ public final class ModModelProvider extends ModelProvider {
         registerMoleMound(blockModels);
         registerPreparedMoleMound(blockModels);
         registerShaftLantern(blockModels);
+
+        // The burrow's own blocks. Their models are hand-managed like the
+        // mound's, because they point at vanilla textures for now - a cube
+        // template would insist on a texture of our own that does not exist yet.
+        handModelled(blockModels, ModBlocks.DEEP_EARTH.get(), "deep_earth");
+        handModelled(blockModels, ModBlocks.ROOT_BEAM.get(), "root_beam");
+        handModelled(blockModels, ModBlocks.GLOW_MYCELIUM.get(), "glow_mycelium");
+        handModelled(blockModels, ModBlocks.SHRINK_POST.get(), "shrink_post");
 
         itemModels.generateFlatItem(ModItems.MOLE_PELT.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
@@ -118,6 +127,16 @@ public final class ModModelProvider extends ModelProvider {
 
         blockModels.registerSimpleItemModel(ModBlocks.SHAFT_LANTERN.get(),
                 Moleverse.id("block/shaft_lantern"));
+    }
+
+    /**
+     * A block with one hand-written model and no state to dispatch on: the
+     * blockstate and the item model are generated, the shape is not.
+     */
+    private void handModelled(BlockModelGenerators blockModels, Block block, String model) {
+        blockModels.blockStateOutput.accept(MultiVariantGenerator.dispatch(
+                block, BlockModelGenerators.variant(new Variant(Moleverse.id("block/" + model)))));
+        blockModels.registerSimpleItemModel(block, Moleverse.id("block/" + model));
     }
 
     /** Every given shape in all four Y rotations, picked at random in world. */

@@ -10,6 +10,7 @@ import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.PreparedMoleMound;
 import net.sgeht.moleverse.block.ShaftLantern;
+import net.sgeht.moleverse.block.ShrinkPost;
 
 /** Every block of this mod. */
 public final class ModBlocks {
@@ -70,6 +71,48 @@ public final class ModBlocks {
                     .sound(SoundType.LANTERN)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(ShaftLantern.LIT) ? ShaftLantern.LIGHT_WHEN_LIT : 0));
+
+    /**
+     * What the burrow below is made of, everywhere a corridor has not been dug.
+     *
+     * <p>Unbreakable on purpose, and it is not a difficulty setting: outside a
+     * run there is no room, so there is nothing to mine. It is the physical layer
+     * of the limits in {@code IDEAS.md} - leaving the corridors is impossible
+     * rather than forbidden, which is a rule that needs no policing.</p>
+     */
+    public static final DeferredBlock<Block> DEEP_EARTH = REGISTER.registerSimpleBlock(
+            "deep_earth",
+            props -> props.mapColor(MapColor.DIRT)
+                    .strength(-1.0F, 3600000.0F)
+                    .sound(SoundType.ROOTED_DIRT));
+
+    /** A root grown across a corridor. Down there they are beams. */
+    public static final DeferredBlock<Block> ROOT_BEAM = REGISTER.registerSimpleBlock(
+            "root_beam",
+            props -> props.mapColor(MapColor.PODZOL)
+                    .strength(1.2F)
+                    .sound(SoundType.WOOD));
+
+    /** Fungal threads on a corridor ceiling. Where the light down there comes from. */
+    public static final DeferredBlock<Block> GLOW_MYCELIUM = REGISTER.registerSimpleBlock(
+            "glow_mycelium",
+            props -> props.mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(0.3F)
+                    .sound(SoundType.SLIME_BLOCK)
+                    .lightLevel(state -> 9));
+
+    /**
+     * The fitting that takes a player into the burrow below, and the way back
+     * out of it.
+     */
+    public static final DeferredBlock<ShrinkPost> SHRINK_POST = REGISTER.registerBlock(
+            "shrink_post",
+            ShrinkPost::new,
+            props -> props.mapColor(MapColor.PODZOL)
+                    .strength(0.8F)
+                    .sound(SoundType.ROOTED_DIRT)
+                    .noOcclusion()
+                    .lightLevel(state -> 5));
 
     private ModBlocks() {
     }

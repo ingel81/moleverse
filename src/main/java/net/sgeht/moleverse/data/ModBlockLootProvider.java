@@ -38,6 +38,12 @@ public final class ModBlockLootProvider extends BlockLootSubProvider {
         // anybody stop building them.
         dropSelf(ModBlocks.PREPARED_MOLE_MOUND.get());
         dropSelf(ModBlocks.SHAFT_LANTERN.get());
+        dropSelf(ModBlocks.SHRINK_POST.get());
+        dropSelf(ModBlocks.ROOT_BEAM.get());
+        dropSelf(ModBlocks.GLOW_MYCELIUM.get());
+        // Unbreakable in play; the table exists so the generator does not complain
+        // about a block it knows nothing about.
+        dropSelf(ModBlocks.DEEP_EARTH.get());
 
         // A mound gives back the earth a mole pushed up, and now and then what
         // the mole was after in the first place. That second pool is the reason
