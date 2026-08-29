@@ -16,7 +16,10 @@ build: what is in which module, what the numbers are, and where the seams run.
 | **Carving** | `dimension/CorridorCarver.java` | Geometry, the link store |
 | **Content** | `dimension/TunnelDecorator.java` | Carving |
 | **Transit** | `dimension/BurrowTransit.java`, `block/ShrinkPost.java` | all of the above |
-| **Blocks** | `deep_earth`, `root_beam`, `glow_mycelium`, `shrink_post` in the registries | nothing |
+| **Chambers** | `dimension/ChamberFurnisher.java`, `block/WormLarder.java` | Carving |
+| **Ambience** | `client/BurrowAmbience.java` | Dimension |
+| **Tests** | `test/BurrowGameTests.java`, `test/ModGameTests.java` | Geometry, Carving |
+| **Blocks** | `deep_earth`, `root_beam`, `glow_mycelium`, `worm_larder`, `shrink_post` in the registries | nothing |
 
 Dropping a module upwards is safe: without Transit the dimension exists and can
 be entered with a command; without Content the corridors are bare; without
@@ -65,3 +68,27 @@ worth remembering when a corridor appears to end in a wall.
 * Nothing is generated per biome. Every colony's burrow looks the same for now.
 * No shrinking is simulated. The player keeps their size and the world is built
   four times larger, which is the same statement in blocks rather than in code.
+
+## What is proven and what is not
+
+`./gradlew runGameTestServer` runs six tests on every invocation: the geometry
+round trip and its clamp, carving clearing ground and leaving a floor,
+`alreadyCarved` before and after, and the link store surviving a write and a
+read. They pass.
+
+That is arithmetic and block placement. What no test can reach is whether the
+place is worth being in - whether a corridor reads as a burrow, whether the light
+is enough to walk by, whether arriving in a chamber feels like arriving
+somewhere. All of that is waiting for a person.
+
+## The vertical clamp
+
+The burrow is 256 blocks tall and the vertical scale is two, so only overworld
+heights within about sixty of sea level map inside it. Everything outside is
+clamped rather than allowed to run off the end - a superflat test world sits at
+-60 and a mountain colony at 140, and both would otherwise carve at a height that
+does not exist, which fails silently and buries whoever arrives.
+
+Two very different overworld heights can therefore share one burrow level. That
+is the right trade: colonies are hundreds of blocks apart horizontally, so a
+collision in the vertical costs nothing.
