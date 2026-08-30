@@ -1,0 +1,52 @@
+# Scenario: does a colony's whole era survive with the burrow machinery armed?
+#
+# One line per server console command. Blank lines and # comments are ignored.
+# `@wait <marker>` blocks until that text appears in the server log.
+#
+# What this actually exercises, and what it cannot:
+#   - Colony founding, digging, link recording - and through record(), the
+#     reconciler's linkChanged notify. With no player in the burrow no chunk
+#     down there is ever loaded, so every notify must be a cheap no-op: this
+#     scenario is the NULL-PATH soak for the whole burrow stack. A leak, a
+#     growing queue, or a tick-time creep here is a bug in the notify path
+#     itself, because nothing below should be doing any work at all.
+#   - The fortress mound: the core mound of each colony should carry the
+#     FORTRESS state after its first trips.
+#   - The giant-mole trip bridge, same null path: trips fire, nobody is below,
+#     no traversal must ever spawn.
+#   - NOT exercised: burrow chunk reconciliation, decoration, creature spawns,
+#     the traversal entity itself. All of those need a player below and belong
+#     to the in-game checklist, not to a headless soak.
+
+forceload add -512 -128 -257 127
+forceload add -256 -128 -1 127
+forceload add 0 -128 255 127
+forceload add 256 -128 511 127
+
+say SOAK-CHECK empty-world
+moleverse colony list
+
+# Three founding pairs, far enough apart for three colonies.
+summon moleverse:mole -350 -2 0
+summon moleverse:mole -345 -2 0
+summon moleverse:mole 0 -2 0
+summon moleverse:mole 5 -2 0
+summon moleverse:mole 350 -2 0
+summon moleverse:mole 355 -2 0
+
+# Two hours of game time. Colonies found, spread, dig their networks, and the
+# burrow-side notifies fire thousands of times into the void.
+tick sprint 144000
+@wait Sprint complete
+
+say SOAK-CHECK after-era
+moleverse colony list
+moleverse burrow info
+
+# The questions this run answers, read from the log afterwards:
+#   - colony count stable at 3 (separation held)?
+#   - link counts grown and pruned sanely?
+#   - no Exception, no Ticking entity, no growing "queue" figures in the
+#     reconciler's dev log lines (devLogging is on in every gradle run)?
+#   - tick time at the end comparable to the start?
+say SOAK-DONE

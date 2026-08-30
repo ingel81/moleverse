@@ -506,3 +506,144 @@ somebody entering the burrow rather than on ground coming into existence, and
 every write into an unloaded chunk is skipped without a word. Sixteen blocks of a
 sixty-block run survive. The fix is the shape worldgen already has - a chunk
 carves the runs that pass through it - and it is a session of its own.
+
+## 2026-08-29, evening - the burrow generates like a world
+
+The corridors-are-not-built finding from the afternoon is closed, the way the
+morning entry said it should be: a chunk asks which pieces of the colony's
+network pass through it and carves those. Three agents in parallel built the
+plan layer (`dimension/plan/` - features with key, hash, bounds, clamped
+carve), the clamp through every carver plus an organic cross-section (value
+noise along the run, arched ceiling, mouths tapered to plain section), and a
+rebuilt decorator (8-block grain cells give stretches a character - rooty,
+mossy, stony, bare - wall veins instead of speckle, staged glow pools with a
+hard darkness cap, trodden path flanks, seep banks). A fourth wired it live:
+a ledger attachment per chunk, a load-queue drained a few chunks per tick,
+decoration deferred until the 3x3 neighbourhood is carved, and
+`ColonyStore.record` notifying the reconciler so a run appears below while the
+mole above is still digging. `enter` shrank to mound check, chamber ring,
+teleport.
+
+The deferred-decoration rule earned its keep before anybody played: the
+cross-chunk game test caught `walkLevel` probing with bare `isAir`, so a
+dressed slice measured one block higher on the next visit and paved its own
+carpets over. The fix was a predicate and a missing guard on the moss carpet -
+and the invariant (a dressed slice, dressed again, measures identically) is now
+stated in the class and held by the test. Eight game tests, all green. Not yet
+seen by a person: whether the organic sections and the grain read as intended
+from inside. That is the next descent.
+
+### Glow-worm gate vs. same-tick breaks
+
+Glow-worm gate reads neighbour block light, and light updates flush at end of
+tick - so blocks broken in the *same* tick (FTB Ultimine vein-mining,
+explosions) read pre-break light and yield no glow worms. Intended: careful
+harvesting beats strip-mining. Not a bug.
+
+## 2026-08-29, night - anatomy, biome, loot, creatures
+
+The full BURROW_LIFE plan was approved in one word and built in waves. Wave A:
+the nest chamber at the colony core (largest room, hay-bedded hollow, the warm
+hollow trove - four larders over four nodules under a moss lid, lit by an
+L-8-correct frame), larder alcoves off deep runs, bolt-hole stubs (honestly
+documented as not reaching the overworld - the burrow is its own box), a
+custom moleverse:burrow biome (1.21.11 moved biome effects into environment
+attributes; every tutorial is wrong), and root-nodule wall pockets with loot
+tables (light-gated glow worms via six-face neighbour checks). Wave B: three
+creatures - earthworm, soil beetle, grub - authored through the Blockbench MCP
+pipeline (the viewport caught floating legs, a covered elytra seam, and a
+stepped grub arc that pure code review had passed), spawning as AMBIENT
+because CREATURE only passes the filter every 400 ticks and the flat generator
+never runs the base-population pass.
+
+The cross-chunk equality test earned its keep three more times: a nodule
+ceiling broke the decorator's sweep gate (predicate gap), nodules silently
+cancelled a quarter of all larders (all-or-nothing validation meeting a block
+nobody told it about), and the nest trove lost larders to its own lining. The
+test fixtures now sit on fixed lanes 32 chunks apart - they had been sharing
+chunks, and the per-chunk ledger attachment does not care about height bands.
+
+Still open: shrew and weasel, the scratching ambience, advancements and
+recipes, the fortress mound (all running as packages), the way-home refusal
+(instrumented, awaiting one reproduction), and commits.
+
+## 2026-08-29, late night - the second playtest and what it taught
+
+The playtest loop ran all evening: user below, findings up, fixes down, restart.
+What it produced, in the order it was found:
+
+* **The way home refused whenever nobody was upstairs.** 124 refusals in one
+  log: getHeight answers the world floor for an unloaded chunk, so the mound
+  read as gone exactly when no mole kept the ground warm. leave() now loads
+  its one target chunk; isWayOut stays optimistic rather than dragging chunks
+  in for a glance.
+* **The shrink post was the wrong thing to climb out of.** Replaced below by
+  the root ladder - braided roots from the chamber ceiling, right-click to
+  surface, unbreakable (the rope is the rescue route; pushReaction BLOCK, or
+  a piston could do what a pickaxe cannot). Existing chambers migrate on next
+  entry. First model was a crossed pair of planes; now one run of 2px boxes.
+* **Vanilla spawning cannot populate this dimension.** Measured, not felt:
+  random volume rolls hit corridor air 0.7% of the time in crossed chunks,
+  0% elsewhere - one beetle all evening, zero grubs. All spawning moved to
+  BurrowLife: waypoint-based trickle per player (worms, beetles, shrews with
+  their own dark-and-distance gates), grubs stocked at larder alcoves by
+  position hash, spawner lists emptied. The link polylines are guaranteed air.
+* **Scaled fauna wore unscaled hitboxes.** Attributes.SCALE baked into the
+  supplier never goes dirty, so Entity's constructor-cached dimensions stay
+  1x while the renderer reads live - a 4x model half inside a wall. Fix:
+  refreshDimensions() in every scaled entity's constructor (AgeableMob is
+  vanilla's own precedent).
+* **The travelling mole existed but could not appear.** Two independent
+  causes: the wet-route loop meant no link was ever recorded (fixed: routes
+  are probed for liquid before digging, wet ground is shunned and walked away
+  from), and in singleplayer the overworld does not tick while the player is
+  below, so trip events cannot fire at all. The ambient lane answers the
+  second: every 2-4 minutes the local colony walks one of its own runs -
+  same entity, same guided walk, self-paced, one per colony across both
+  lanes, entering 48 blocks ahead of the player and passing rather than
+  meeting.
+* **The rescue countdown fired on every corridor walk** - SURFACE_WINDOW=6
+  predates corridors ("a few paces off the chamber floor"). Being fixed:
+  two-stage strandedness, the colony's surviving mounds as the real question.
+* **Scale audit** (reference: mole 15cm = player): fauna consciously heroic
+  (beetle bigger than biology, user's call), weasel out of the spawn list -
+  a real weasel outsizes a mole, so it returns as a corridor-filling
+  incursion event, not a mob. The travelling mole goes to SCALE 7 after
+  being mistaken for a beetle at 4.
+* **Light** 0.12 -> 0.04 -> 0.02 by request; ladders, larders and the nest
+  frame carry the navigation.
+* Art detail pass by two agents: six creatures gained geometry (mole left
+  alone - tuned animations outweigh detail), 14 block/item/GUI textures
+  reworked, all three mounds now generated asymmetric from one recipe.
+
+Open for tomorrow: the traversal debugging session (full dev logging is being
+laid in tonight - gait transitions, weave clamps, rubber-band saturation),
+the soak run verdict, panel-tuned constants to bake, and the commits.
+
+### The soak verdict (burrow_era, 2026-08-30 00:11)
+
+Two hours of game time, three colonies, 2001 completed trips, zero exceptions,
+zero ticking-entity errors, zero way-home refusals. The null paths held: with
+nobody below, every armed traversal ended with "no player came within 64
+blocks of the run" - the gate named itself, nothing spawned into the empty
+dimension, and the ambient clock stayed silent as designed. The wet-route fix
+shows in the shape of the run: the refusal summary is "none".
+
+One open eye for tomorrow: the fortress mound writes no log line, so the soak
+cannot say whether the three colony cores actually wear it - first in-game
+look at a core mound answers it.
+
+### The idle-time batch (2026-08-30, small hours)
+
+Four packages while the user was away: the weasel incursion is built (guided
+hunt at 4.95 wide, swelling hiss plus critter panic as the ten-second warning,
+bolt-holes proven safe by geometry, 1-2 pelts guaranteed); the creature sound
+accents are generated and wired (worm slither continuous while it flows,
+beetle clicks at long intervals, grub munching, ladder rustle); the whole
+debug surface is dev-gated behind the new DevGate umbrella (a shipped build
+had every /moleverse client command typeable by anyone - closed); and
+docs/KINGDOM.md holds the 1.0 concept - a fungal kingdom under all colonies,
+entered by feeding the warm hollow until it fruits (Hebeloma radicosum is
+real), with Passage as the proposed second gift. That last one carries the
+decision that needs the user: whether fast travel between colonies is what
+1.0 is for.

@@ -159,6 +159,11 @@ format), `place_cube` (`from`/`to`/`origin`/`rotation` map one to one onto
   16x16. The project resolution is separate again: set `Project.texture_width` and
   `Project.texture_height` via `risky_eval`, otherwise the export writes the wrong
   values into `LayerDefinition.create(...)`.
+* **`create_texture` leaves `uv_width`/`uv_height` at 16** regardless of the
+  real pixels, so cubes whose UV strips sit low in a tall atlas lose faces in
+  the viewport. Fix per texture via `risky_eval`: set both fields to the atlas
+  size, then `Canvas.updateAllUVs()`. Until that ran, judge textures in-game
+  or through a generator-side render, never through the viewport.
 * **Auto UV assigns `[0, 0]` to every cube**, stacking them all in the same corner.
   Pack the layout by hand: in box UV mode a cube occupies `2*(depth+width)` by
   `depth+height` pixels, and `uv_offset` is its top-left corner.
@@ -243,8 +248,12 @@ Note the split: pose commands are client side (`RegisterClientCommandsEvent`),
 anything that touches behaviour is server side (`RegisterCommandsEvent`), because
 mob AI only exists there.
 
-The panel currently ships in the jar. Before a release it needs a switch or an
-exclusion from the release build.
+The whole debug surface - both panels, the overlays, every `/moleverse`
+command tree - ships in the jar but is inert there: registration is gated on
+`DevGate.isDevelopmentRun()` (the `moleverse.dev` umbrella property, set by
+every Gradle run config). A true source-set split was costed and parked: four
+places in shipped code read debug statics (`Mole`, `MoleModel`,
+`MoleRenderer`, the event wiring) and would need indirections first.
 
 ## Conventions
 

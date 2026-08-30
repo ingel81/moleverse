@@ -110,15 +110,15 @@ Then three, chosen deliberately:
 Left for later, with reasons: the **trap** needs a mole in a sack to put a catch
 into, and that item is also the relocation mechanic, so it is worth doing
 properly rather than as an attachment's side effect. The **feeding trough**
-overlaps with the exchange station until worms have tiers. The **aeration pipe**
+still overlaps with the exchange station, which now grades its feed itself. The **aeration pipe**
 is the soil-fertility idea and belongs with farming, not with sockets.
 
-### The find table is a placeholder
+### The find tables are graded now
 
-The station returns clay, bone, flint, amethyst, the odd echo shard, and things
-the mod already has. None of that is designed - it is there so the machine has
-something to hand back before worm tiers exist to grade it. Expect to replace it
-whole.
+The station grades its feed: root nodules buy the poor table, earthworms the
+base one, fat worms three rolls on a better one, glow worms six on the deepest.
+One roll per trade, value in count times table, pitch rising per tier. The old
+single placeholder table survives verbatim as the earthworm tier.
 
 ## Open
 

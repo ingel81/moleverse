@@ -44,6 +44,21 @@ import net.sgeht.moleverse.entity.burrow.MoleBurrowGoal;
  * server: an input whose second word matches none of the client literals raises
  * Brigadier's <em>unknown argument</em>, and that is one of the two errors
  * {@code ClientCommandHandler.runCommand} falls through on.</p>
+ *
+ * <h2>Development runs only</h2>
+ *
+ * <p>Nothing here is registered outside a development run - see {@link DevGate}.
+ * The permission check below stays on top of it rather than being replaced by it:
+ * the two answer different questions, and neither one covers the other. The
+ * property decides whether an instrument exists at all; the permission decides who
+ * may reach it in the run where it does, which still matters on a shared
+ * development server.</p>
+ *
+ * <p>Op alone was the whole of the gate until now, and it is the wrong shape for
+ * this tree. {@code colony show} and {@code colony tunnels} are only pictures, but
+ * {@code mole burrow} reaches into an animal's decision and {@code mole log}
+ * writes the config file. Those are instruments for watching a mechanic being
+ * built, not powers a server operator was ever meant to be handed.</p>
  */
 public final class MoleServerCommand {
 
@@ -57,6 +72,9 @@ public final class MoleServerCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        if (!DevGate.isDevelopmentRun()) {
+            return;
+        }
         dispatcher.register(Commands.literal("moleverse")
                 // Gated one level down rather than at the root, because the root
                 // is shared with the client-side pose commands, which need no

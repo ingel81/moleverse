@@ -176,3 +176,15 @@ redistribution would make the whole mod undistributable, so check before adding.
 | `art/*_blockbench_export.java.txt` | Raw exports, reference only. |
 | `src/main/resources/assets/moleverse/textures/entity/` | Entity textures. Shipped. |
 | `src/main/resources/assets/moleverse/neoforge/animations/entity/` | Animations. Shipped. |
+
+## Design at the largest scale, verify at the smallest
+
+The scale attribute means one model serves every size it appears at - the
+same mole is 1x in a meadow and 7x filling a corridor. So a creature is
+DESIGNED for its largest appearance and CHECKED at its smallest: geometry
+survives shrinking losslessly (no LOD, sub-pixel cubes render fine) but can
+never be added by growing; texel density is budgeted for the big view and
+mipmaps handle the way down. The one trap is aliasing - detail tuned for 7x
+can turn mushy at 1x - and the rule that avoids it: silhouette from geometry
+(reads at every size), fine detail from texture (shows big, vanishes small
+gracefully).

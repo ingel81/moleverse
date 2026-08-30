@@ -71,7 +71,8 @@ hard. Deliberately late: both are better once corridors exist and a player can
 see what an order would produce.
 
 ## 1.0 - The Moleverse
-A kingdom below, past the burrow and a dimension of its own. How it is reached is
+A kingdom below, past the burrow and a dimension of its own. The worked concept
+lives in `KINGDOM.md`. How it is reached is
 open, but where its key lies is not: everything needed to get there exists only
 in the burrow. That is what keeps 0.4 and 0.5 on the critical path instead of
 beside it.
@@ -80,3 +81,22 @@ beside it.
 - How the kingdom is entered, and what the second gift is.
 - Distribution: CurseForge, Modrinth, both?
 - Mixins: introduce only once there is a concrete need.
+
+## Where 2026-08-29 left the map
+
+The burrow became a world in one day: per-chunk worldgen from colony history,
+its own biome, colony anatomy (nest, larders, bolt-holes, fortress mound),
+five creatures plus two predators, generated sound (ElevenLabs pipeline in
+`art/generators/elevenlabs_sounds.py`), graded exchange economy, advancements
+as the test checklist, and a 99-knob live tuning panel. In flight at close:
+the exchange station's real UI and the giant mole - an overworld trip made
+visible below, guided freedom along the link it travels.
+
+Near-term backlog, in the order they earn their place:
+1. Playtest verdicts -> tuning bake -> module-wise commits (the day is
+   uncommitted until the look is approved).
+2. The way-home refusal: instrumented, waiting for one reproduced log line.
+3. `tools/soak/burrow_era.commands` - the null-path soak for the burrow stack.
+4. Chitin gear line and the trove block (both parked with reasons in
+   BURROW_LIFE).
+5. Release hygiene: dev panels out of the release jar, dev-gate audit.

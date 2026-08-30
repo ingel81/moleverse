@@ -115,6 +115,15 @@ neoForge {
             // Property nie und bleibt still; /moleverse mole log off schaltet
             // trotzdem ab.
             systemProperty 'moleverse.devLogging', 'true'
+            // The umbrella dev flag: every run config is a development run.
+            // DevGate reads it; instruments gate their registration on it.
+            systemProperty 'moleverse.dev', 'true'
+            // Only on request: -PdevFastEvents speeds the two rare burrow events
+            // up to observable intervals. Deliberately NOT unconditional - a
+            // normal development run must show the shipping rates.
+            if (project.hasProperty('devFastEvents')) {
+                systemProperty 'moleverse.devFastEvents', 'true'
+            }
         }
     }
 
@@ -141,6 +150,11 @@ dependencies {
     // --- Jade (Block-/Entity-Tooltips, Waila-Nachfolger) ------------------
     // Reines Dev-Komfortwerkzeug, keine Compile-Abhaengigkeit.
     localRuntime "maven.modrinth:jade:${jade_version_id}"
+
+    // --- Mouse Tweaks und Xaero's Minimap ---------------------------------
+    // Inventar-Drag und eine Karte - reiner Dev-Komfort wie Jade.
+    localRuntime "maven.modrinth:mouse-tweaks:${mousetweaks_version_id}"
+    localRuntime "maven.modrinth:xaeros-minimap:${xaeros_minimap_version_id}"
 
     // --- FTB Ultimine und Essentials -------------------------------------
     // Ultimine: ganze Adern/Flaechen auf einmal abbauen (Taste gedrueckt halten).

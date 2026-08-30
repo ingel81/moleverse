@@ -37,6 +37,19 @@ import net.sgeht.moleverse.entity.burrow.ColonyStore;
  * meant to get down there and it asks for a prepared mound, a colony and a
  * fitting; this asks for nothing, because the first thing anybody wants to know
  * about a new dimension is what it looks like.</p>
+ *
+ * <h2>Development runs only</h2>
+ *
+ * <p>Nothing here is registered outside a development run - see {@link DevGate}.
+ * "Asks for nothing" is exactly why: the post is the way into the burrow, and a
+ * command that skips the mound, the colony and the fitting is a way around the
+ * only mechanic that gives arriving down there any meaning. The permission check
+ * below stays on top of the property - it decides who may reach the tree in a run
+ * where it exists, which the property does not answer.</p>
+ *
+ * <p>{@code carve} is the one that would have cost something. It writes blocks
+ * into a live world and there is no undo, so leaving it reachable by any operator
+ * of a shipped build meant shipping a way to rewrite a dimension by accident.</p>
  */
 public final class BurrowCommand {
 
@@ -47,6 +60,9 @@ public final class BurrowCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        if (!DevGate.isDevelopmentRun()) {
+            return;
+        }
         dispatcher.register(Commands.literal("moleverse")
                 .then(Commands.literal("burrow")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))

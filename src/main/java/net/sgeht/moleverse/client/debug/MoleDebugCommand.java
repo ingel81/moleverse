@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.sgeht.moleverse.debug.DevGate;
 import net.sgeht.moleverse.debug.MoleDebug;
 
 /**
@@ -41,6 +42,22 @@ import net.sgeht.moleverse.debug.MoleDebug;
  * server-side {@code /moleverse mole ...} tree shares this root and still
  * reaches the server: NeoForge passes on anything the client dispatcher parses
  * as an unknown argument.</p>
+ *
+ * <h2>Development runs only</h2>
+ *
+ * <p>Nothing here is registered outside a development run - see {@link DevGate}.
+ * "No permissions" above is exactly why: a client command needs none, so until
+ * this gate existed every one of these was a line any player of a shipped build
+ * could type. Two of them matter more than the rest. {@code forcePeek} and
+ * {@code forceDig} are not rendering flags - {@code Mole} reads them in its own
+ * tick and holds the animal still - and the two play counters are read by every
+ * mole in the world. Those reads sit in shipped code and are meant to be
+ * unreachable, which they are only as long as nothing can write the statics
+ * behind them; this registration is the only thing that ever could.</p>
+ *
+ * <p>Gated here rather than at the call site in {@code MoleverseClient}, so the
+ * decision sits with the instrument. A gate in the wiring is one somebody
+ * copying the wiring forgets.</p>
  */
 public final class MoleDebugCommand {
 
@@ -48,6 +65,9 @@ public final class MoleDebugCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        if (!DevGate.isDevelopmentRun()) {
+            return;
+        }
         dispatcher.register(Commands.literal("moleverse")
                 .then(Commands.literal("peek")
                         .then(Commands.literal("force")

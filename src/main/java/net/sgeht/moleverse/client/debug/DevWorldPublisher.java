@@ -8,6 +8,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.sgeht.moleverse.Moleverse;
+import net.sgeht.moleverse.debug.DevGate;
 
 /**
  * Opens a single-player development world to LAN, with cheats, as soon as it is
@@ -28,9 +29,6 @@ import net.sgeht.moleverse.Moleverse;
 @EventBusSubscriber(modid = Moleverse.MOD_ID, value = Dist.CLIENT)
 public final class DevWorldPublisher {
 
-    /** Set by the Gradle run configuration. Absent in any shipped client. */
-    private static final String ENABLED_PROPERTY = "moleverse.devPublish";
-
     /** Port to publish on, or 0 to let Minecraft pick a free one. */
     private static final String PORT_PROPERTY = "moleverse.devPublishPort";
 
@@ -39,7 +37,10 @@ public final class DevWorldPublisher {
 
     @SubscribeEvent
     public static void onJoin(ClientPlayerNetworkEvent.LoggingIn event) {
-        if (!Boolean.getBoolean(ENABLED_PROPERTY)) {
+        // The property this class gave its name to now lives in DevGate, which
+        // every instrument asks. One copy of the string, so that the day the
+        // release switch is flipped there is one place to flip it.
+        if (!DevGate.isDevelopmentRun()) {
             return;
         }
 
