@@ -27,5 +27,6 @@ public final class ModRegistries {
         // blocks it may sit in.
         ModBlockEntities.REGISTER.register(modBus);
         ModMenus.REGISTER.register(modBus);
+        ModAttachments.REGISTER.register(modBus);
     }
 }

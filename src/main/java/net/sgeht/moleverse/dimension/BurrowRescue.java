@@ -1,7 +1,10 @@
 package net.sgeht.moleverse.dimension;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +33,10 @@ import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.entity.burrow.BurrowConstants;
+import net.sgeht.moleverse.entity.burrow.BurrowLink;
+import net.sgeht.moleverse.entity.burrow.Colony;
+import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
 import net.sgeht.moleverse.registry.ModBlocks;
 
@@ -61,14 +68,34 @@ import net.sgeht.moleverse.registry.ModBlocks;
  * door is instant and puts you beside your own prepared mound. Nobody who has one
  * will ever wait four minutes to be spat out on a hill instead.</p>
  *
- * <h2>Why it does not ask the colony anything</h2>
+ * <h2>The rescue asks the colony nothing. The trigger asks it one thing.</h2>
  *
  * <p>The case this exists for is the case where everything above has been
  * destroyed, so any mechanism that needs a colony, a link, a second mound or an
  * item in the player's pack is a mechanism that is absent exactly when it is
- * needed. Nothing here reads {@code ColonyStore}. The only question asked of the
- * world above is the heightmap, which every overworld column has whether or not a
- * mole ever lived there.</p>
+ * needed. {@link #rescue} therefore still reads nothing but the heightmap, which
+ * every overworld column has whether or not a mole ever lived there.</p>
+ *
+ * <p><strong>{@link #stranded} does read {@code ColonyStore}, and it had to
+ * start.</strong> The window check below was written when the burrow was a
+ * chamber and a few stubs, where "more than six overworld blocks from a mound"
+ * really did mean walled in. With runs carved end to end it means <em>walking
+ * down a corridor</em>, which is the ordinary case, and the first person to
+ * explore one got the shut-in message and a countdown while their way home stood
+ * untouched a hundred blocks behind them.</p>
+ *
+ * <p>So the question is asked in two stages, and the order is the safety of it.
+ * The cheap window check is the fast pass and answers most of the time. Only when
+ * it finds nothing is the real question asked - does the colony whose ground this
+ * is still have <em>any</em> mound standing - and only when that also finds
+ * nothing does the countdown begin.</p>
+ *
+ * <p>The second stage can only ever cancel a countdown, never prevent one. An
+ * empty store, a missing colony, a run whose ends have all gone: every one of
+ * those falls through to stranded, exactly as before. That is what keeps the
+ * guarantee in the first paragraph intact - the mechanism still cannot be
+ * disabled by destroying things, because destroying things is what makes it
+ * fire.</p>
  *
  * <h2>Why it fires by itself</h2>
  *
@@ -82,12 +109,20 @@ import net.sgeht.moleverse.registry.ModBlocks;
  *
  * <p>Every read of the world above is inside a chunk this class has made sure of.
  * The window is small - {@link #SURFACE_WINDOW} blocks each way, at most four
- * chunks - and it is only touched once per {@link #CHECK_INTERVAL} and only while
- * somebody is actually down there, which is the same bounded, at-the-moment-of-use
- * forcing {@code BurrowTransit.loadChamberChunks} does. Leaving it out is not an
- * option: a player alone in the burrow holds no ticket on their own entrance, so
- * an unforced look would find no mound anywhere and report every visitor
- * stranded.</p>
+ * chunks - and the second stage adds at most {@link #ENDPOINT_PROBES} more, one
+ * per mound it looks at. Eight chunks at the very worst, once per
+ * {@link #CHECK_INTERVAL}, and only while somebody is actually down there: the
+ * same bounded, at-the-moment-of-use forcing
+ * {@code BurrowTransit.loadChamberChunks} does.</p>
+ *
+ * <p>Leaving it out is not an option, and the reason is the whole reason the
+ * second stage needs a cap rather than a sweep. A player alone in the burrow
+ * holds no ticket on their own entrance, so the chunk unloads, {@code getHeight}
+ * answers the world floor for an unloaded chunk rather than loading it, and an
+ * unforced look would find no mound anywhere and report every visitor stranded -
+ * which is this class's own bug, made worse. So every column it judges is a
+ * column it has loaded, and the price of that is what {@link #ENDPOINT_PROBES}
+ * bounds.</p>
  */
 public final class BurrowRescue {
 
@@ -117,15 +152,21 @@ public final class BurrowRescue {
      * How far around the player's mapped column the world above is searched, in
      * overworld blocks.
      *
-     * <p>Two jobs, one number. It is the reach of the "is there still a door"
-     * question, and it is the reach of the search for somewhere to come up.</p>
+     * <p>Two jobs, one number. It is the reach of the fast pass on the "is there
+     * still a door" question, and it is the reach of the search for somewhere to
+     * come up.</p>
      *
      * <p>Six is chosen from the geometry rather than by taste. A chamber is
      * {@link BurrowGeometry#CHAMBER_RADIUS} six blocks across down there, which is
      * under two overworld blocks, so anybody standing anywhere in a chamber maps
      * to within two columns of its mound. The rest is slack for a player in the
-     * corridor stubs just outside it, so that walking a few paces off the floor of
-     * a working chamber does not read as being shut in.</p>
+     * corridor mouths just outside it.</p>
+     *
+     * <p>It was once the <em>whole</em> of the strandedness question, and that was
+     * the bug: a corridor is as long as the colony is wide, so a player halfway
+     * down one is nowhere near any mound and was told so. It is now the fast pass
+     * and nothing more - see {@link #colonyStillHasADoor} for the question it
+     * falls through to.</p>
      */
     private static final int SURFACE_WINDOW = 6;
 
@@ -154,6 +195,75 @@ public final class BurrowRescue {
      */
     private static final Map<UUID, Long> DIGGING_SINCE = new HashMap<>();
 
+    /**
+     * On from the first tick of a development run, off in a shipped game.
+     *
+     * <p>The same property {@code BurrowReconciler} and {@code BurrowTraversal}
+     * read, and here for the reason this whole class exists: a countdown that
+     * starts when it should not is a bug a player reports as "it told me I was
+     * shut in", with nothing in the world to show which of the two stages
+     * decided it.</p>
+     */
+    private static final boolean DEV_LOGGING = Boolean.getBoolean("moleverse.devLogging");
+
+    /**
+     * How many of the colony's nearest mounds the second stage will look at.
+     *
+     * <p>A cap and not a search. Each one costs a chunk that may have to be
+     * loaded outright, and the question is only ever "is there <em>a</em> door" -
+     * so the four nearest answer it as well as forty would in every case except a
+     * colony whose four nearest heaps have all been taken and whose fifth has not,
+     * which is a countdown that stops the next time the player walks a little
+     * further.</p>
+     */
+    private static final int ENDPOINT_PROBES = 4;
+
+    /**
+     * How long a second-stage verdict is trusted, in ticks. Ten seconds.
+     *
+     * <p>A guard on {@link #stranded} as a public method rather than an
+     * optimisation of the tick path: the only caller today asks every
+     * {@link #CHECK_INTERVAL}, which is twice this, so on that path it never
+     * fires. It is here because the second stage forces chunks and the method is
+     * documented as reusable, and anything that called it on a faster cadence
+     * would otherwise force four chunks a call.</p>
+     *
+     * <p>Ten seconds is also short enough that the verdict cannot outlive its
+     * subject: a player covers about fifty burrow blocks in that time, which is a
+     * dozen overworld ones, well inside the colony box the verdict was taken
+     * about.</p>
+     */
+    private static final int VERDICT_COOLDOWN = 20 * 10;
+
+    /**
+     * What the second stage last found for each player, and until when.
+     *
+     * <p>Read twice: once to skip the sweep, and once by {@link #check} so that
+     * the line it writes when a countdown genuinely starts can name the mounds
+     * that were looked at. Session state and cleaned up beside
+     * {@link #DIGGING_SINCE}, for the same reasons.</p>
+     */
+    private static final Map<UUID, Doors> DOORS = new HashMap<>();
+
+    /**
+     * Who the second stage is currently keeping out of a countdown.
+     *
+     * <p>Only so the line that says so is written once per occasion instead of
+     * once per check. Membership is the state, not a timer, so it costs nothing to
+     * keep and it cannot go stale - every check either adds or removes.</p>
+     */
+    private static final Set<UUID> SAVED = new HashSet<>();
+
+    /**
+     * One second-stage answer.
+     *
+     * @param until    game time this stops being trusted
+     * @param standing whether any of the mounds looked at was still there
+     * @param checked  which ones were looked at, for the log
+     */
+    private record Doors(long until, boolean standing, List<BlockPos> checked) {
+    }
+
     private BurrowRescue() {
     }
 
@@ -178,6 +288,12 @@ public final class BurrowRescue {
             if (!DIGGING_SINCE.isEmpty()) {
                 DIGGING_SINCE.clear();
             }
+            if (!DOORS.isEmpty()) {
+                DOORS.clear();
+            }
+            if (!SAVED.isEmpty()) {
+                SAVED.clear();
+            }
             return;
         }
 
@@ -191,8 +307,18 @@ public final class BurrowRescue {
             check(player, level);
         }
 
-        // Whoever walked out of the dimension between two checks stops digging.
+        // Whoever walked out of the dimension between two checks stops digging,
+        // and takes their remembered verdict with them.
         DIGGING_SINCE.keySet().retainAll(present);
+        DOORS.keySet().retainAll(present);
+        SAVED.retainAll(present);
+    }
+
+    /** One line, if anybody is listening. */
+    private static void say(String line, Object... args) {
+        if (DEV_LOGGING) {
+            LOG.info(line, args);
+        }
     }
 
     /**
@@ -229,7 +355,116 @@ public final class BurrowRescue {
 
         BlockPos column = BurrowGeometry.toOverworld(player.blockPosition());
         loadWindow(overworld, column);
-        return !moundInWindow(overworld, column);
+        if (moundInWindow(overworld, column)) {
+            SAVED.remove(player.getUUID());
+            return false;
+        }
+
+        // The fast pass found nothing, which with real corridors is the ordinary
+        // case rather than an emergency. Ask the question that actually decides
+        // it before starting a clock somebody can see.
+        Doors doors = doorsOf(player, overworld, column, burrow.getGameTime());
+        if (doors.standing()) {
+            // Only when it changes. This branch is the common one for anybody
+            // walking a corridor, so a line per check would be a line every
+            // twenty seconds for the whole visit - and the thing worth seeing is
+            // the moment the second stage took over from the first.
+            if (SAVED.add(player.getUUID())) {
+                say("{} at {} is out of the {} block window, but {} still stands - not stranded",
+                        player.getScoreboardName(), column, SURFACE_WINDOW,
+                        doors.checked().isEmpty() ? "a mound" : doors.checked().getLast());
+            }
+            return false;
+        }
+
+        SAVED.remove(player.getUUID());
+        return true;
+    }
+
+    /**
+     * Whether the colony whose ground this is still has a mound standing, cached
+     * for {@link #VERDICT_COOLDOWN}.
+     */
+    private static Doors doorsOf(ServerPlayer player, ServerLevel overworld, BlockPos column, long now) {
+        Doors cached = DOORS.get(player.getUUID());
+        if (cached != null && now < cached.until()) {
+            return cached;
+        }
+
+        Doors fresh = colonyStillHasADoor(overworld, column, now);
+        DOORS.put(player.getUUID(), fresh);
+        return fresh;
+    }
+
+    /**
+     * Does this ground's colony have any way up left at all.
+     *
+     * <p>Mound positions are not stored anywhere as such - a colony is a list of
+     * runs, and every run remembers the two mounds it joins, so the endpoints
+     * <em>are</em> the mounds.</p>
+     *
+     * <p><strong>By colony where there is one, by radius only where there is
+     * not.</strong> A radius looks like the simpler question and gets this wrong:
+     * {@code chooseExit} weights its pick towards the far side of the network, so
+     * a mature colony has runs most of the width of its own box - over a hundred
+     * and twenty blocks - and a player halfway along one of those is further from
+     * either end than any radius that does not also reach into the neighbouring
+     * colony. Asking {@code linksOf} for the colony whose box this column is in
+     * has no such gap and cannot bleed across a border either. The radius is kept
+     * for the one case it is right for: a column inside no colony's box at all,
+     * where there is no colony to ask.</p>
+     *
+     * <p>Each mound looked at gets its chunk loaded outright first, on the
+     * courtesy {@code BurrowTransit.leave} learnt the hard way: with nobody above,
+     * the chunk unloads within a minute of descending, {@code getHeight} answers
+     * the world floor for an unloaded chunk rather than loading it, and every
+     * mound in the colony reads as gone at exactly the moment nothing is keeping
+     * the ground warm. Getting that wrong here does not refuse a door, it starts a
+     * countdown - so it is the more expensive mistake of the two.</p>
+     *
+     * <p>An empty answer - no runs recorded, or none of the nearest few still
+     * standing - means stranded. That is the direction this has to fail in.</p>
+     */
+    private static Doors colonyStillHasADoor(ServerLevel overworld, BlockPos column, long now) {
+        long until = now + VERDICT_COOLDOWN;
+
+        ColonyStore store = ColonyStore.get(overworld);
+        Colony colony = store.at(column);
+        List<BurrowLink> runs = colony != null
+                ? store.linksOf(colony.id())
+                : store.linksNear(column, BurrowConstants.COLONY_EXTENT);
+        if (runs.isEmpty()) {
+            return new Doors(until, false, List.of());
+        }
+
+        // Without repeats: a mound is an end of as many runs as it has, and
+        // looking at the same heap four times would spend the whole budget on one
+        // column. Nearest first, so the cap keeps the mounds most likely to be the
+        // player's actual way home.
+        Set<BlockPos> ends = new LinkedHashSet<>();
+        for (BurrowLink run : runs) {
+            ends.add(run.a());
+            ends.add(run.b());
+        }
+        List<BlockPos> mounds = new ArrayList<>(ends);
+        mounds.sort(Comparator.comparingDouble(mound -> mound.distSqr(column)));
+
+        List<BlockPos> checked = new ArrayList<>(ENDPOINT_PROBES);
+        for (BlockPos mound : mounds) {
+            if (checked.size() >= ENDPOINT_PROBES) {
+                break;
+            }
+            checked.add(mound);
+
+            overworld.getChunk(SectionPos.blockToSectionCoord(mound.getX()),
+                    SectionPos.blockToSectionCoord(mound.getZ()));
+            if (MoleMound.isMound(overworld,
+                    MoundNetwork.surfaceAt(overworld, mound.getX(), mound.getZ()))) {
+                return new Doors(until, true, checked);
+            }
+        }
+
+        return new Doors(until, false, checked);
     }
 
     /**
@@ -298,6 +533,17 @@ public final class BurrowRescue {
         Long since = DIGGING_SINCE.get(id);
         if (since == null || now < since) {
             DIGGING_SINCE.put(id, now);
+            Doors doors = DOORS.get(id);
+            // Named, because "it told me I was shut in" is otherwise a report with
+            // nothing behind it. If this line lists mounds that are plainly still
+            // standing, the bug is in the probe rather than in the world.
+            say("{} shut in at {}: no mound within {}, and {} - the dig starts",
+                    player.getScoreboardName(),
+                    BurrowGeometry.toOverworld(player.blockPosition()),
+                    SURFACE_WINDOW,
+                    doors == null || doors.checked().isEmpty()
+                            ? "no colony run is recorded near here at all"
+                            : "none of " + doors.checked() + " is still standing");
             player.sendSystemMessage(message("shut_in",
                     "There is no way up from here any more. Something starts working "
                             + "its way through the earth above you."));

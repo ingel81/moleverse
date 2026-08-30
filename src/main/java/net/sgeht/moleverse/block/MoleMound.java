@@ -46,6 +46,34 @@ public class MoleMound extends Block {
     public static final BooleanProperty OPEN = BooleanProperty.create("open");
 
     /**
+     * True on the one mound at the middle of a colony: the fortress mound.
+     *
+     * <p>Real moles raise a single oversized heap over the nest, and in wet ground
+     * it is the one part of a burrow you can find without a spade. Down below, the
+     * colony's core already marks the nest - {@code NestCarver} puts the room there
+     * - and this is the same fact said on the surface, so that a player standing in
+     * a meadow can tell which of a dozen heaps is worth going down.</p>
+     *
+     * <p><strong>It is a bigger model on one block and nothing else.</strong> Two
+     * shapes that would have read as "2-3 blocks" were both tried on paper and both
+     * break something load-bearing. A <em>stack</em> of mounds walks into
+     * {@link MoundAttachment#moundUnder}, which counts exactly two blocks down from
+     * the heightmap to find the mound under a fitting - and the core is the mound a
+     * player is most likely to put the way home on, so the collision would be with
+     * the one case that matters. A <em>cluster</em> of extra mounds around the core
+     * is worse: every mound is a point of interest, so a skirt of them would count
+     * against {@code BurrowConstants.MAX_MOUNDS_IN_RADIUS} and stop moles digging
+     * anywhere near their own colony's middle. A property changes the model and
+     * touches neither.</p>
+     *
+     * <p>It also costs nothing anywhere else: both mound blocks are
+     * {@code noCollision} and raise no heightmap, the point of interest is built
+     * from {@code getPossibleStates}, and the tag is by block. So the fortress is
+     * still a mound to every question anything asks about one.</p>
+     */
+    public static final BooleanProperty FORTRESS = BooleanProperty.create("fortress");
+
+    /**
      * Outline only - the block has no collision, so this is what the player
      * highlights and breaks, not what they walk into. One box covers all three
      * models; their silhouettes differ by a pixel or two and a separate shape
@@ -58,7 +86,9 @@ public class MoleMound extends Block {
 
     public MoleMound(BlockBehaviour.Properties properties) {
         super(properties);
-        this.registerDefaultState(this.defaultBlockState().setValue(OPEN, false));
+        this.registerDefaultState(this.defaultBlockState()
+                .setValue(OPEN, false)
+                .setValue(FORTRESS, false));
     }
 
     // --- what the burrowing mechanic needs from the block ---------------------
@@ -110,6 +140,34 @@ public class MoleMound extends Block {
         }
     }
 
+    /**
+     * Raises or flattens the heap on an existing mound.
+     *
+     * <p>Guarded on {@link ModBlocks#MOLE_MOUND} itself rather than on the
+     * {@code MOLE_MOUNDS} tag, which is the one thing about this method that is
+     * easy to get wrong: {@link PreparedMoleMound} is in that tag and does
+     * <em>not</em> carry {@link #FORTRESS}, so a tag-wide guard would read a
+     * property off a state that has none and throw. {@link #setOpen} can use the
+     * tag because both blocks carry {@link #OPEN}.</p>
+     *
+     * <p>Shoring a fortress mound up therefore flattens it: the prepared block has
+     * no heap to inherit. That is left as it is rather than mirrored onto the
+     * second block, and it reads honestly - a heap somebody has shored up is not a
+     * heap any more, and the player who did it is the player who has already found
+     * the nest and no longer needs the landmark.</p>
+     *
+     * <p>Does nothing when the mound is gone. A player levelling the core is
+     * allowed to, and what is left is an ordinary site that takes an ordinary mound
+     * the next time a mole comes up through it.</p>
+     */
+    public static void setFortress(ServerLevel level, BlockPos pos, boolean fortress) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.is(ModBlocks.MOLE_MOUND.get()) || state.getValue(FORTRESS) == fortress) {
+            return;
+        }
+        level.setBlock(pos, state.setValue(FORTRESS, fortress), Block.UPDATE_ALL);
+    }
+
     @Override
     public MapCodec<? extends MoleMound> codec() {
         return CODEC;
@@ -117,7 +175,7 @@ public class MoleMound extends Block {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(OPEN);
+        builder.add(OPEN, FORTRESS);
     }
 
     @Override

@@ -93,82 +93,41 @@ Two very different overworld heights can therefore share one burrow level. That
 is the right trade: colonies are hundreds of blocks apart horizontally, so a
 collision in the vertical costs nothing.
 
-## The corridors are not built - and the reason is where, not how much
+## The corridors are built by the chunks that hold them
 
-Found on 2026-08-29, the first time anybody went down. A player arriving in a
-chamber finds one large room with a few stubs and no corridors at all. The
-expectation - a junction with runs leading off it - is right, and cannot happen.
+Found broken on 2026-08-29, the first time anybody went down: carving hung on
+*somebody entered the burrow*, every write into an unloaded chunk was skipped
+silently, and sixteen blocks of a sixty-block run survived. Rebuilt the same
+day. The full argument and the reference mods are in `BURROW_WORLDGEN.md`; the
+short form:
 
-### What actually runs
+* **The plan layer** (`dimension/plan/`) derives *features* - corridors,
+  chambers, shafts, junctions - from the `ColonyStore`, purely: stable key,
+  content hash, bounding box, and a clamped carve. The store plays the role the
+  seed plays in vanilla worldgen.
+* **Every carve entry point takes a `BoundingBox` clamp** (null = unbounded).
+  Writes outside it are skipped; probes still read the whole feature, so a
+  feature carved chunk by chunk equals one unbounded carve. A game test holds
+  that equality across a chunk border, dressing included.
+* **A ledger on each burrow chunk** (NeoForge data attachment,
+  `ModAttachments.BURROW_LEDGER`) records which feature hashes are applied.
+  Reconciling is a diff; old worlds arrive with an empty ledger and settle
+  themselves.
+* **Two triggers.** `ChunkEvent.Load` enqueues (the event fires pre-FULL, so it
+  must not touch the level); a tick handler drains a few chunks per tick.
+  `ColonyStore.record` notifies the reconciler, so a corridor arrives below
+  while the mole is still shaking the dirt off above.
+* **Decoration is a second phase.** The decorator probes the world, so a chunk
+  is dressed only once its 3x3 neighbourhood is carved. That rule flushed out a
+  real bug: `walkLevel` probed with bare `isAir`, so a dressed slice measured
+  one block higher on the next visit and carpets were paved over. The probe now
+  reads through `isOpen`, and the invariant - a dressed slice, dressed again,
+  measures identically - is written into `TunnelDecorator` and held by a test.
+* **`enter` is thin now**: mound check, chamber position, a forced synchronous
+  reconcile of the chamber ring so nobody arrives inside earth, teleport. The
+  rest of the colony arrives through the queue as the player walks - the ticket
+  ring loads chunks ahead of them, so corridors are finished beyond the
+  torchlight.
 
-`BurrowTransit.enter` carves everything at the moment somebody uses the shrink
-post: the chamber, the runs that end at that mound, then shafts and junctions
-across the colony. Nothing carves afterwards. The comment there says *"Everything
-further along is dug as they walk into it"* and that mechanism does not exist -
-the only per-tick work in the burrow is `BurrowRescue.tick`, and nothing else is
-subscribed to `LevelTickEvent`.
-
-### Why most of a run vanishes
-
-Every write the carver makes is guarded:
-
-```java
-static boolean clear(ServerLevel burrow, BlockPos.MutableBlockPos pos) {
-    if (!burrow.isInsideBuildHeight(pos.getY()) || !burrow.isLoaded(pos)) {
-        return false;
-    }
-```
-
-Correct in itself - the alternative is carving into chunks nobody asked for - but
-it fails **silently**. And `loadChamberChunks` loads only what the chamber
-touches, which is `CHAMBER_RADIUS` 6, so at most two chunks each way.
-
-Measured in the world it was found in: the runs were 14.7 and 17.6 overworld
-blocks, which at `SCALE` 4 is 59 and 70 blocks of corridor. Roughly sixteen of
-those blocks lie inside the loaded chamber chunks. The rest is skipped without a
-line in the log.
-
-### The shape the fix should have
-
-Not "load more before carving". The mistake is that digging was hung on an event
-that has nothing to do with place: *somebody entered the burrow*, rather than
-*this ground now exists*.
-
-The right shape is the one worldgen already has, and the Nether is the reference:
-walk towards the edge and what is beyond gets built as you arrive. Applied here -
-**a chunk asks which runs pass through it and carves those**, with the
-`ColonyStore` as the seed the way a seed drives terrain. Idempotent by
-construction, no force loading, and it covers the case nobody is watching: a mole
-travelling below while the player is elsewhere.
-
-**The hazard, and the tamer variant.** Real chunk generation runs off-thread and
-must not reach into another dimension's `SavedData` - and `ColonyStore` hangs on
-the overworld. A generator inside the burrow cannot get at it cleanly. Carving on
-**chunk load**, on the server thread, avoids that entirely: the overworld is one
-field access away there, the chunks around a player are loaded by definition, and
-the cost spreads over arrival instead of landing in one teleport.
-
-### What already exists to build it from
-
-| Piece | Where |
-|---|---|
-| `carve(ServerLevel, BurrowLink)` | `CorridorCarver:178` - whole run, idempotent |
-| `alreadyCarved(ServerLevel, BurrowLink)` | `CorridorCarver:309` |
-| `linksNear(BlockPos, int radius)` | `ColonyStore:229` - overworld coordinates |
-| `linksOf(int colony)` | `ColonyStore:224` |
-| `toBurrow` / `toOverworld` | `BurrowGeometry:69,84` |
-| `pointAt(int)` / `pointCount()` | `BurrowLink:77,96` - the run as a polyline |
-
-### Open questions for that session
-
-* **What is the unit of work** - a whole run when any part of it enters a loaded
-  chunk, or only the part inside that chunk? The carver takes whole runs today.
-* **How does a chunk find its runs?** `linksNear` is a radius query in overworld
-  coordinates; a chunk in the burrow is a box in burrow coordinates. Something
-  has to translate, and at `SCALE` 4 a burrow chunk is four overworld blocks.
-* **What triggers it** - chunk load, or a player-proximity sweep? Load is
-  cheaper and matches worldgen; proximity re-carves ground a player broke.
-* **Does `BurrowTransit.enter` keep carving anything at all** beyond the chamber,
-  or does it become just the chamber plus a teleport?
-* **What happens to shafts and junctions**, which today are cut across the whole
-  colony at entry and would have the same problem.
+What is deliberately still outside the ledger: the way-out post and
+`BurrowLife.stock`, which stay with the arrival in `enter`.

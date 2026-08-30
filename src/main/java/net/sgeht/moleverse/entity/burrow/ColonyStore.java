@@ -13,6 +13,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import net.sgeht.moleverse.block.MoleMound;
+import net.sgeht.moleverse.dimension.plan.BurrowPlan;
+import net.sgeht.moleverse.dimension.plan.BurrowReconciler;
 
 /**
  * Every colony of one level and every run its moles have travelled, written to
@@ -204,6 +206,13 @@ public class ColonyStore extends SavedData {
     /**
      * Writes down a run that was just completed, or counts one more use of a run
      * that was already known.
+     *
+     * <p>The burrow is told either way. It is the mirror of this list, and a run
+     * recorded while somebody is standing under it has to appear as a corridor
+     * without waiting for anybody to reload a chunk - see
+     * {@link BurrowReconciler#linkChanged}. Even an unchanged run goes through:
+     * {@code reshaped} re-measures the depth profile, so "the same run again" is
+     * not the same shape again, and the reconciler compares fingerprints anyway.</p>
      */
     public void record(ServerLevel level, int colony, BlockPos a, BlockPos b, RunLevel run,
             List<Integer> depths) {
@@ -211,18 +220,34 @@ public class ColonyStore extends SavedData {
         for (int i = 0; i < this.links.size(); i++) {
             BurrowLink existing = this.links.get(i);
             if (existing.joins(a, b)) {
-                this.links.set(i, existing.reshaped(depths, now));
+                BurrowLink reshaped = existing.reshaped(depths, now);
+                this.links.set(i, reshaped);
                 this.setDirty();
+                BurrowReconciler.linkChanged(level, reshaped);
                 return;
             }
         }
 
-        this.links.add(new BurrowLink(colony, a, b, run, List.copyOf(depths), 1, now));
+        BurrowLink dug = new BurrowLink(colony, a, b, run, List.copyOf(depths), 1, now);
+        this.links.add(dug);
         this.setDirty();
+        BurrowReconciler.linkChanged(level, dug);
     }
 
     public List<BurrowLink> linksOf(int colony) {
         return this.links.stream().filter(link -> link.colony() == colony).toList();
+    }
+
+    /**
+     * Every run of every colony.
+     *
+     * <p>For the one caller that plans the whole burrow rather than one colony's
+     * corner of it. {@link BurrowPlan#featuresOf} matches links to colonies by id
+     * itself and drops the ones belonging to nobody, so handing it everything is
+     * both the cheapest and the most honest way to ask.</p>
+     */
+    public List<BurrowLink> allLinks() {
+        return List.copyOf(this.links);
     }
 
     /** Every run with an end within {@code radius} of this position. */

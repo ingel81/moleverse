@@ -2,6 +2,8 @@ package net.sgeht.moleverse.dimension;
 
 import java.util.Arrays;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -9,6 +11,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.sgeht.moleverse.registry.ModBlocks;
 
 /**
@@ -70,6 +73,21 @@ import net.sgeht.moleverse.registry.ModBlocks;
  * it would be left hanging in the mouth of that corridor. Cutting after the runs
  * exist means the probes see the room as it really is, and a side that a
  * corridor took simply gets no larder.</p>
+ *
+ * <h2>The clamp: writes only</h2>
+ *
+ * <p>{@link #furnish(ServerLevel, BlockPos, RandomSource, BoundingBox)} takes a
+ * box and drops every write outside it, so one room can be furnished a chunk at
+ * a time and come out as the room it would have been. Only the writes are
+ * bounded. The probes - {@link #isChamber}, {@link #ceilingOf}, the wall test a
+ * larder makes - read the whole room whatever box is in force, because they
+ * decide <em>what the room is</em>, and a decision that changed with the chunk
+ * being worked on is exactly the thing this class was built not to have.</p>
+ *
+ * <p>The consequence is worth stating plainly: a clamped call still needs the
+ * middle of the room loaded, not just the chunk it is writing into. A chunk at
+ * the rim that arrives while the centre is unloaded furnishes nothing and waits
+ * for a pass that can see the room.</p>
  */
 public final class ChamberFurnisher {
 
@@ -188,6 +206,10 @@ public final class ChamberFurnisher {
      * one block short of this. Deciding it rather than searching for it is what
      * makes {@link #cutLarder} a validate-then-write: a second visit finds the
      * alcove already open, fails the check, and writes nothing at all.</p>
+     *
+     * <p>One block short at every height but the lowest, where the carver's fillet
+     * leaves the wall two short. That is the sill, and {@link #cutLarder} takes it
+     * out of the doorway - the wall itself is still here.</p>
      */
     private static final int WALL_DISTANCE = BurrowGeometry.CHAMBER_RADIUS + 1;
 
@@ -243,9 +265,30 @@ public final class ChamberFurnisher {
      * that is a decision rather than an oversight.</p>
      */
     public static void furnish(ServerLevel burrow, BlockPos chamberCentre, RandomSource random) {
+        furnish(burrow, chamberCentre, random, null);
+    }
+
+    /**
+     * The same, writing only inside {@code clamp}.
+     *
+     * <p>Null furnishes the whole room. Anything else is one chunk taking its
+     * share: every set piece is placed from the same arithmetic, and the box only
+     * decides which of its blocks this call is the one to lay. Run it once per
+     * chunk the room touches and the room is furnished - see the class javadoc
+     * for what the clamp deliberately does not bound.</p>
+     */
+    public static void furnish(ServerLevel burrow, BlockPos chamberCentre, RandomSource random,
+            @Nullable BoundingBox clamp) {
         int cx = chamberCentre.getX();
         int wy = chamberCentre.getY();
         int cz = chamberCentre.getZ();
+
+        // Nothing here writes further out than a larder's back wall, lower than
+        // the floor, or higher than the dome the ceiling probe stops at.
+        if (clamp != null && misses(clamp, cx - REACH, wy - 1, cz - REACH,
+                cx + REACH, wy + BurrowGeometry.CHAMBER_HEIGHT + 1, cz + REACH)) {
+            return;
+        }
 
         if (!isChamber(burrow, cx, wy, cz)) {
             return;
@@ -260,13 +303,43 @@ public final class ChamberFurnisher {
         int nestZ = cz + toNest.getStepZ() * NEST_DISTANCE;
         int[][] pillars = pillarFeet(cx, cz, nestX, nestZ);
 
-        dressFloor(burrow, cx, wy, cz, nestX, nestZ, pillars);
-        treadTheShaft(burrow, cx, wy, cz);
-        growNest(burrow, cx, wy, cz, nestX, nestZ);
-        raisePillars(burrow, cx, wy, cz, pillars);
-        hangTheDome(burrow, cx, wy, cz);
-        lightTheShaft(burrow, cx, wy, cz);
-        stockLarders(burrow, cx, wy, cz, nestSide);
+        dressFloor(burrow, cx, wy, cz, nestX, nestZ, pillars, clamp);
+        treadTheShaft(burrow, cx, wy, cz, clamp);
+        growNest(burrow, cx, wy, cz, nestX, nestZ, clamp);
+        raisePillars(burrow, cx, wy, cz, pillars, clamp);
+        hangTheDome(burrow, cx, wy, cz, clamp);
+        lightTheShaft(burrow, cx, wy, cz, clamp);
+        stockLarders(burrow, cx, wy, cz, nestSide, clamp);
+    }
+
+    // --- The clamp -----------------------------------------------------------
+
+    /**
+     * Whether a write at this position is this call's to make. No clamp means
+     * every position is; a clamped call leaves the rest to the chunk that owns
+     * it.
+     */
+    private static boolean writes(@Nullable BoundingBox clamp, BlockPos pos) {
+        return clamp == null || clamp.isInside(pos);
+    }
+
+    /**
+     * Whether this column is worth probing at all.
+     *
+     * <p>Everything with a ceiling probe in front of it asks this first: the
+     * probe is a dozen block reads up the room and it is pure waste when the
+     * column it would decide about is somebody else's to write.</p>
+     */
+    private static boolean writesColumn(@Nullable BoundingBox clamp, int x, int z, int spread) {
+        return clamp == null || clamp.intersects(x - spread, z - spread, x + spread, z + spread);
+    }
+
+    /** Whether a box misses the clamp entirely. Six comparisons rather than an allocation. */
+    private static boolean misses(BoundingBox clamp, int minX, int minY, int minZ,
+            int maxX, int maxY, int maxZ) {
+        return clamp.maxX() < minX || clamp.minX() > maxX
+                || clamp.maxY() < minY || clamp.minY() > maxY
+                || clamp.maxZ() < minZ || clamp.minZ() > maxZ;
     }
 
     // --- The floor -----------------------------------------------------------
@@ -280,7 +353,7 @@ public final class ChamberFurnisher {
      * has been used unevenly.</p>
      */
     private static void dressFloor(ServerLevel burrow, int cx, int wy, int cz,
-            int nestX, int nestZ, int[][] pillars) {
+            int nestX, int nestZ, int[][] pillars, @Nullable BoundingBox clamp) {
         int floorY = wy - 1;
         int radius = BurrowGeometry.CHAMBER_RADIUS;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
@@ -299,7 +372,7 @@ public final class ChamberFurnisher {
                     continue;
                 }
                 Block material = floorMaterial(Math.floorDiv(x, FLOOR_CELL), Math.floorDiv(z, FLOOR_CELL));
-                replaceEarth(burrow, cursor.set(x, floorY, z), material.defaultBlockState());
+                replaceEarth(burrow, cursor.set(x, floorY, z), material.defaultBlockState(), clamp);
             }
         }
     }
@@ -383,7 +456,7 @@ public final class ChamberFurnisher {
      * landing: a player arrives standing here and a decoration with a height
      * would be a decoration they arrive inside of.</p>
      */
-    private static void treadTheShaft(ServerLevel burrow, int cx, int wy, int cz) {
+    private static void treadTheShaft(ServerLevel burrow, int cx, int wy, int cz, @Nullable BoundingBox clamp) {
         int floorY = wy - 1;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
@@ -401,7 +474,7 @@ public final class ChamberFurnisher {
                 Block material = dx * dx + dz * dz <= TRODDEN_CORE
                         ? Blocks.COARSE_DIRT
                         : ModBlocks.LOOSE_SOIL.get();
-                replaceEarth(burrow, cursor.set(x, floorY, z), material.defaultBlockState());
+                replaceEarth(burrow, cursor.set(x, floorY, z), material.defaultBlockState(), clamp);
             }
         }
     }
@@ -414,7 +487,7 @@ public final class ChamberFurnisher {
      * is lit unconditionally - a shaft whose light failed a dice roll would be a
      * chamber with no light at all in it.</p>
      */
-    private static void lightTheShaft(ServerLevel burrow, int cx, int wy, int cz) {
+    private static void lightTheShaft(ServerLevel burrow, int cx, int wy, int cz, @Nullable BoundingBox clamp) {
         BlockState glow = ModBlocks.GLOW_MYCELIUM.get().defaultBlockState();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
@@ -425,6 +498,9 @@ public final class ChamberFurnisher {
                 }
                 int x = cx + dx;
                 int z = cz + dz;
+                if (!writesColumn(clamp, x, z, 0)) {
+                    continue;
+                }
                 int ceilingY = ceilingOf(burrow, x, wy, z);
                 if (ceilingY == NO_LEVEL) {
                     continue;
@@ -434,12 +510,12 @@ public final class ChamberFurnisher {
                 if (!middle && noise(SALT_SHAFT_FILL, x, ceilingY, z) >= chance) {
                     continue;
                 }
-                replaceEarth(burrow, cursor.set(x, ceilingY, z), glow);
+                replaceEarth(burrow, cursor.set(x, ceilingY, z), glow, clamp);
 
                 // Roots at the rim of the pool, never over the middle: they turn
                 // a lit patch into a shaft that light comes down.
                 if (!middle) {
-                    fillAir(burrow, cursor.set(x, ceilingY - 1, z), Blocks.HANGING_ROOTS.defaultBlockState());
+                    fillAir(burrow, cursor.set(x, ceilingY - 1, z), Blocks.HANGING_ROOTS.defaultBlockState(), clamp);
                 }
             }
         }
@@ -465,7 +541,8 @@ public final class ChamberFurnisher {
      * takes a bite out of both ends of this shape - see there. What is left is a
      * dish with the wall at its back and the room at its mouth.</p>
      */
-    private static void growNest(ServerLevel burrow, int cx, int wy, int cz, int nestX, int nestZ) {
+    private static void growNest(ServerLevel burrow, int cx, int wy, int cz, int nestX, int nestZ,
+            @Nullable BoundingBox clamp) {
         int floorY = wy - 1;
         int reach = NEST_RADIUS + 1;
         BlockState beam = ModBlocks.ROOT_BEAM.get().defaultBlockState();
@@ -480,20 +557,20 @@ public final class ChamberFurnisher {
                 }
 
                 if (withinDisc(dx, dz, NEST_RADIUS)) {
-                    replaceEarth(burrow, cursor.set(x, floorY, z), Blocks.MOSS_BLOCK.defaultBlockState());
+                    replaceEarth(burrow, cursor.set(x, floorY, z), Blocks.MOSS_BLOCK.defaultBlockState(), clamp);
                     if (noise(SALT_NEST_CARPET, x, wy, z) < NEST_CARPET_CHANCE) {
-                        fillAir(burrow, cursor.set(x, wy, z), Blocks.MOSS_CARPET.defaultBlockState());
+                        fillAir(burrow, cursor.set(x, wy, z), Blocks.MOSS_CARPET.defaultBlockState(), clamp);
                     }
                     continue;
                 }
 
-                replaceEarth(burrow, cursor.set(x, floorY, z), Blocks.ROOTED_DIRT.defaultBlockState());
+                replaceEarth(burrow, cursor.set(x, floorY, z), Blocks.ROOTED_DIRT.defaultBlockState(), clamp);
                 if (noise(SALT_NEST_RIM, x, wy, z) >= NEST_RIM_DENSITY) {
                     continue;
                 }
-                fillAir(burrow, cursor.set(x, wy, z), beam);
+                fillAir(burrow, cursor.set(x, wy, z), beam, clamp);
                 if (noise(SALT_NEST_RIM_HIGH, x, wy, z) < NEST_RIM_HIGH_CHANCE) {
-                    fillAir(burrow, cursor.set(x, wy + 1, z), beam);
+                    fillAir(burrow, cursor.set(x, wy + 1, z), beam, clamp);
                 }
             }
         }
@@ -551,7 +628,8 @@ public final class ChamberFurnisher {
      * only from the middle has a dark edge all the way round, and the pillars are
      * already where a lamp would want to be.</p>
      */
-    private static void raisePillars(ServerLevel burrow, int cx, int wy, int cz, int[][] pillars) {
+    private static void raisePillars(ServerLevel burrow, int cx, int wy, int cz, int[][] pillars,
+            @Nullable BoundingBox clamp) {
         BlockState beam = ModBlocks.ROOT_BEAM.get().defaultBlockState();
         BlockState moss = Blocks.MOSS_BLOCK.defaultBlockState();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
@@ -559,16 +637,21 @@ public final class ChamberFurnisher {
         for (int[] pillar : pillars) {
             int x = pillar[0];
             int z = pillar[1];
+            // A root writes into its own column and into the four beside it, so
+            // the whole nine has to be out of the box before it is skipped.
+            if (!writesColumn(clamp, x, z, 1)) {
+                continue;
+            }
             int ceilingY = ceilingOf(burrow, x, wy, z);
             if (ceilingY == NO_LEVEL) {
                 continue;
             }
 
             for (int y = wy; y < ceilingY; y++) {
-                fillAir(burrow, cursor.set(x, y, z), beam);
+                fillAir(burrow, cursor.set(x, y, z), beam, clamp);
             }
-            replaceEarth(burrow, cursor.set(x, wy - 1, z), moss);
-            lightCeiling(burrow, cursor, x, ceilingY, z);
+            replaceEarth(burrow, cursor.set(x, wy - 1, z), moss, clamp);
+            lightCeiling(burrow, cursor, x, ceilingY, z, clamp);
 
             for (Direction side : Direction.Plane.HORIZONTAL) {
                 int nx = x + side.getStepX();
@@ -585,14 +668,14 @@ public final class ChamberFurnisher {
                 // the opposite.
                 if (!withinDisc(nx - cx, nz - cz, TRODDEN_RADIUS)
                         && noise(SALT_PILLAR_FOOT, nx, wy, nz) < PILLAR_FOOT_DENSITY) {
-                    fillAir(burrow, cursor.set(nx, wy, nz), Blocks.MOSS_CARPET.defaultBlockState());
+                    fillAir(burrow, cursor.set(nx, wy, nz), Blocks.MOSS_CARPET.defaultBlockState(), clamp);
                 }
                 for (int y = Math.max(ceilingY - PILLAR_CAPITAL_HEIGHT, wy + 1); y < ceilingY; y++) {
                     if (noise(SALT_PILLAR_CAPITAL, nx, y, nz) < PILLAR_CAPITAL_DENSITY) {
-                        fillAir(burrow, cursor.set(nx, y, nz), beam);
+                        fillAir(burrow, cursor.set(nx, y, nz), beam, clamp);
                     }
                 }
-                lightCeiling(burrow, cursor, nx, ceilingY, nz);
+                lightCeiling(burrow, cursor, nx, ceilingY, nz, clamp);
             }
         }
     }
@@ -606,11 +689,12 @@ public final class ChamberFurnisher {
      * where nobody will ever see it. The test is whether there is room underneath
      * it.</p>
      */
-    private static void lightCeiling(ServerLevel burrow, BlockPos.MutableBlockPos cursor, int x, int y, int z) {
+    private static void lightCeiling(ServerLevel burrow, BlockPos.MutableBlockPos cursor, int x, int y, int z,
+            @Nullable BoundingBox clamp) {
         if (!burrow.isLoaded(cursor.set(x, y - 1, z)) || !isOpen(burrow.getBlockState(cursor))) {
             return;
         }
-        replaceEarth(burrow, cursor.set(x, y, z), ModBlocks.GLOW_MYCELIUM.get().defaultBlockState());
+        replaceEarth(burrow, cursor.set(x, y, z), ModBlocks.GLOW_MYCELIUM.get().defaultBlockState(), clamp);
     }
 
     // --- The dome ------------------------------------------------------------
@@ -623,7 +707,7 @@ public final class ChamberFurnisher {
      * across the whole span is enough to tell a player there is something up
      * there.</p>
      */
-    private static void hangTheDome(ServerLevel burrow, int cx, int wy, int cz) {
+    private static void hangTheDome(ServerLevel burrow, int cx, int wy, int cz, @Nullable BoundingBox clamp) {
         int radius = BurrowGeometry.CHAMBER_RADIUS;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
@@ -639,11 +723,14 @@ public final class ChamberFurnisher {
                 if (noise(SALT_DOME_FRINGE, x, wy, z) >= DOME_FRINGE_CHANCE) {
                     continue;
                 }
+                if (!writesColumn(clamp, x, z, 0)) {
+                    continue;
+                }
                 int ceilingY = ceilingOf(burrow, x, wy, z);
                 if (ceilingY == NO_LEVEL) {
                     continue;
                 }
-                fillAir(burrow, cursor.set(x, ceilingY - 1, z), Blocks.HANGING_ROOTS.defaultBlockState());
+                fillAir(burrow, cursor.set(x, ceilingY - 1, z), Blocks.HANGING_ROOTS.defaultBlockState(), clamp);
             }
         }
     }
@@ -660,7 +747,8 @@ public final class ChamberFurnisher {
      * chamber entered afterwards - and the whole class exists to make that
      * impossible.</p>
      */
-    private static void stockLarders(ServerLevel burrow, int cx, int wy, int cz, int nestSide) {
+    private static void stockLarders(ServerLevel burrow, int cx, int wy, int cz, int nestSide,
+            @Nullable BoundingBox clamp) {
         int[] free = new int[3];
         int count = 0;
         for (int side = 0; side < 4; side++) {
@@ -671,24 +759,35 @@ public final class ChamberFurnisher {
 
         int first = (int) (noise(SALT_LARDER_SIDE, cx, wy, cz) * 3.0F);
         for (int i = 0; i < LARDER_COUNT; i++) {
-            cutLarder(burrow, cx, wy, cz, Direction.from2DDataValue(free[(first + i) % 3]));
+            cutLarder(burrow, cx, wy, cz, Direction.from2DDataValue(free[(first + i) % 3]), clamp);
         }
     }
 
     /**
      * One larder: an alcove in the wall with a face of packed worms at the back.
      *
-     * <p>Validate, then write. Every block of the box has to be raw earth and in
-     * a loaded chunk before the first one is touched, which buys three things at
-     * once - a niche is never half cut into an unloaded chunk, a wall a corridor
-     * has opened fails the test and is left alone, and a second visit finds its
-     * own alcove already there, fails the same test, and does nothing.</p>
+     * <p>Validate, then write. Every block of the box has to be in a loaded chunk
+     * and either raw earth or something only this larder could have put there,
+     * before the first one is touched. That buys the thing the room is actually
+     * being asked about - a wall a corridor has opened fails the test and is left
+     * alone - and it survives being cut in pieces.</p>
+     *
+     * <p><strong>Why "or its own work" rather than "raw earth".</strong> Under a
+     * clamp the alcove is cut by whichever chunks it lies in, one part each, and
+     * the strict test would let the first chunk write its share and then refuse
+     * every later one: the box no longer being untouched earth is exactly what
+     * the first pass achieved. Accepting the larder's own products, and only at
+     * the positions it writes them, makes the decision the same on every pass
+     * while leaving the corridor guard intact - the back face is only ever worms
+     * or earth and never air, and the course above and the course below are never
+     * written at all, so a run that took this wall still fails.</p>
      *
      * <p>The middle of the back face is packed regardless of the dice. A larder
      * that rolled empty would be an alcove with nothing in it, and there is no
      * reading of the room in which that is the interesting outcome.</p>
      */
-    private static void cutLarder(ServerLevel burrow, int cx, int wy, int cz, Direction into) {
+    private static void cutLarder(ServerLevel burrow, int cx, int wy, int cz, Direction into,
+            @Nullable BoundingBox clamp) {
         int alongX = into.getStepX();
         int alongZ = into.getStepZ();
         // The wall runs across the direction we are cutting into it.
@@ -696,17 +795,27 @@ public final class ChamberFurnisher {
         int acrossZ = -alongX;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
+        if (clamp != null && missesLarder(clamp, cx, wy, cz, alongX, alongZ, acrossX, acrossZ)) {
+            return;
+        }
+
         // It has to open into the room, or it is a cupboard inside the earth.
-        cursor.set(cx + alongX * (WALL_DISTANCE - 1), wy, cz + alongZ * (WALL_DISTANCE - 1));
+        // Read a block above the walking surface, not at it: the chamber's floor
+        // layer is filleted, so the block at the foot of the wall is earth left
+        // standing on every side of the room, larder or no larder. A block up the
+        // wall is at the room's full radius and answers the question that was
+        // actually being asked.
+        cursor.set(cx + alongX * (WALL_DISTANCE - 1), wy + 1, cz + alongZ * (WALL_DISTANCE - 1));
         if (!burrow.isLoaded(cursor) || !isOpen(burrow.getBlockState(cursor))) {
             return;
         }
 
-        for (int depth = 0; depth <= LARDER_DEPTH; depth++) {
+        for (int depth = -1; depth <= LARDER_DEPTH; depth++) {
             for (int across = -LARDER_HALF_WIDTH; across <= LARDER_HALF_WIDTH; across++) {
                 for (int y = wy - 1; y <= wy + LARDER_HEIGHT; y++) {
                     larderPos(cursor, cx, cz, alongX, alongZ, acrossX, acrossZ, depth, across, y);
-                    if (!burrow.isLoaded(cursor) || !burrow.getBlockState(cursor).is(ModBlocks.DEEP_EARTH.get())) {
+                    if (!burrow.isLoaded(cursor)
+                            || !larderUncut(burrow.getBlockState(cursor), depth, across, y - wy)) {
                         return;
                     }
                 }
@@ -716,17 +825,30 @@ public final class ChamberFurnisher {
         BlockState larder = ModBlocks.WORM_LARDER.get().defaultBlockState();
         BlockState soil = ModBlocks.LOOSE_SOIL.get().defaultBlockState();
 
+        // The sill. The fillet at the foot of the chamber wall runs right across
+        // this doorway, and a store you have to step up and then down into is not
+        // one you walk into. Only the columns of the alcove itself, and only at
+        // the heights it is hollow: everywhere else the fillet stays, which is
+        // what it is for.
+        for (int across = -LARDER_HALF_WIDTH; across <= LARDER_HALF_WIDTH; across++) {
+            for (int y = wy; y < wy + LARDER_HEIGHT; y++) {
+                clearEarth(burrow,
+                        larderPos(cursor, cx, cz, alongX, alongZ, acrossX, acrossZ, -1, across, y), clamp);
+            }
+        }
+
         for (int across = -LARDER_HALF_WIDTH; across <= LARDER_HALF_WIDTH; across++) {
             // The hollow, and the floor of it: a store spills over onto its own
             // floor, so some of the worms are underfoot.
             for (int depth = 0; depth < LARDER_DEPTH; depth++) {
                 for (int y = wy; y < wy + LARDER_HEIGHT; y++) {
-                    clearEarth(burrow, larderPos(cursor, cx, cz, alongX, alongZ, acrossX, acrossZ, depth, across, y));
+                    clearEarth(burrow,
+                            larderPos(cursor, cx, cz, alongX, alongZ, acrossX, acrossZ, depth, across, y), clamp);
                 }
                 larderPos(cursor, cx, cz, alongX, alongZ, acrossX, acrossZ, depth, across, wy - 1);
                 boolean packed = noise(SALT_LARDER_FLOOR, cursor.getX(), cursor.getY(), cursor.getZ())
                         < LARDER_FLOOR_DENSITY;
-                replaceEarth(burrow, cursor, packed ? larder : soil);
+                replaceEarth(burrow, cursor, packed ? larder : soil, clamp);
             }
 
             // The back face, which is the larder proper.
@@ -736,7 +858,7 @@ public final class ChamberFurnisher {
                 if (!middle && noise(SALT_LARDER_FACE, cursor.getX(), cursor.getY(), cursor.getZ()) >= LARDER_DENSITY) {
                     continue;
                 }
-                replaceEarth(burrow, cursor, larder);
+                replaceEarth(burrow, cursor, larder, clamp);
             }
         }
 
@@ -744,7 +866,76 @@ public final class ChamberFurnisher {
         // nobody finds, and a lit recess in a dark wall is what draws a player
         // across the room to look.
         larderPos(cursor, cx, cz, alongX, alongZ, acrossX, acrossZ, 0, 0, wy + LARDER_HEIGHT);
-        replaceEarth(burrow, cursor, ModBlocks.GLOW_MYCELIUM.get().defaultBlockState());
+        replaceEarth(burrow, cursor, ModBlocks.GLOW_MYCELIUM.get().defaultBlockState(), clamp);
+    }
+
+    /**
+     * Whether this block of a larder's box still allows the alcove to be cut.
+     *
+     * <p>{@code layer} counts from the walking surface, so the alcove's own floor
+     * is -1, and {@code depth} counts outward from the wall face, so the sill
+     * through the fillet is -1 as well. Raw ground passes everywhere. Past that,
+     * each position accepts only what the larder itself writes there and nothing
+     * else: air in the hollow and in the sill, worms or soil on its floor, worms
+     * on the back face, threads in its roof. The frame around all of that - the
+     * course under the back face, the roof either side of the lamp - accepts
+     * nothing but ground, and that is what a run through this wall trips
+     * over.</p>
+     *
+     * <p>The sill's own course below the alcove floor is frame like any other, so
+     * a corridor that came through here still fails on the back face whatever the
+     * doorway looks like.</p>
+     */
+    private static boolean larderUncut(BlockState state, int depth, int across, int layer) {
+        if (isRawGround(state)) {
+            return true;
+        }
+        boolean inHeight = layer >= 0 && layer < LARDER_HEIGHT;
+        if (depth == -1) {
+            // The sill only speaks for the three blocks it cuts. The course under
+            // it is chamber floor and the course over it is chamber wall, both of
+            // them dressed by this class long before the larders are stocked, and
+            // a larder that refused itself over its own room's floor would be a
+            // larder that only ever appeared in an unfurnished chamber.
+            return !inHeight || state.isAir();
+        }
+        if (depth < LARDER_DEPTH && inHeight) {
+            return state.isAir();
+        }
+        if (depth < LARDER_DEPTH && layer == -1) {
+            return state.is(ModBlocks.WORM_LARDER.get());
+        }
+        if (depth == LARDER_DEPTH && inHeight) {
+            return state.is(ModBlocks.WORM_LARDER.get());
+        }
+        if (depth == 0 && across == 0 && layer == LARDER_HEIGHT) {
+            return state.is(ModBlocks.GLOW_MYCELIUM.get());
+        }
+        return false;
+    }
+
+    /**
+     * Whether a larder's box misses the clamp, and so is not this call's to cut.
+     *
+     * <p>Worth its own test rather than leaving it to {@link #replaceEarth}: the
+     * validation ahead of the writes is some fifty block reads, and three of the
+     * four walls of a room are in another chunk from any given one.</p>
+     */
+    private static boolean missesLarder(BoundingBox clamp, int cx, int wy, int cz,
+            int alongX, int alongZ, int acrossX, int acrossZ) {
+        // From the sill inwards: the doorway cut through the fillet is a block
+        // nearer the middle than the wall face is, and a chunk that holds only
+        // that block still has to be the one to cut it.
+        int nearX = cx + alongX * (WALL_DISTANCE - 1);
+        int nearZ = cz + alongZ * (WALL_DISTANCE - 1);
+        int farX = cx + alongX * (WALL_DISTANCE + LARDER_DEPTH);
+        int farZ = cz + alongZ * (WALL_DISTANCE + LARDER_DEPTH);
+        int spreadX = Math.abs(acrossX) * LARDER_HALF_WIDTH;
+        int spreadZ = Math.abs(acrossZ) * LARDER_HALF_WIDTH;
+
+        return misses(clamp,
+                Math.min(nearX, farX) - spreadX, wy - 1, Math.min(nearZ, farZ) - spreadZ,
+                Math.max(nearX, farX) + spreadX, wy + LARDER_HEIGHT, Math.max(nearZ, farZ) + spreadZ);
     }
 
     /** One block of a larder box, in world coordinates. {@code depth} counts outward from the wall face. */
@@ -795,6 +986,11 @@ public final class ChamberFurnisher {
      * measures a block higher on the next visit and the whole decoration creeps
      * upward. Anything else overhead means somebody has built up there, and then
      * this column gets nothing.</p>
+     *
+     * <p>So does the lining, and that one is not a refinement but the difference
+     * between a lit room and a dark one: the dome is soil now, so a probe that
+     * only knew about deep earth would walk the whole height of the chamber, find
+     * neither ceiling nor open space, and answer that this column has none.</p>
      */
     private static int ceilingOf(ServerLevel burrow, int x, int walkY, int z) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
@@ -803,7 +999,7 @@ public final class ChamberFurnisher {
                 return NO_LEVEL;
             }
             BlockState state = burrow.getBlockState(cursor);
-            if (state.is(ModBlocks.DEEP_EARTH.get()) || state.is(ModBlocks.GLOW_MYCELIUM.get())) {
+            if (isRawGround(state) || state.is(ModBlocks.GLOW_MYCELIUM.get())) {
                 return y;
             }
             if (!isOpen(state)) {
@@ -830,34 +1026,81 @@ public final class ChamberFurnisher {
                 || state.is(Blocks.WATER)
                 || state.is(Blocks.SMALL_AMETHYST_BUD)
                 || state.is(ModBlocks.ROOT_BEAM.get())
-                || state.is(ModBlocks.SHRINK_POST.get());
+                || state.is(ModBlocks.SHRINK_POST.get())
+                || state.is(ModBlocks.ROOT_LADDER.get());
     }
 
     // --- Placement -----------------------------------------------------------
 
     /**
-     * Turns raw earth into something.
+     * Turns raw ground into something.
      *
-     * <p>Raw earth and nothing else - not air, which is a hole a player dug or a
+     * <p>Raw ground and nothing else - not air, which is a hole a player dug or a
      * corridor somebody else carved, and not a block that is already something,
      * which is either a decoration that made its choice or a block a player put
      * there.</p>
+     *
+     * <p><strong>Raw ground is two blocks now.</strong> {@code CorridorCarver}
+     * lines every surface it cuts with {@link ModBlocks#LOOSE_SOIL}, so by the
+     * time a room is furnished its floor, its walls and its ceiling are soil and
+     * the deep earth has retreated two or three blocks into the mass. Testing for
+     * deep earth alone would leave the whole room undressed - no floor, no moss at
+     * a pillar's foot, and, worst of the three, no light in the dome, because the
+     * threads are grown into the ceiling by exactly this method.</p>
+     *
+     * <p>The price is that a block of loose soil a player laid in a chamber can be
+     * dressed over on a later pass. That is the same grey area
+     * {@code TunnelDecorator} names in its own palette, and it comes with using
+     * the mod's own soil as the material the burrow is built out of.</p>
      */
-    private static boolean replaceEarth(ServerLevel burrow, BlockPos pos, BlockState state) {
-        if (!burrow.isLoaded(pos) || !burrow.getBlockState(pos).is(ModBlocks.DEEP_EARTH.get())) {
+    private static boolean replaceEarth(ServerLevel burrow, BlockPos pos, BlockState state,
+            @Nullable BoundingBox clamp) {
+        if (!writes(clamp, pos) || !burrow.isLoaded(pos)) {
             return false;
+        }
+        BlockState existing = burrow.getBlockState(pos);
+        if (!isRawGround(existing)) {
+            return false;
+        }
+        // A second pass over a floor of soil that was already laid as soil has
+        // nothing to say. Worth the comparison: the chamber floor's commonest
+        // material is the same block the lining is made of.
+        if (existing == state) {
+            return true;
         }
         return burrow.setBlock(pos, state, PLACE_FLAGS);
     }
 
+    /**
+     * Ground nobody has made anything of yet: the fill of the dimension, its
+     * lining, or a loot pocket in that lining.
+     *
+     * <p>The nodule entry is what keeps {@code larderUncut}'s all-or-nothing
+     * validation honest: the lining carries pockets at a hashed fraction, and a
+     * larder box of ~45 lined positions would otherwise be cancelled outright
+     * about a quarter of the time - the loot layer silently deleting the worm
+     * economy at its source. A larder cutting through a pocket is the same
+     * bargain {@code CorridorCarver.clear()} makes for a run.</p>
+     *
+     * <p>Deliberately the opposite of {@code NestCarver}'s rule, and the
+     * asymmetry is not an inconsistency: in the nest the nodules <em>are</em>
+     * the trove, placed on purpose, and must survive being dressed around. In a
+     * chamber wall a nodule is ambient lining and the larder outranks it.</p>
+     */
+    private static boolean isRawGround(BlockState state) {
+        return state.is(ModBlocks.DEEP_EARTH.get())
+                || state.is(ModBlocks.LOOSE_SOIL.get())
+                || state.is(ModBlocks.ROOT_NODULE.get());
+    }
+
     /** Opens raw earth up. The same rule as {@link #replaceEarth}, and the only thing that removes anything. */
-    private static boolean clearEarth(ServerLevel burrow, BlockPos pos) {
-        return replaceEarth(burrow, pos, Blocks.AIR.defaultBlockState());
+    private static boolean clearEarth(ServerLevel burrow, BlockPos pos, @Nullable BoundingBox clamp) {
+        return replaceEarth(burrow, pos, Blocks.AIR.defaultBlockState(), clamp);
     }
 
     /** Fills open space. Air only, so a second visit never stacks a decoration onto the one it left. */
-    private static void fillAir(ServerLevel burrow, BlockPos pos, BlockState state) {
-        if (burrow.isLoaded(pos) && burrow.getBlockState(pos).isAir()) {
+    private static void fillAir(ServerLevel burrow, BlockPos pos, BlockState state, @Nullable BoundingBox clamp) {
+        if (writes(clamp, pos) && burrow.isLoaded(pos) && burrow.getBlockState(pos).isAir()) {
             burrow.setBlock(pos, state, PLACE_FLAGS);
         }
     }

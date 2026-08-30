@@ -1,5 +1,6 @@
 package net.sgeht.moleverse.dimension;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
@@ -12,7 +13,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -21,9 +22,10 @@ import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.block.MoleMound;
 import net.sgeht.moleverse.block.MoundAttachment;
-import net.sgeht.moleverse.entity.burrow.BurrowConstants;
+import net.sgeht.moleverse.dimension.plan.BurrowFeature;
+import net.sgeht.moleverse.dimension.plan.BurrowReconciler;
+import net.sgeht.moleverse.dimension.plan.ChamberFeature;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
-import net.sgeht.moleverse.entity.burrow.Colony;
 import net.sgeht.moleverse.entity.burrow.ColonyStore;
 import net.sgeht.moleverse.entity.burrow.MoundNetwork;
 import net.sgeht.moleverse.registry.ModBlocks;
@@ -49,7 +51,16 @@ import net.sgeht.moleverse.registry.ModBlocks;
  * nothing else, so there is no index to keep in sync with a world people dig in
  * - {@link #isWayOut} is a question asked of the ground. Only the horizontal is
  * a mapping; the height a chamber is carved at is a decision, and
- * {@link #chamberFloor} is where that decision lives.</p>
+ * {@link ChamberFeature#floorAt} is where that decision lives.</p>
+ *
+ * <p><strong>This class no longer carves the burrow.</strong> It used to carve a
+ * whole colony on the way down - the chamber, every run leaving the mound, then
+ * the shafts and the junctions of the entire network - which is why nothing
+ * existed down there until somebody asked for it. That work belongs to
+ * {@link BurrowReconciler} now and happens per chunk, as ground becomes live. All
+ * that is left here is the one piece that cannot wait: the chamber's own chunk
+ * ring, reconciled on the spot so that a player arrives in a finished room rather
+ * than inside earth.</p>
  */
 public final class BurrowTransit {
 
@@ -68,11 +79,29 @@ public final class BurrowTransit {
     /**
      * How far from the way out a player lands, in burrow blocks.
      *
-     * <p>Anything but zero would do; the post occupies the chamber centre and a
-     * player arriving in its collision box would be shoved out sideways at an
-     * angle nobody chose. Two blocks is far enough to see it standing there.</p>
+     * <p>Two blocks, which is far enough to see the rope hanging rather than to
+     * arrive looking straight up the inside of it. It used to be a way of dodging
+     * the post's collision box; the rope has none, so the reason is now only that
+     * a door is easier to find from a step away than from underneath.</p>
      */
     private static final int ARRIVAL_OFFSET = 2;
+
+    /**
+     * How far above the chamber floor the bottom of the rope hangs, in burrow
+     * blocks.
+     *
+     * <p>One: the block a standing player's head is in. It is not on the floor,
+     * which is the whole difference between a rope and the post it replaced, and
+     * it is not out of reach either.</p>
+     *
+     * <p>Two was the obvious answer and it costs the climb. {@code onClimbable}
+     * asks about the block at the entity's <em>feet</em>, and a jump lifts a
+     * player about a block and a quarter - so a rope starting two above the floor
+     * can never be entered from the floor, and the ladder is a ladder that cannot
+     * be climbed. At one, a jump puts the player's feet inside the bottom segment
+     * and the climb takes over from there.</p>
+     */
+    private static final int LADDER_FOOT = 1;
 
     private BurrowTransit() {
     }
@@ -80,9 +109,11 @@ public final class BurrowTransit {
     /**
      * Takes a player from a prepared mound down into the burrow.
      *
-     * <p>Everything is carved before the teleport, never after: a player who
-     * arrives first and waits for the digging would spend those ticks inside
-     * solid earth, and the suffocation damage would be real.</p>
+     * <p>The chamber ring is finished before the teleport, never after: a player
+     * who arrives first and waits for a tick handler would spend those ticks
+     * inside solid earth, and the suffocation damage would be real. Everything
+     * beyond the ring arrives as they walk into it, which is what the comment
+     * here used to promise and now describes.</p>
      *
      * @param mound the mound block itself, not the fitting standing on it
      * @return false when there is no burrow to go to, or the mound has gone
@@ -101,35 +132,31 @@ public final class BurrowTransit {
             return false;
         }
 
-        // The runs that end at this mound, so a player arrives at a junction
-        // rather than in a sealed room. Everything further along is dug as they
-        // walk into it.
+        // Where the room goes is the plan layer's arithmetic, not this class's:
+        // a chunk far from any player has to be able to reach the same answer
+        // with nobody standing anywhere near the mound.
         ColonyStore store = ColonyStore.get(overworld);
-        List<BurrowLink> runs = runsAt(store, mound);
-        int floor = chamberFloor(mound, runs);
-        BlockPos chamber = BurrowGeometry.toBurrow(mound).atY(floor);
+        List<BurrowLink> runs = ChamberFeature.runsAt(
+                store.linksNear(mound, LINK_PREFILTER_RADIUS), mound);
+        ChamberFeature room = ChamberFeature.of(mound, runs);
+        BlockPos chamber = room.centre();
 
-        loadChamberChunks(burrow, chamber);
-        CorridorCarver.carveChamber(burrow, chamber, mouthLayers(mound, runs, floor));
-        for (BurrowLink run : runs) {
-            CorridorCarver.carve(burrow, run);
+        // The plan derives a colony's chambers from the runs that end at its
+        // mounds, so a mound nobody has finished a trip through has none - and a
+        // player fitting a post to the first mound of a young colony would arrive
+        // inside earth. The room is put into the plan rather than carved beside
+        // it, so that it settles in the ledger like any other feature and the
+        // reconciles that follow do not cut it a second time.
+        List<BurrowFeature> plan = new ArrayList<>(BurrowReconciler.planFor(server));
+        if (plan.stream().noneMatch(feature -> feature.key().equals(room.key()))) {
+            plan.add(room);
         }
 
-        // Both of these want the colony's whole set of runs, not the handful
-        // that end at this mound. Two runs sharing an endpoint cross only at
-        // that endpoint, and both cutters reject a crossing that sits on a
-        // mound - so fed the local list they would find nothing, every time,
-        // silently. Only runs that have been carved are worth cutting through,
-        // but carving is idempotent and the next visit finishes the rest.
-        Colony colony = store.at(mound);
-        List<BurrowLink> colonyRuns = colony == null ? runs : store.linksOf(colony.id());
-
-        // Feeding runs and main runs lie four blocks apart down here, one over
-        // the other. Without this the burrow is two networks that never meet.
-        LevelShafts.connect(burrow, colonyRuns);
-        // And where two runs of the same level meet, a place rather than an
-        // overlap: the difference between a network you can navigate and a maze.
-        Junctions.cut(burrow, colonyRuns);
+        // Forced rather than queued, and both phases at once. The ring is loaded
+        // by the call below, so the dressing pass has real ground to measure in
+        // every direction - which is the one place the neighbourhood rule can be
+        // set aside safely.
+        BurrowReconciler.reconcileNow(burrow, loadChamberChunks(burrow, chamber), plan);
 
         placeWayOut(burrow, chamber);
         BurrowLife.stock(burrow, chamber);
@@ -141,8 +168,9 @@ public final class BurrowTransit {
      * Puts a player back on the surface beside the mound their chamber belongs
      * to.
      *
-     * @param chamberCentre any position in the chamber; in practice the post the
-     *                      player used. Only its x and z are read - see
+     * @param chamberCentre any position in the chamber; in practice the segment
+     *                      of rope the player grabbed, which may be any height in
+     *                      the centre column. Only its x and z are read - see
      *                      {@link #moundAbove}
      * @return false when the mound above is gone, which is the door having
      *         closed rather than a failure
@@ -153,6 +181,18 @@ public final class BurrowTransit {
             LOG.warn("no overworld to leave the burrow into from {}", chamberCentre);
             return false;
         }
+
+        // The one chunk the answer lives in is loaded outright. Found in play,
+        // 124 refusals in one log: with nobody up top the chunk unloads within
+        // a minute of descending, getHeight answers the world floor for an
+        // unloaded chunk instead of loading it, and the heightmap "surface" is
+        // bedrock at -64 - so the mound read as gone exactly when no mole
+        // happened to be keeping the ground warm. A player using the way home
+        // is worth one synchronous chunk load; it is the same courtesy enter()
+        // extends to the chamber ring on the way down.
+        BlockPos mapped = BurrowGeometry.toOverworld(chamberCentre);
+        overworld.getChunk(SectionPos.blockToSectionCoord(mapped.getX()),
+                SectionPos.blockToSectionCoord(mapped.getZ()));
 
         BlockPos mound = moundAbove(overworld, chamberCentre);
         if (mound == null) {
@@ -167,110 +207,26 @@ public final class BurrowTransit {
      *
      * <p>Asked by the post before it offers to do anything, so a player learns
      * that a way out has closed by looking at it rather than by using it.</p>
+     *
+     * <p>Optimistic when the ground above is not loaded. Loading a chunk for a
+     * glance would let looking at posts drag overworld terrain in; answering
+     * "closed" for an unloaded chunk was the bug that made the way home refuse
+     * whenever nobody was up top. So a look trusts the door, and {@link #leave}
+     * - which does load the chunk - is where the truth is checked.</p>
      */
     public static boolean isWayOut(ServerLevel burrow, BlockPos burrowPos) {
         ServerLevel overworld = overworldOf(burrow);
-        return overworld != null && moundAbove(overworld, burrowPos) != null;
-    }
-
-    // --- where a chamber goes -------------------------------------------------
-
-    /** The runs that end at this mound. The radius is only a prefilter; {@code touches} decides. */
-    private static List<BurrowLink> runsAt(ColonyStore store, BlockPos mound) {
-        return store.linksNear(mound, LINK_PREFILTER_RADIUS).stream()
-                .filter(run -> run.touches(mound) && run.pointCount() > 0)
-                .toList();
-    }
-
-    /**
-     * The walking surface of the chamber this mound opens into, in burrow space.
-     *
-     * <p>Not the mapped mound position, which is the obvious answer and the wrong
-     * one. A mound sits on the surface; the runs leaving it were dug two to six
-     * blocks under it, and {@link BurrowGeometry#VERTICAL_SCALE} doubles that gap.
-     * A chamber carved at the mound's own height would hang four to twelve blocks
-     * above every corridor that is supposed to meet in it - a sealed room, and one
-     * that would look correct in every screenshot of it.</p>
-     *
-     * <p>So the chamber goes at the <em>deepest</em> run that ends here. The three
-     * run levels lie two blocks apart, which is eight down below, and a chamber is
-     * {@link BurrowGeometry#CHAMBER_HEIGHT} nine high - so a floor at the deepest
-     * run reaches the mouth of the shallowest one and every corridor between. The
-     * shallowest as the reference would leave the deep ones under the floor.</p>
-     *
-     * <p>A mound whose colony has dug nothing yet has no run to measure, and the
-     * feeding level is the fallback because it is the level a first trip uses. If
-     * a deeper run appears later, the next arrival carves a deeper chamber and the
-     * post is placed again at that new floor - the old one stays up in the ceiling,
-     * harmless, and still maps back to this same mound.</p>
-     *
-     * <p>The minimum is taken after mapping, not before. {@code burrowY} clamps to
-     * the dimension's own range, and while the clamp is monotonic - so it cannot
-     * reorder two runs - doing the arithmetic in the space the answer is used in
-     * means {@link #mouthLayers} can never come out negative, whatever the clamp
-     * does to a colony on a mountain or in a superflat world.</p>
-     */
-    private static int chamberFloor(BlockPos mound, List<BurrowLink> runs) {
-        int floor = BurrowGeometry.burrowY(mound.getY() - BurrowConstants.DEPTH_FEEDING);
-        for (BurrowLink run : runs) {
-            floor = Math.min(floor, BurrowGeometry.burrowY(runEndY(run, mound)));
+        if (overworld == null) {
+            return false;
         }
-        return floor;
-    }
-
-    /**
-     * How far above the chamber floor each run leaves, which is what the carver
-     * puts a gallery at.
-     *
-     * <p>A mouth has no floor under it - the room cleared that - so it can only be
-     * entered from the wall, at its own height, on its own bearing. Without these
-     * the chamber is carved bare and a player standing on the floor can see the
-     * shallower corridors and not reach them.</p>
-     *
-     * <p>Duplicates and a zero are left in. The carver ignores both, and filtering
-     * here would only hide which run produced which gallery.</p>
-     *
-     * <p>A layer past the top of the chamber is dropped by the carver, which is
-     * the right thing to do - a gallery clamped down to the ceiling would only put
-     * the player four blocks closer to a mouth still out of reach. Dropping it
-     * silently is the problem, so it is logged here. The run keeps its corridor,
-     * so what the world ends up with is a real tunnel above the chamber with no
-     * way up to it, and nothing else in the game would ever say so.</p>
-     *
-     * <p>It takes a changed surface to happen at all: the depth of a run is
-     * sampled when that run is recorded and only re-measured when it is travelled
-     * again, so two runs at one mound can be measured against two different
-     * ground heights if somebody raised the ground or a tree grew between the two
-     * recordings. Rare, and not self-announcing, which is exactly the combination
-     * worth a line in the log.</p>
-     */
-    private static int[] mouthLayers(BlockPos mound, List<BurrowLink> runs, int floor) {
-        int[] layers = runs.stream()
-                .mapToInt(run -> BurrowGeometry.burrowY(runEndY(run, mound)) - floor)
-                .toArray();
-
-        for (int layer : layers) {
-            if (layer >= BurrowGeometry.CHAMBER_HEIGHT) {
-                LOG.warn("mound {}: a run leaves {} blocks above the chamber floor, "
-                        + "past the {} the chamber is tall - it gets no gallery, "
-                        + "so its corridor cannot be reached from inside",
-                        mound, layer, BurrowGeometry.CHAMBER_HEIGHT);
-            }
+        BlockPos mapped = BurrowGeometry.toOverworld(burrowPos);
+        if (!overworld.isLoaded(mapped)) {
+            return true;
         }
-
-        return layers;
+        return moundAbove(overworld, burrowPos) != null;
     }
 
-    /**
-     * The height of a run where it meets this mound.
-     *
-     * <p>Which end of the link that is has to be asked: ends are stored in the
-     * order they were dug, so the mound may be either of them.</p>
-     */
-    private static int runEndY(BurrowLink run, BlockPos mound) {
-        int index = run.a().equals(mound) ? 0 : run.pointCount() - 1;
-        return Mth.floor(run.pointAt(index).y);
-    }
+    // --- mapping back to the surface ------------------------------------------
 
     /**
      * The mound a burrow position belongs to, or null when it has gone.
@@ -296,7 +252,22 @@ public final class BurrowTransit {
             surface = underFitting;
         }
 
-        return MoleMound.isMound(overworld, surface) ? surface : null;
+        if (MoleMound.isMound(overworld, surface)) {
+            return surface;
+        }
+
+        // Diagnostic for the way home refusing. Everything the decision read, in
+        // one line, so a refusal in play can be traced without guessing: the
+        // column asked, what the heightmap answered, what stands there, and what
+        // the fitting probe saw. Dev runs only.
+        if (Boolean.getBoolean("moleverse.devLogging")) {
+            BlockPos below = surface.below();
+            LOG.info("way out refused: burrow {} -> column ({},{}), surface {} is {}, below is {}, fitting probe {}",
+                    burrowPos.toShortString(), mapped.getX(), mapped.getZ(), surface.toShortString(),
+                    overworld.getBlockState(surface), overworld.getBlockState(below),
+                    underFitting == null ? "found no mound" : "found " + underFitting.toShortString());
+        }
+        return null;
     }
 
     // --- the pieces -----------------------------------------------------------
@@ -314,58 +285,101 @@ public final class BurrowTransit {
     }
 
     /**
-     * Makes the chamber's own chunks exist before anything is carved into them.
+     * Makes the chamber's own chunks exist before anything is carved into them,
+     * and says which they were.
      *
-     * <p>{@link CorridorCarver} skips every position in an unloaded chunk, and it
-     * is right to - forcing chunks along a whole run is how carving a colony
-     * turns into a server freeze. The chamber is the one place that cannot be
-     * skipped: a player teleported into uncarved deep earth suffocates in it.
-     * It is also the one place where forcing is affordable, because a chamber is
-     * one radius wide and touches four chunks at the very worst.</p>
+     * <p>Every carve in the burrow skips positions in an unloaded chunk, and is
+     * right to - forcing chunks along a whole run is how carving a colony turns
+     * into a server freeze. The chamber is the one place that cannot be skipped:
+     * a player teleported into uncarved deep earth suffocates in it. It is also
+     * the one place where forcing is affordable, because a chamber is one radius
+     * wide and touches four chunks at the very worst.</p>
      *
      * <p>The mouths of the runs leaving the mound fall inside the same chunks,
      * so this incidentally buys the corridor stubs that keep an arrival from
      * being a sealed room. The rest of each run is carved when somebody walks
      * into it.</p>
+     *
+     * <p>A ring rather than a single chunk, and the ring is what
+     * {@link BurrowReconciler#reconcileNow} is handed. Reconciling only the chunk
+     * with the centre in it would leave the quarters of the room that fall in the
+     * other three as earth.</p>
      */
-    private static void loadChamberChunks(ServerLevel burrow, BlockPos chamber) {
+    private static List<ChunkPos> loadChamberChunks(ServerLevel burrow, BlockPos chamber) {
         int radius = BurrowGeometry.CHAMBER_RADIUS;
         int fromX = SectionPos.blockToSectionCoord(chamber.getX() - radius);
         int toX = SectionPos.blockToSectionCoord(chamber.getX() + radius);
         int fromZ = SectionPos.blockToSectionCoord(chamber.getZ() - radius);
         int toZ = SectionPos.blockToSectionCoord(chamber.getZ() + radius);
 
+        List<ChunkPos> ring = new ArrayList<>();
         for (int x = fromX; x <= toX; x++) {
             for (int z = fromZ; z <= toZ; z++) {
                 burrow.getChunk(x, z);
+                ring.add(new ChunkPos(x, z));
             }
         }
+        return ring;
     }
 
     /**
-     * Stands the way home at the chamber centre.
+     * Hangs the way home from the chamber ceiling.
      *
-     * <p>The centre and nowhere else, because that is the column {@link #leave}
-     * and {@link #isWayOut} map back through: a post there gives the mound it
-     * came from, and the block's own position is all either of them needs to be
-     * asked. The centre is a walking surface by {@code carveChamber}'s
-     * convention, so the post stands on the chamber floor rather than in it.</p>
+     * <p>The centre column and nowhere else, because that is what {@link #leave}
+     * and {@link #isWayOut} map back through: any block of the rope gives the
+     * mound it came from, and the block's own position is all either of them
+     * needs to be asked. Which is also what lets the way out be a column rather
+     * than a single block - the whole rope stands in one column, so every segment
+     * of it answers the same question.</p>
      *
-     * <p>Placed on every arrival, not once. A chamber that is carved deeper on a
-     * later visit - because a deeper run has been dug since - would otherwise
-     * leave its only way home eight blocks up in the new ceiling, out of reach of
-     * the floor the player lands on.</p>
+     * <p><strong>It hangs; it does not stand.</strong> The walk is top down from
+     * the highest layer the dome can have opened, and it stops at the first thing
+     * in the way once the rope has started - a rope rests on what it lands on
+     * rather than growing through it. Before the rope has started, a blocked
+     * layer is only a ceiling lower than the dome allows, so the walk keeps
+     * looking. It ends {@link #LADDER_FOOT} above the walking surface, which the
+     * chamber centre is by {@code carveChamber}'s convention.</p>
+     *
+     * <p>Placed on every arrival, not once, and idempotent because of it: the
+     * rope finds its own segments and leaves them alone, fills whatever gaps have
+     * appeared, and never writes over a block a player put in the column - the
+     * same {@code canBeReplaced} courtesy the post placement had. A chamber that
+     * is carved deeper on a later visit gets its rope again at the new height,
+     * which is why this cannot be done once.</p>
+     *
+     * <p>A chamber dug before the rope existed has a {@code ShrinkPost} standing
+     * in the middle of it, and that is what migrates it: the post goes on the
+     * next arrival and the rope replaces it. Broken rather than deleted, so that
+     * a player who stood one there themselves gets the block back.</p>
      */
     private static void placeWayOut(ServerLevel burrow, BlockPos chamber) {
-        BlockState existing = burrow.getBlockState(chamber);
-        if (existing.is(ModBlocks.SHRINK_POST.get())) {
-            return;
+        if (burrow.getBlockState(chamber).is(ModBlocks.SHRINK_POST.get())) {
+            burrow.destroyBlock(chamber, true);
         }
-        // Only into space the carver just opened. A second visit finds its own
-        // post here; anything else standing in the centre was put there by a
-        // player and is not ours to overwrite.
-        if (existing.canBeReplaced()) {
-            burrow.setBlock(chamber, ModBlocks.SHRINK_POST.get().defaultBlockState(), Block.UPDATE_ALL);
+
+        BlockState rope = ModBlocks.ROOT_LADDER.get().defaultBlockState();
+        boolean hanging = false;
+
+        for (int layer = BurrowGeometry.CHAMBER_HEIGHT - 1; layer >= LADDER_FOOT; layer--) {
+            BlockPos at = chamber.atY(chamber.getY() + layer);
+            BlockState existing = burrow.getBlockState(at);
+
+            if (existing.is(ModBlocks.ROOT_LADDER.get())) {
+                hanging = true;
+                continue;
+            }
+            if (!existing.canBeReplaced()) {
+                // Above the rope's top this is the ceiling, and the rope simply
+                // starts under it; below the top it is something in the way, and
+                // that is where the rope ends.
+                if (hanging) {
+                    return;
+                }
+                continue;
+            }
+
+            burrow.setBlock(at, rope, Block.UPDATE_ALL);
+            hanging = true;
         }
     }
 

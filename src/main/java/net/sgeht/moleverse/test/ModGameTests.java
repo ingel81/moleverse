@@ -84,6 +84,18 @@ public final class ModGameTests {
             function("carving_is_recognised");
     private static final ResourceKey<Consumer<GameTestHelper>> LINK_STORE_ROUND_TRIP =
             function("link_store_round_trip");
+    private static final ResourceKey<Consumer<GameTestHelper>> RECONCILER_CARVES_ACROSS_CHUNKS =
+            function("reconciler_carves_across_chunks");
+    private static final ResourceKey<Consumer<GameTestHelper>> LEDGER_CODEC_ROUND_TRIP =
+            function("ledger_codec_round_trip");
+    private static final ResourceKey<Consumer<GameTestHelper>> NEST_PLAN_IS_DETERMINISTIC =
+            function("nest_plan_is_deterministic");
+    private static final ResourceKey<Consumer<GameTestHelper>> LARDER_PLAN_IS_DETERMINISTIC =
+            function("larder_plan_is_deterministic");
+    private static final ResourceKey<Consumer<GameTestHelper>> NEST_CARVES_ACROSS_CHUNKS =
+            function("nest_carves_across_chunks");
+    private static final ResourceKey<Consumer<GameTestHelper>> FORTRESS_MOUND_KEEPS_ITS_MOUND =
+            function("fortress_mound_keeps_its_mound");
 
     private ModGameTests() {
     }
@@ -100,6 +112,12 @@ public final class ModGameTests {
             registry.register(CARVING_CLEARS_GROUND, BurrowGameTests::carvingClearsGround);
             registry.register(CARVING_IS_RECOGNISED, BurrowGameTests::carvingIsRecognised);
             registry.register(LINK_STORE_ROUND_TRIP, BurrowGameTests::linkStoreRoundTrip);
+            registry.register(RECONCILER_CARVES_ACROSS_CHUNKS, BurrowGameTests::reconcilerCarvesAcrossChunks);
+            registry.register(LEDGER_CODEC_ROUND_TRIP, BurrowGameTests::ledgerCodecRoundTrip);
+            registry.register(NEST_PLAN_IS_DETERMINISTIC, BurrowGameTests::nestPlanIsDeterministic);
+            registry.register(LARDER_PLAN_IS_DETERMINISTIC, BurrowGameTests::larderPlanIsDeterministic);
+            registry.register(NEST_CARVES_ACROSS_CHUNKS, BurrowGameTests::nestCarvesAcrossChunks);
+            registry.register(FORTRESS_MOUND_KEEPS_ITS_MOUND, BurrowGameTests::fortressMoundKeepsItsMound);
         });
     }
 
@@ -113,6 +131,12 @@ public final class ModGameTests {
         declare(event, environment, CARVING_CLEARS_GROUND);
         declare(event, environment, CARVING_IS_RECOGNISED);
         declare(event, environment, LINK_STORE_ROUND_TRIP);
+        declare(event, environment, RECONCILER_CARVES_ACROSS_CHUNKS);
+        declare(event, environment, LEDGER_CODEC_ROUND_TRIP);
+        declare(event, environment, NEST_PLAN_IS_DETERMINISTIC);
+        declare(event, environment, LARDER_PLAN_IS_DETERMINISTIC);
+        declare(event, environment, NEST_CARVES_ACROSS_CHUNKS);
+        declare(event, environment, FORTRESS_MOUND_KEEPS_ITS_MOUND);
     }
 
     /** One test, named after the function it runs, so a failure names something findable. */

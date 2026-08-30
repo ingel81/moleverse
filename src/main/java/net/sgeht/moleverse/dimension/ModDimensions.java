@@ -29,15 +29,15 @@ import org.jetbrains.annotations.Nullable;
  * remaining source of unasked-for blocks. Nothing arrives down there that the mod
  * did not put there.</p>
  *
- * <h2>Why minecraft:deep_dark rather than a custom biome</h2>
+ * <h2>Why moleverse:burrow rather than a borrowed vanilla biome</h2>
  *
- * <p>A biome is only consulted for two things here - mob spawning and the handful of
- * environment attributes it contributes - because the flat generator ignores its
- * features and carvers. {@code deep_dark} is the single vanilla biome whose spawner
- * list is empty in every category, monsters included, which is precisely the property
- * a custom biome would have been written for. Its attributes are the deep dark music
- * and a sky colour that a dimension with a ceiling never shows. So a custom biome
- * would carry no information the vanilla one does not already carry.</p>
+ * <p>A biome is only consulted for two things here - mob spawning and the environment
+ * attributes it contributes - because the flat generator ignores its features and
+ * carvers. That was long enough satisfied by {@code deep_dark}, whose spawner list is
+ * empty in every category. What it also carries is a sky colour, and a biome sets that
+ * as a positional layer over the dimension's constant one and wins: the pale blue bled
+ * into the burrow's fog and had to be fought from client code. The custom biome is what
+ * ends that, and it is where the creature waves' spawn lists go.</p>
  *
  * <h2>Settings worth explaining</h2>
  *

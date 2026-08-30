@@ -12,6 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 import net.sgeht.moleverse.entity.burrow.BurrowConstants;
 import net.sgeht.moleverse.entity.burrow.BurrowLink;
@@ -64,6 +65,41 @@ import net.sgeht.moleverse.registry.ModBlocks;
  * stairwell is the hole left in it. It is laid with the same fill-air rule as the
  * steps, so it shapes itself to the pit and stops at the point where the upper
  * corridor's own floor takes over.</p>
+ *
+ * <h2>Finding and building are two halves</h2>
+ *
+ * <p>{@link #crossingsOf} is arithmetic on the colony's links and touches no
+ * level at all, so a shaft's place is known before any of the ground exists;
+ * {@link #connect(ServerLevel, Crossing, BoundingBox)} builds one of them,
+ * writing only inside whatever box the caller owns. The old whole-colony
+ * {@link #connect(ServerLevel, List)} is the two of them in a loop.</p>
+ *
+ * <p>Spacing moved into the finder with the rest of the arithmetic, so which
+ * crossing wins a contested spot no longer depends on which shafts happened to be
+ * standing when somebody asked - see {@link Junctions}, which made the same trade
+ * for the same reason and states it at length.</p>
+ *
+ * <h2>The height contract, kept here by the shape rather than by a constant</h2>
+ *
+ * <p>{@link Junctions} states it in full: a place that is not a corridor has to
+ * be clear to at least {@code CORRIDOR_HEIGHT + 2} on its axis, because that is
+ * how the decoration pass tells the two apart - it probes for a ceiling and a
+ * corridor is capped one block below that reach. A shaft mouth keeps the same
+ * promise, and keeps it without a constant of its own:</p>
+ *
+ * <p>The column at the middle of a well is open from the lower corridor's walking
+ * surface, up the well, through the stairwell the deck leaves in itself, and on
+ * into the upper corridor's own air. That is {@link #MIN_RISE} plus the upper
+ * corridor's height at the very least, which is nine against a bound of eight -
+ * and a shaft with less rise than that is not built at all. Standing at the
+ * bottom of a shaft and looking up, the probe finds nothing within its reach,
+ * which is the correct answer: there is no ceiling there, there is another
+ * storey.</p>
+ *
+ * <p>What that turns on is the deck being {@link ModBlocks#ROOT_BEAM}, which the
+ * decorator counts as corridor space rather than as a ceiling. If the deck ever
+ * becomes something solid to a probe, this promise breaks and a shaft starts
+ * reading as a corridor with a very low roof.</p>
  */
 public final class LevelShafts {
 
@@ -101,6 +137,20 @@ public final class LevelShafts {
 
     /** Blocks of air a player needs over a step. Two, because that is how tall they are. */
     private static final int HEADROOM = 2;
+
+    /**
+     * How far the topmost layer of the well is drawn in, so the shaft opens rather
+     * than ends.
+     *
+     * <p>One block. A well cut to one radius from end to end meets its own lid in
+     * a right angle, and that ring is the most machined thing in the dimension
+     * because you are looking straight up at it while you climb. Only the very top
+     * layer, and only by a block: the layer below it is where the top step's
+     * headroom is, and the helix itself sits on the rim of the well, so anything
+     * more would take a tread's column away and leave a staircase with a step
+     * missing.</p>
+     */
+    private static final int MOUTH_TAPER = 1;
 
     /**
      * Smallest gap this joins.
@@ -153,6 +203,10 @@ public final class LevelShafts {
      * recognised and cost nothing, so a colony with more crossings than this
      * finishes over the next few visits, exactly the way a run whose far end was
      * not loaded finishes over the next few visits.</p>
+     *
+     * <p>It bounds {@link #connect(ServerLevel, List)} alone. A caller working a
+     * chunk at a time is already spending a chunk's worth of effort and has no
+     * whole colony to be surprised by.</p>
      */
     private static final int MAX_NEW_PER_CALL = 8;
 
@@ -183,6 +237,11 @@ public final class LevelShafts {
     /**
      * Where a shaft goes, in burrow space.
      *
+     * @param one      one of the two runs that pass over one another here. Kept so
+     *                 that whoever holds a crossing can say which pair produced it
+     *                 without finding it a second time - the plan layer names its
+     *                 features after exactly that pair
+     * @param other    the other run
      * @param x        centre of the well, on both corridors' centre lines
      * @param z        the same
      * @param low      walking surface of the lower run at the crossing
@@ -192,10 +251,32 @@ public final class LevelShafts {
      *                 corridor's floor and nowhere else
      * @param alongZ   the same
      */
-    private record Crossing(int x, int z, int low, int rise, double alongX, double alongZ) {
+    public record Crossing(BurrowLink one, BurrowLink other, int x, int z, int low, int rise,
+            double alongX, double alongZ) {
 
-        int top() {
+        public int top() {
             return this.low + this.rise;
+        }
+
+        /**
+         * Every block building this shaft can reach.
+         *
+         * <p>The deck outreaches the well, so the horizontal is its business; the
+         * vertical belongs to the well, which goes a player's height past the top
+         * step. A single box for both is honest here because the two overlap
+         * almost completely and the surplus is a corner of earth nobody writes
+         * into.</p>
+         *
+         * <p>The well's own reach now includes the soil lining around it, in all
+         * six directions - a chunk is only asked about a feature whose bounds
+         * reach into it, and a box drawn to the cut alone would have the lining
+         * stop at a chunk border with deep earth showing beside it.</p>
+         */
+        public BoundingBox bounds() {
+            int reach = Math.max(WELL_RADIUS + CorridorCarver.SHELL_MAX, DECK_REACH);
+            return new BoundingBox(
+                    this.x - reach, this.low - CorridorCarver.SHELL_MAX, this.z - reach,
+                    this.x + reach, this.top() + HEADROOM - 1 + CorridorCarver.SHELL_MAX, this.z + reach);
         }
 
         /**
@@ -205,34 +286,35 @@ public final class LevelShafts {
          * on every visit - which is what {@link LevelShafts#standsAlready} depends
          * on, and what keeps two neighbouring shafts from facing the same way.</p>
          */
-        int ringStart() {
+        private int ringStart() {
             return Math.floorMod(this.x * 31 + this.z, RING.length);
         }
 
         /** Ring offset of step {@code k}, counted up from the lower corridor. */
-        int[] step(int k) {
+        private int[] step(int k) {
             return RING[(ringStart() + k) % RING.length];
         }
     }
 
     /**
-     * Cuts a way between the levels of one colony, wherever two runs pass over one
-     * another.
+     * Where one colony's shafts belong, spacing already settled.
+     *
+     * <p>Pure arithmetic on the links - no level, no block reads, no world at all.
+     * The answer therefore exists before any of the ground does, which is what
+     * lets the plan layer hand a chunk the shafts that pass through it rather than
+     * have the chunk work them out.</p>
      *
      * <p>Hand it <em>all</em> the runs of the colony. A crossing is between two
      * different runs, and the runs that meet at one mound meet only there - so the
      * runs of a single mound produce nothing.</p>
      *
-     * <p>Nothing is dug where the two corridors are not already open. A shaft is a
-     * connection between two things, and driving one into ground the carver has not
-     * reached yet would leave a stair in a sealed pocket. The world is what answers
-     * that, and an unloaded crossing answers "not yet" - the next visit asks
-     * again, which is the same bargain {@link CorridorCarver} makes.</p>
-     *
-     * @return how many shafts this call cut. Shafts that already stood are not
-     *         counted and are not dug again
+     * <p>The list comes out sorted by position and thinned by
+     * {@link #MIN_SEPARATION}, greedily and in that order: a crossing is kept
+     * unless one already kept is too close. Sorting first is what makes the
+     * thinning a property of the colony's shape rather than of the order the store
+     * happened to be written in.</p>
      */
-    public static int connect(ServerLevel burrow, List<BurrowLink> colonyRuns) {
+    public static List<Crossing> crossingsOf(List<BurrowLink> colonyRuns) {
         List<Crossing> candidates = new ArrayList<>();
         for (int i = 0; i < colonyRuns.size(); i++) {
             for (int j = i + 1; j < colonyRuns.size(); j++) {
@@ -247,44 +329,82 @@ public final class LevelShafts {
                 }
             }
         }
-        if (candidates.isEmpty()) {
-            return 0;
-        }
 
-        // Sorted by position rather than left in the order the runs happened to be
-        // stored in. Which crossing wins a contested spot is then a property of the
-        // colony's shape, not of how the store was last written - so the same
-        // colony gets the same shafts whoever asks and in whatever order.
         candidates.sort(Comparator.<Crossing>comparingInt(Crossing::x)
                 .thenComparingInt(Crossing::z)
                 .thenComparingInt(Crossing::low));
 
-        // Two passes. What already stands is a fact and claims its ground first;
-        // only then is the rest allowed to compete for what is left. The other way
-        // round, a fresh crossing could win a spot next to a shaft that already
-        // exists and put a second staircase twenty blocks from the first.
-        List<Crossing> standing = new ArrayList<>();
-        List<Crossing> fresh = new ArrayList<>();
+        List<Crossing> spaced = new ArrayList<>();
         for (Crossing crossing : candidates) {
-            if (!bothCorridorsOpen(burrow, crossing)) {
-                continue;
+            if (!crowded(crossing, spaced)) {
+                spaced.add(crossing);
             }
-            (standsAlready(burrow, crossing) ? standing : fresh).add(crossing);
+        }
+        return List.copyOf(spaced);
+    }
+
+    /**
+     * Builds one shaft, writing only inside {@code clamp}.
+     *
+     * <p>A null clamp is the unbounded case and builds the whole thing. Anything
+     * else is a caller that owns a box - a chunk, in practice - and every write
+     * outside it is dropped silently: the block belongs to a chunk that will ask
+     * for its own part of this shaft when its turn comes. Building the same shaft
+     * from several chunks costs reads and nothing else, because the well only
+     * clears deep earth and the deck and the steps only fill air.</p>
+     *
+     * <p>Nothing is dug where the two corridors are not already open. A shaft is a
+     * connection between two things, and driving one into ground the carver has not
+     * reached yet would leave a stair in a sealed pocket. The world is what answers
+     * that, and an unloaded crossing answers "not yet" - the next visit asks
+     * again, which is the same bargain {@link CorridorCarver} makes.</p>
+     *
+     * <p><strong>It does not ask whether the shaft is already standing.</strong>
+     * {@link #standsAlready} reads the helix, which a clamp is free to split
+     * across two chunks - so a shaft raised from one chunk would tell the next
+     * chunk its share was already done, and the steps on that side would never be
+     * placed. Building again is cheap and idempotent; being told a lie about it is
+     * not.</p>
+     *
+     * @return whether the crossing was open and was therefore built, as far as the
+     *         clamp let it
+     */
+    public static boolean connect(ServerLevel burrow, Crossing crossing, @Nullable BoundingBox clamp) {
+        if (!bothCorridorsOpen(burrow, crossing)) {
+            return false;
         }
 
+        dig(burrow, crossing, clamp);
+        LOG.debug("shaft at {} {} {}, {} blocks of rise", crossing.x(), crossing.low(), crossing.z(),
+                crossing.rise());
+        return true;
+    }
+
+    /**
+     * Cuts a way between the levels of one colony wherever two runs pass over one
+     * another, unclamped.
+     *
+     * <p>The finder and the builder in a loop. {@link #standsAlready} is asked here
+     * and only here: this path builds whole shafts, so the helix it reads is one
+     * this call would otherwise raise itself, and recognising the ones that already
+     * stand is what keeps {@link #MAX_NEW_PER_CALL} spending its budget on shafts
+     * that do not yet exist.</p>
+     *
+     * @return how many shafts this call cut. Shafts that already stood are not
+     *         counted and are not dug again
+     */
+    public static int connect(ServerLevel burrow, List<BurrowLink> colonyRuns) {
         int cut = 0;
-        for (Crossing crossing : fresh) {
+        for (Crossing crossing : crossingsOf(colonyRuns)) {
             if (cut >= MAX_NEW_PER_CALL) {
                 break;
             }
-            if (crowded(crossing, standing)) {
+            if (standsAlready(burrow, crossing)) {
                 continue;
             }
-            dig(burrow, crossing);
-            standing.add(crossing);
-            cut++;
-            LOG.debug("shaft at {} {} {}, {} blocks of rise", crossing.x(), crossing.low(), crossing.z(),
-                    crossing.rise());
+            if (connect(burrow, crossing, null)) {
+                cut++;
+            }
         }
         return cut;
     }
@@ -354,7 +474,7 @@ public final class LevelShafts {
         double upperZ = oneIsUpper ? rz : vz;
         double upperLength = Math.sqrt(upperX * upperX + upperZ * upperZ);
 
-        return new Crossing(x, z, Math.min(oneY, otherY), rise,
+        return new Crossing(one, other, x, z, Math.min(oneY, otherY), rise,
                 upperX / upperLength, upperZ / upperLength);
     }
 
@@ -430,6 +550,10 @@ public final class LevelShafts {
      * {@code TunnelDecorator} stands roots in corridors too, and one of them can
      * land on one of these columns by chance. It cannot land on all of them: the
      * helix is a different column at every height.</p>
+     *
+     * <p>Only {@link #connect(ServerLevel, List)} may ask this, and the reason is
+     * in that method's own javadoc: the helix cannot speak for a shaft that is
+     * being raised a clamped piece at a time.</p>
      */
     private static boolean standsAlready(ServerLevel burrow, Crossing crossing) {
         for (int k = 0; k < crossing.rise(); k++) {
@@ -458,16 +582,19 @@ public final class LevelShafts {
      * - the top step lies in the deck's own layer and is the same block either
      * way, which is cheaper than working out which of the two owns it.</p>
      */
-    private static void dig(ServerLevel burrow, Crossing crossing) {
+    private static void dig(ServerLevel burrow, Crossing crossing, @Nullable BoundingBox clamp) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         BlockState beam = ModBlocks.ROOT_BEAM.get().defaultBlockState();
 
-        sinkWell(burrow, crossing, cursor);
-        layDeck(burrow, crossing, beam, cursor);
+        sinkWell(burrow, crossing, clamp, cursor);
+        layDeck(burrow, crossing, beam, clamp, cursor);
 
         for (int k = 0; k < crossing.rise(); k++) {
             int[] offset = crossing.step(k);
-            place(burrow, cursor.set(crossing.x() + offset[0], crossing.low() + k, crossing.z() + offset[1]), beam);
+            cursor.set(crossing.x() + offset[0], crossing.low() + k, crossing.z() + offset[1]);
+            if (within(clamp, cursor)) {
+                place(burrow, cursor, beam);
+            }
         }
     }
 
@@ -483,18 +610,28 @@ public final class LevelShafts {
      *
      * <p>The floor of the lower corridor is not touched: the well starts at the
      * walking surface, one above it, exactly as a corridor does.</p>
+     *
+     * <p>Lined as it is sunk, through {@code CorridorCarver.discAndShell} - the
+     * same pass a corridor and a junction use, so the wall of a shaft is the soil
+     * every other wall down there is and the rule about what may be cleared has
+     * one copy. On the long rises that matters most: the middle of a tall shaft is
+     * the one place in this dimension where a player is surrounded by earth on all
+     * four sides at once.</p>
      */
-    private static void sinkWell(ServerLevel burrow, Crossing crossing, BlockPos.MutableBlockPos cursor) {
-        for (int y = crossing.low(); y <= crossing.top() + HEADROOM - 1; y++) {
-            for (int dx = -WELL_RADIUS; dx <= WELL_RADIUS; dx++) {
-                for (int dz = -WELL_RADIUS; dz <= WELL_RADIUS; dz++) {
-                    if (!withinDisc(dx, dz, WELL_RADIUS)) {
-                        continue;
-                    }
-                    cursor.set(crossing.x() + dx, y, crossing.z() + dz);
-                    CorridorCarver.clear(burrow, cursor);
-                }
-            }
+    private static void sinkWell(ServerLevel burrow, Crossing crossing, @Nullable BoundingBox clamp,
+            BlockPos.MutableBlockPos cursor) {
+        int lid = crossing.top() + HEADROOM - 1;
+
+        for (int y = crossing.low() - CorridorCarver.SHELL_MAX;
+                y <= lid + CorridorCarver.SHELL_MAX; y++) {
+            int away = y < crossing.low() ? crossing.low() - y : Math.max(0, y - lid);
+            // The mouth: the top layer of the well comes in, so the shaft opens
+            // into the upper corridor on a curve instead of through a ring. The
+            // soil above it wraps that same layer rather than the full bore, so
+            // the skin closes over the mouth on the same curve.
+            int nearest = Math.clamp(y, crossing.low(), lid);
+            int core = nearest == lid ? WELL_RADIUS - MOUTH_TAPER : WELL_RADIUS;
+            CorridorCarver.discAndShell(burrow, crossing.x(), y, crossing.z(), core, away, cursor, clamp);
         }
     }
 
@@ -514,7 +651,7 @@ public final class LevelShafts {
      * has built or the decorator has already put down.</p>
      */
     private static void layDeck(ServerLevel burrow, Crossing crossing, BlockState beam,
-            BlockPos.MutableBlockPos cursor) {
+            @Nullable BoundingBox clamp, BlockPos.MutableBlockPos cursor) {
         int deckY = crossing.top() - 1;
 
         for (int dx = -DECK_REACH; dx <= DECK_REACH; dx++) {
@@ -527,7 +664,10 @@ public final class LevelShafts {
                 if (Math.abs(along) > DECK_REACH || Math.abs(across) > WELL_RADIUS + 0.5) {
                     continue;
                 }
-                place(burrow, cursor.set(crossing.x() + dx, deckY, crossing.z() + dz), beam);
+                cursor.set(crossing.x() + dx, deckY, crossing.z() + dz);
+                if (within(clamp, cursor)) {
+                    place(burrow, cursor, beam);
+                }
             }
         }
     }
@@ -568,8 +708,16 @@ public final class LevelShafts {
         burrow.setBlock(pos, state, PLACE_FLAGS);
     }
 
-    /** The same integer disc a corridor is cut with, for the same reason. */
-    private static boolean withinDisc(int dx, int dz, int radius) {
-        return dx * dx + dz * dz <= radius * radius + radius;
+    /**
+     * Whether the caller's box lets us write here. Null is the unbounded case.
+     *
+     * <p>A copy rather than a shared helper: it is one line, {@link Junctions} is
+     * the only other caller, and neither class has any other business with the
+     * other. The clamp is the <em>normal</em> bound on a write now; the
+     * loaded-chunk checks in {@link #place} and {@link CorridorCarver#clear} still
+     * sit underneath it as the last line of defence.</p>
+     */
+    private static boolean within(@Nullable BoundingBox clamp, BlockPos pos) {
+        return clamp == null || clamp.isInside(pos);
     }
 }

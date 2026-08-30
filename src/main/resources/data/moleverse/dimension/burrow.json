@@ -3,7 +3,7 @@
   "generator": {
     "type": "minecraft:flat",
     "settings": {
-      "biome": "minecraft:deep_dark",
+      "biome": "moleverse:burrow",
       "features": false,
       "lakes": false,
       "layers": [
