@@ -6,6 +6,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.loot.EntityLootSubProvider;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -44,6 +45,35 @@ public final class ModEntityLootProvider extends EntityLootSubProvider {
                         .setRolls(ConstantValue.exactly(1.0F))
                         .add(LootItem.lootTableItem(ModItems.EARTHWORM.get())
                                 .apply(SetItemCountFunction.setCount(UniformGenerator.between(2.0F, 4.0F))))));
+
+        // A small worm is a worm. Constant 1, not uniform 0..1 - that rounds
+        // down half the time and reads as a broken drop rather than as rarity.
+        add(ModEntities.EARTHWORM.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1.0F))
+                        .add(LootItem.lootTableItem(ModItems.EARTHWORM.get())
+                                .apply(SetItemCountFunction.setCount(ConstantValue.exactly(1.0F))))));
+
+        add(ModEntities.SOIL_BEETLE.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1.0F))
+                        .add(LootItem.lootTableItem(ModItems.CHITIN_FLAKE.get())
+                                .apply(SetItemCountFunction.setCount(UniformGenerator.between(0.0F, 1.0F))))));
+
+        add(ModEntities.SHREW.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1.0F))
+                        .add(LootItem.lootTableItem(ModItems.EARTHWORM.get())
+                                .apply(SetItemCountFunction.setCount(ConstantValue.exactly(1.0F)))
+                                .when(LootItemRandomChanceCondition.randomChance(0.3F)))));
+
+        // An incursion is an event every few evenings, and whoever ends one
+        // gets paid for it: 1-2 pelts guaranteed. No chitin - chitin comes off
+        // armoured animals, and a weasel wears fur. The pelt is the punchline:
+        // it is what the animal ate.
+        add(ModEntities.WEASEL.get(), LootTable.lootTable()
+                .withPool(LootPool.lootPool().setRolls(ConstantValue.exactly(1.0F))
+                        .add(LootItem.lootTableItem(ModItems.MOLE_PELT.get())
+                                .apply(SetItemCountFunction.setCount(UniformGenerator.between(1.0F, 2.0F))))));
     }
 
     @Override

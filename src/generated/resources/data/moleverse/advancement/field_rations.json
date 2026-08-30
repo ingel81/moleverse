@@ -1,0 +1,31 @@
+{
+  "parent": "moleverse:dig_in",
+  "criteria": {
+    "eat_root_nodule": {
+      "conditions": {
+        "item": {
+          "items": "moleverse:root_nodule"
+        }
+      },
+      "trigger": "minecraft:consume_item"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.field_rations.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:root_nodule"
+    },
+    "title": {
+      "translate": "advancements.moleverse.field_rations.title"
+    }
+  },
+  "requirements": [
+    [
+      "eat_root_nodule"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

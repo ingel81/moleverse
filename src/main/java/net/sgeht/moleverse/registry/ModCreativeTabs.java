@@ -29,6 +29,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.EARTHWORM.get());
                         output.accept(ModItems.FAT_WORM.get());
                         output.accept(ModItems.GLOW_WORM.get());
+                        output.accept(ModItems.ROOT_NODULE.get());
                         output.accept(ModItems.WORM_BOX.get());
                         output.accept(ModItems.MOLE_TRAP.get());
                         output.accept(ModItems.MOLE_IN_SACK.get());
@@ -45,6 +46,12 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.GLOW_MYCELIUM.get());
                         output.accept(ModItems.DEEP_EARTH.get());
                         output.accept(ModItems.MOLE_SPAWN_EGG.get());
+                        output.accept(ModItems.EARTHWORM_SPAWN_EGG.get());
+                        output.accept(ModItems.SOIL_BEETLE_SPAWN_EGG.get());
+                        output.accept(ModItems.GRUB_SPAWN_EGG.get());
+                        output.accept(ModItems.SHREW_SPAWN_EGG.get());
+                        output.accept(ModItems.WEASEL_SPAWN_EGG.get());
+                        output.accept(ModItems.CHITIN_FLAKE.get());
                         output.accept(ModItems.GREAT_WORM_SPAWN_EGG.get());
                     })
                     .build());

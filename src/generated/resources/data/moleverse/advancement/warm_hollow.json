@@ -1,11 +1,11 @@
 {
-  "parent": "moleverse:shored_up",
+  "parent": "moleverse:the_nest",
   "criteria": {
-    "fat_worm": {
+    "glow_worm": {
       "conditions": {
         "items": [
           {
-            "items": "moleverse:fat_worm"
+            "items": "moleverse:glow_worm"
           }
         ]
       },
@@ -14,19 +14,20 @@
   },
   "display": {
     "description": {
-      "translate": "advancements.moleverse.a_find.description"
+      "translate": "advancements.moleverse.warm_hollow.description"
     },
+    "frame": "goal",
     "icon": {
       "count": 1,
-      "id": "moleverse:fat_worm"
+      "id": "moleverse:glow_worm"
     },
     "title": {
-      "translate": "advancements.moleverse.a_find.title"
+      "translate": "advancements.moleverse.warm_hollow.title"
     }
   },
   "requirements": [
     [
-      "fat_worm"
+      "glow_worm"
     ]
   ],
   "sends_telemetry_event": true

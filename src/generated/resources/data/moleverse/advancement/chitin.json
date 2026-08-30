@@ -1,11 +1,11 @@
 {
-  "parent": "moleverse:shored_up",
+  "parent": "moleverse:down_there",
   "criteria": {
-    "fat_worm": {
+    "chitin_flake": {
       "conditions": {
         "items": [
           {
-            "items": "moleverse:fat_worm"
+            "items": "moleverse:chitin_flake"
           }
         ]
       },
@@ -14,19 +14,19 @@
   },
   "display": {
     "description": {
-      "translate": "advancements.moleverse.a_find.description"
+      "translate": "advancements.moleverse.chitin.description"
     },
     "icon": {
       "count": 1,
-      "id": "moleverse:fat_worm"
+      "id": "moleverse:chitin_flake"
     },
     "title": {
-      "translate": "advancements.moleverse.a_find.title"
+      "translate": "advancements.moleverse.chitin.title"
     }
   },
   "requirements": [
     [
-      "fat_worm"
+      "chitin_flake"
     ]
   ],
   "sends_telemetry_event": true

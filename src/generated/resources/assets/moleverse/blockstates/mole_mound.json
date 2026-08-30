@@ -1,6 +1,6 @@
 {
   "variants": {
-    "open=false": [
+    "fortress=false,open=false": [
       {
         "model": "moleverse:block/mole_mound_a"
       },
@@ -32,7 +32,41 @@
         "y": 270
       }
     ],
-    "open=true": [
+    "fortress=false,open=true": [
+      {
+        "model": "moleverse:block/mole_mound_open"
+      },
+      {
+        "model": "moleverse:block/mole_mound_open",
+        "y": 90
+      },
+      {
+        "model": "moleverse:block/mole_mound_open",
+        "y": 180
+      },
+      {
+        "model": "moleverse:block/mole_mound_open",
+        "y": 270
+      }
+    ],
+    "fortress=true,open=false": [
+      {
+        "model": "moleverse:block/mole_mound_fortress"
+      },
+      {
+        "model": "moleverse:block/mole_mound_fortress",
+        "y": 90
+      },
+      {
+        "model": "moleverse:block/mole_mound_fortress",
+        "y": 180
+      },
+      {
+        "model": "moleverse:block/mole_mound_fortress",
+        "y": 270
+      }
+    ],
+    "fortress=true,open=true": [
       {
         "model": "moleverse:block/mole_mound_open"
       },

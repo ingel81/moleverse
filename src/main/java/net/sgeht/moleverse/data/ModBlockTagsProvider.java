@@ -56,6 +56,7 @@ public final class ModBlockTagsProvider extends BlockTagsProvider {
 
         tag(BlockTags.MINEABLE_WITH_SHOVEL)
                 .add(ModBlocks.LOOSE_SOIL.get())
-                .add(ModBlocks.MOLE_MOUND.get());
+                .add(ModBlocks.MOLE_MOUND.get())
+                .add(ModBlocks.ROOT_NODULE.get());
     }
 }

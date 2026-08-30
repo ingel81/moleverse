@@ -1,4 +1,42 @@
 {
+  "ambient.burrow.scratch": {
+    "sounds": [
+      "moleverse:ambient/burrow/scratch1",
+      "moleverse:ambient/burrow/scratch2",
+      "moleverse:ambient/burrow/scratch3"
+    ],
+    "subtitle": "subtitles.moleverse.ambient.burrow.scratch"
+  },
+  "ambient.burrow.underearth": {
+    "sounds": [
+      {
+        "name": "moleverse:ambient/burrow/underearth_loop1",
+        "volume": 0.4
+      }
+    ]
+  },
+  "block.root_ladder.rustle": {
+    "sounds": [
+      "moleverse:block/root_ladder/ladder_rustle1",
+      "moleverse:block/root_ladder/ladder_rustle2"
+    ],
+    "subtitle": "subtitles.moleverse.block.root_ladder.rustle"
+  },
+  "entity.great_worm.slither": {
+    "sounds": [
+      "moleverse:entity/great_worm/worm_slither1",
+      "moleverse:entity/great_worm/worm_slither2",
+      "moleverse:entity/great_worm/worm_slither3"
+    ],
+    "subtitle": "subtitles.moleverse.entity.great_worm.slither"
+  },
+  "entity.grub.munch": {
+    "sounds": [
+      "moleverse:entity/grub/grub_munch1",
+      "moleverse:entity/grub/grub_munch2"
+    ],
+    "subtitle": "subtitles.moleverse.entity.grub.munch"
+  },
   "entity.mole.dig": {
     "sounds": [
       "moleverse:entity/mole/dig1",
@@ -18,5 +56,79 @@
       "moleverse:entity/mole/surface1"
     ],
     "subtitle": "subtitles.moleverse.entity.mole.surface"
+  },
+  "entity.shrew.hurt": {
+    "sounds": [
+      "moleverse:entity/shrew/shrew_hurt1",
+      "moleverse:entity/shrew/shrew_hurt2"
+    ],
+    "subtitle": "subtitles.moleverse.entity.shrew.hurt"
+  },
+  "entity.shrew.squeak": {
+    "sounds": [
+      "moleverse:entity/shrew/shrew_squeak1",
+      "moleverse:entity/shrew/shrew_squeak2",
+      "moleverse:entity/shrew/shrew_squeak3"
+    ],
+    "subtitle": "subtitles.moleverse.entity.shrew.squeak"
+  },
+  "entity.soil_beetle.click": {
+    "sounds": [
+      "moleverse:entity/soil_beetle/beetle_click1",
+      "moleverse:entity/soil_beetle/beetle_click2"
+    ],
+    "subtitle": "subtitles.moleverse.entity.soil_beetle.click"
+  },
+  "entity.weasel.chitter": {
+    "sounds": [
+      {
+        "name": "moleverse:entity/weasel/weasel_chitter1",
+        "volume": 0.8
+      },
+      {
+        "name": "moleverse:entity/weasel/weasel_chitter2",
+        "volume": 0.8
+      },
+      {
+        "name": "moleverse:entity/weasel/weasel_chitter3",
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitles.moleverse.entity.weasel.chitter"
+  },
+  "entity.weasel.hiss": {
+    "sounds": [
+      {
+        "name": "moleverse:entity/weasel/weasel_hiss1",
+        "volume": 0.8
+      },
+      {
+        "name": "moleverse:entity/weasel/weasel_hiss2",
+        "volume": 0.8
+      },
+      {
+        "name": "moleverse:entity/weasel/weasel_hiss3",
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitles.moleverse.entity.weasel.hiss"
+  },
+  "entity.weasel.hurt": {
+    "sounds": [
+      {
+        "name": "moleverse:entity/weasel/weasel_hurt1",
+        "volume": 0.8
+      },
+      {
+        "name": "moleverse:entity/weasel/weasel_hurt2",
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitles.moleverse.entity.weasel.hurt"
+  },
+  "music.burrow_theme": {
+    "sounds": [
+      "moleverse:music/burrow_theme1"
+    ]
   }
 }

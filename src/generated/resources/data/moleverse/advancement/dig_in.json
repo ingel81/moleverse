@@ -1,11 +1,11 @@
 {
-  "parent": "moleverse:shored_up",
+  "parent": "moleverse:deeper",
   "criteria": {
-    "fat_worm": {
+    "root_nodule": {
       "conditions": {
         "items": [
           {
-            "items": "moleverse:fat_worm"
+            "items": "moleverse:root_nodule"
           }
         ]
       },
@@ -14,19 +14,19 @@
   },
   "display": {
     "description": {
-      "translate": "advancements.moleverse.a_find.description"
+      "translate": "advancements.moleverse.dig_in.description"
     },
     "icon": {
       "count": 1,
-      "id": "moleverse:fat_worm"
+      "id": "moleverse:loose_soil"
     },
     "title": {
-      "translate": "advancements.moleverse.a_find.title"
+      "translate": "advancements.moleverse.dig_in.title"
     }
   },
   "requirements": [
     [
-      "fat_worm"
+      "root_nodule"
     ]
   ],
   "sends_telemetry_event": true

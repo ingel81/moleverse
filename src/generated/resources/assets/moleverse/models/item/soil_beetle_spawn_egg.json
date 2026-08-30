@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "moleverse:item/soil_beetle_spawn_egg"
+  }
+}

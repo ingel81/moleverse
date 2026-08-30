@@ -35,6 +35,8 @@ public final class ModLanguageProvider extends LanguageProvider {
         addBlock(ModBlocks.SHAFT_LANTERN, "Shaft Lantern");
         addBlock(ModBlocks.SHRINK_POST, "Shrink Post");
         addBlock(ModBlocks.WORM_LARDER, "Worm Larder");
+        addBlock(ModBlocks.ROOT_NODULE, "Root Nodules");
+        addBlock(ModBlocks.ROOT_LADDER, "Root Ladder");
         addBlock(ModBlocks.EXCHANGE_STATION, "Exchange Station");
         addBlock(ModBlocks.GRUNTING_POST, "Grunting Post");
         addBlock(ModBlocks.COLONY_BOARD, "Colony Board");
@@ -45,11 +47,24 @@ public final class ModLanguageProvider extends LanguageProvider {
         addItem(ModItems.EARTHWORM, "Earthworm");
         addItem(ModItems.FAT_WORM, "Fat Worm");
         addItem(ModItems.GLOW_WORM, "Glow Worm");
+        addItem(ModItems.ROOT_NODULE, "Root Nodule");
         addBlock(ModBlocks.WORM_BOX, "Worm Box");
         addBlock(ModBlocks.MOLE_TRAP, "Mole Trap");
         addItem(ModItems.MOLE_IN_SACK, "Mole in a Sack");
         addItem(ModItems.MOLE_SPAWN_EGG, "Mole Spawn Egg");
         addItem(ModItems.GREAT_WORM_SPAWN_EGG, "Great Worm Spawn Egg");
+        addItem(ModItems.EARTHWORM_SPAWN_EGG, "Earthworm Spawn Egg");
+        addItem(ModItems.SOIL_BEETLE_SPAWN_EGG, "Soil Beetle Spawn Egg");
+        addItem(ModItems.GRUB_SPAWN_EGG, "Grub Spawn Egg");
+        addItem(ModItems.CHITIN_FLAKE, "Chitin Flake");
+        addEntityType(ModEntities.EARTHWORM, "Earthworm");
+        addEntityType(ModEntities.SOIL_BEETLE, "Soil Beetle");
+        addEntityType(ModEntities.GRUB, "Grub");
+        addEntityType(ModEntities.SHREW, "Shrew");
+        addEntityType(ModEntities.WEASEL, "Weasel");
+        addEntityType(ModEntities.TRAVELLING_MOLE, "Giant Mole");
+        addItem(ModItems.SHREW_SPAWN_EGG, "Shrew Spawn Egg");
+        addItem(ModItems.WEASEL_SPAWN_EGG, "Weasel Spawn Egg");
         addEntityType(ModEntities.MOLE, "Mole");
         addEntityType(ModEntities.GREAT_WORM, "Great Worm");
 
@@ -84,15 +99,48 @@ public final class ModLanguageProvider extends LanguageProvider {
                 "The run a mole dug through one block of soil, at the size it is to a mole.");
         advancement("scale_of_it", "The Scale of It",
                 "The same earthworm you farm, as tall as you are.");
-        advancement("a_find", "A Find",
-                "Worms in, something else out. What exactly is not settled yet.");
+        advancement("a_find", "Worth Its Weight",
+                "A worm with some substance to it. The colony can tell the difference, and pays like it.");
         advancement("deeper", "Deeper",
                 "Some things only exist below, and this is one of them.");
+        advancement("dig_in", "Dig In",
+                "The walls down here are soil, and soil has things in it.");
+        advancement("field_rations", "Field Rations",
+                "Raw, gritty, and two paces from where you were standing. It will do.");
+        advancement("larder", "Somebody's Pantry",
+                "Worms, bitten so they cannot leave. A mole keeps a larder, and this one is not yours.");
+        advancement("the_nest", "The Middle of It",
+                "Dry grass dragged into a dish. Every run in the colony comes back here.");
+        advancement("warm_hollow", "The Warm Hollow",
+                "A lid of moss over the one thing in a colony worth digging up.");
+        advancement("chitin", "Plated",
+                "A beetle leaves its plate behind. Nothing above ground grows one.");
+        advancement("nipped", "Nipped",
+                "Shrews were here first, they are quicker than you, and there are three of them.");
+        advancement("not_today", "Not Today",
+                "A weasel works a corridor the way a mole does: end to end, without turning round.");
 
         // Subtitles. Without these, players with subtitles enabled see nothing.
         add("subtitles." + Moleverse.MOD_ID + ".entity.mole.dig", "Mole digs");
         add("subtitles." + Moleverse.MOD_ID + ".entity.mole.sniff", "Mole sniffs");
         add("subtitles." + Moleverse.MOD_ID + ".entity.mole.surface", "Mole surfaces");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.weasel.hiss", "Weasel hisses");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.weasel.chitter", "Weasel chitters");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.weasel.hurt", "Weasel yelps");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.shrew.squeak", "Shrew squeaks");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.shrew.hurt", "Shrew squeals");
+        add("subtitles." + Moleverse.MOD_ID + ".ambient.burrow.scratch", "Something digs");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.great_worm.slither", "Great Worm slithers");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.soil_beetle.click", "Soil Beetle clicks");
+        add("subtitles." + Moleverse.MOD_ID + ".entity.grub.munch", "Grub chews");
+        add("subtitles." + Moleverse.MOD_ID + ".block.root_ladder.rustle", "Roots rustle");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.feed", "Feed");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.feed_hint", "What one mole's trip costs, and what it pays.");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.tier", "%s: %s in, %s back");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.idle", "Nothing in there a mole would take.");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.finds", "Finds");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.finds_hint", "One armful per trip. The colony picks what.");
+        add("gui." + Moleverse.MOD_ID + ".exchange_station.shaft", "The shaft. A mole comes up, takes its pay, and leaves what it dug through.");
 
         add(Moleverse.MOD_ID + ".configuration.title", "Moleverse Configuration");
         add(Moleverse.MOD_ID + ".configuration.debugLogging", "Debug logging");

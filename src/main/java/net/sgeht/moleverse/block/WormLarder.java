@@ -26,6 +26,15 @@ import net.minecraft.world.level.block.state.BlockState;
  * gets out of it is the loot table's business. Every worm in it is in the block,
  * and breaking the block is how you get them.</p>
  *
+ * <p>That includes the one rule here that sounds like it needs code. A larder in
+ * a lit room also gives up a glow worm, and the light is measured by the loot
+ * table itself - a location check per face, since a larder is packed into a wall
+ * on five sides and the room is on the sixth. See {@code ModBlockLootProvider}
+ * for why the check reads the neighbours rather than this block's own position,
+ * which is the trap anybody reaching for {@code playerDestroy} here will fall
+ * into. Nothing about a larder needs to survive between two ticks, so nothing
+ * about a larder is stored.</p>
+ *
  * <p>The class exists for one thing beyond the name: {@link #animateTick}. A
  * larder sits in an unlit recess most of the time, and a wall that occasionally
  * sheds a few crumbs is a wall a player walks over to look at. Nothing here runs

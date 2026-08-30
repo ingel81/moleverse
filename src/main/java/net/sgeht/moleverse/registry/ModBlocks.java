@@ -6,6 +6,7 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.sgeht.moleverse.block.RootLadder;
 import net.sgeht.moleverse.Moleverse;
 import net.sgeht.moleverse.block.ColonyBoard;
 import net.sgeht.moleverse.block.ExchangeStation;
@@ -189,6 +190,41 @@ public final class ModBlocks {
                     .strength(0.9F)
                     .sound(SoundType.WOOD)
                     .noOcclusion());
+
+    /**
+     * A pocket of root nodules in the lining: the one thing in a corridor wall
+     * worth digging out.
+     *
+     * <p>Placed only by {@code CorridorCarver.liningAt}, at a hashed fraction of
+     * the lining, and never by hand - there is deliberately no block item. As
+     * soft as the soil around it, so that digging through a wall does not
+     * stutter when a pocket turns up in the middle of the swing; the sound is
+     * the one warning a player gets that they have hit one from behind.</p>
+     */
+    public static final DeferredBlock<Block> ROOT_NODULE = REGISTER.registerSimpleBlock(
+            "root_nodule",
+            props -> props.mapColor(MapColor.PODZOL)
+                    .strength(0.35F)
+                    .sound(SoundType.ROOTED_DIRT));
+
+    /**
+     * The way home, hanging from a chamber ceiling: braided roots to reach up
+     * for. Placed only by the transit - no block item, the {@code ROOT_NODULE}
+     * precedent.
+     */
+    public static final DeferredBlock<RootLadder> ROOT_LADDER = REGISTER.registerBlock(
+            "root_ladder",
+            RootLadder::new,
+            props -> props.mapColor(MapColor.PODZOL)
+                    // Unbreakable, like the deep earth it hangs from: the rope is
+                    // the way home, and a player who could mine it could strand
+                    // themselves - or be stranded by somebody else on a server.
+                    .strength(-1.0F, 3600000.0F)
+                    .sound(SoundType.HANGING_ROOTS)
+                    // noCollision clears occlusion along with the collision box.
+                    .noCollision()
+                    .noLootTable()
+                    .pushReaction(PushReaction.BLOCK));
 
     private ModBlocks() {
     }

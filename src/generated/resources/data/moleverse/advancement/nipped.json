@@ -1,0 +1,48 @@
+{
+  "parent": "moleverse:chitin",
+  "criteria": {
+    "hurt_by_shrew": {
+      "conditions": {
+        "damage": {
+          "source_entity": {
+            "type": "moleverse:shrew"
+          }
+        }
+      },
+      "trigger": "minecraft:entity_hurt_player"
+    },
+    "kill_shrew": {
+      "conditions": {
+        "entity": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type": "moleverse:shrew"
+            }
+          }
+        ]
+      },
+      "trigger": "minecraft:player_killed_entity"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.nipped.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "moleverse:shrew_spawn_egg"
+    },
+    "title": {
+      "translate": "advancements.moleverse.nipped.title"
+    }
+  },
+  "requirements": [
+    [
+      "hurt_by_shrew",
+      "kill_shrew"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

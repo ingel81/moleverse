@@ -1,0 +1,38 @@
+{
+  "parent": "moleverse:nipped",
+  "criteria": {
+    "kill_weasel": {
+      "conditions": {
+        "entity": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type": "moleverse:weasel"
+            }
+          }
+        ]
+      },
+      "trigger": "minecraft:player_killed_entity"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.moleverse.not_today.description"
+    },
+    "frame": "challenge",
+    "icon": {
+      "count": 1,
+      "id": "moleverse:weasel_spawn_egg"
+    },
+    "title": {
+      "translate": "advancements.moleverse.not_today.title"
+    }
+  },
+  "requirements": [
+    [
+      "kill_weasel"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

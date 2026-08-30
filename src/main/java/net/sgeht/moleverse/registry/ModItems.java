@@ -1,6 +1,7 @@
 package net.sgeht.moleverse.registry;
 
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.block.Block;
@@ -109,6 +110,41 @@ public final class ModItems {
             "great_worm_spawn_egg",
             SpawnEggItem::new,
             props -> props.spawnEgg(ModEntities.GREAT_WORM.get()));
+
+    /**
+     * What a wall pocket gives up: a knot of root with the swellings still on
+     * it. Food on the spot, and the base a later brewing line hangs off.
+     *
+     * <p>Sweet-berry sized on purpose. It is raw, it is dug out of a wall a few
+     * paces from where the player is standing, and there is no cooking down
+     * there - so it is the food that keeps a descent going, not the food that
+     * makes one unnecessary.</p>
+     */
+    public static final DeferredItem<Item> ROOT_NODULE = REGISTER.registerItem(
+            "root_nodule",
+            Item::new,
+            props -> props.food(new FoodProperties.Builder()
+                    .nutrition(2)
+                    .saturationModifier(0.1F)
+                    .build()));
+
+    /** What a soil beetle leaves behind: the crafting material of the deep. */
+    public static final DeferredItem<Item> CHITIN_FLAKE = REGISTER.registerSimpleItem("chitin_flake");
+
+    public static final DeferredItem<SpawnEggItem> EARTHWORM_SPAWN_EGG = REGISTER.registerItem(
+            "earthworm_spawn_egg", SpawnEggItem::new, props -> props.spawnEgg(ModEntities.EARTHWORM.get()));
+
+    public static final DeferredItem<SpawnEggItem> SOIL_BEETLE_SPAWN_EGG = REGISTER.registerItem(
+            "soil_beetle_spawn_egg", SpawnEggItem::new, props -> props.spawnEgg(ModEntities.SOIL_BEETLE.get()));
+
+    public static final DeferredItem<SpawnEggItem> GRUB_SPAWN_EGG = REGISTER.registerItem(
+            "grub_spawn_egg", SpawnEggItem::new, props -> props.spawnEgg(ModEntities.GRUB.get()));
+
+    public static final DeferredItem<SpawnEggItem> SHREW_SPAWN_EGG = REGISTER.registerItem(
+            "shrew_spawn_egg", SpawnEggItem::new, props -> props.spawnEgg(ModEntities.SHREW.get()));
+
+    public static final DeferredItem<SpawnEggItem> WEASEL_SPAWN_EGG = REGISTER.registerItem(
+            "weasel_spawn_egg", SpawnEggItem::new, props -> props.spawnEgg(ModEntities.WEASEL.get()));
 
     private ModItems() {
     }

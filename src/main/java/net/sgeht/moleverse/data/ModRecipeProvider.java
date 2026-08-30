@@ -51,6 +51,7 @@ public final class ModRecipeProvider extends RecipeProvider {
         soil();
         mound();
         attachments();
+        deep();
     }
 
     // --- Soil -------------------------------------------------------------
@@ -201,16 +202,70 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .save(this.output);
     }
 
+    // --- What comes up from the burrow ------------------------------------
+
+    /**
+     * Chitin is pigment, and pigment only.
+     *
+     * <p>The material wants to be armour - {@code docs/BURROW_LIFE.md} section 4
+     * says so in as many words - and that is exactly why it does not become any
+     * here. Gear is a plan that is written down and not yet made, and a recipe
+     * that spends the flake now decides for that plan without arguing with it.
+     * Dye decides nothing: brown has no gate behind it, nothing in the game is
+     * cheaper or safer for having it, and the recipe can be deleted the day the
+     * gear line lands without taking anything with it.</p>
+     *
+     * <p>What it does buy is the thing the drop needs today. A soil beetle drops
+     * nought or one flake and the flake does nothing at all, which does not read
+     * as "material for later" - it reads as an item somebody forgot to finish.
+     * One use, however plain, is the difference.</p>
+     *
+     * <p>Brown rather than black because that is what the flake looks like, and
+     * two flakes rather than one because the vanilla source is a cocoa bean and
+     * a bean is a larger thing than a scale off a beetle. The id has to be
+     * given: the default is taken from the result, which would write this into
+     * {@code data/minecraft/recipe/brown_dye.json} and quietly replace vanilla's
+     * own.</p>
+     */
+    private void deep() {
+        this.shapeless(RecipeCategory.MISC, Items.BROWN_DYE)
+                .requires(ModItems.CHITIN_FLAKE.get(), 2)
+                .unlockedBy(getHasName(ModItems.CHITIN_FLAKE.get()), this.has(ModItems.CHITIN_FLAKE.get()))
+                .save(this.output, key("brown_dye_from_chitin_flake"));
+    }
+
     // Deliberately without a recipe:
+    //
+    // * root_nodule - it is field food, and its own javadoc sets the intent:
+    //   the food that keeps a descent going, not the food that makes one
+    //   unnecessary. Every recipe that suggests itself works against that.
+    //   Cooking it would need a roasted item that does not exist, and a better
+    //   nodule is a longer descent on one trip to the wall. The one the burrow
+    //   plan actually promises is brewing, and brewing is deferred there - so
+    //   the nodule is spent on nothing until the line that wants it exists.
+    //
+    //   Nodule plus earthworm into a fat worm was the obvious candidate and is
+    //   the one to argue with, because it fits the worm economy and the bait
+    //   fiction exactly. It is refused on WormBox's own reasoning: the box
+    //   makes a fat worm on a 30% chance and its javadoc says why - "rich feed
+    //   buys a good chance at a better worm, not a recipe for one". A crafting
+    //   grid that turns one worm into one fat worm every time is that recipe,
+    //   and it would leave a two-minute machine with nothing to be for.
+    //
+    // * fat_worm, glow_worm - nothing consumes either yet; the exchange station
+    //   takes plain earthworms only and grading its input is what the tiers are
+    //   waiting for. A crafting sink invented now would be spent before the
+    //   mechanic they exist for arrives.
     //
     // * mole_mound - a molehill is an animal's doing. Crafting one would let a
     //   player fabricate the whole network by hand, which is the one thing the
     //   mod is about.
-    // * worm_larder - it breaks for two to four worms and does not give itself
-    //   back. Any recipe costing fewer than five worms is a duplication loop,
-    //   and one costing more is a recipe nobody would ever craft. There is no
-    //   price in between, so it stays a thing found in the burrow. That also
-    //   keeps it honest: a larder is a colony's cache, not player furniture.
+    // * worm_larder - it breaks for one or two worms, sometimes a better one,
+    //   and does not give itself back. Any recipe costing fewer worms than a
+    //   larder pays out is a duplication loop, and one costing more is a recipe
+    //   nobody would ever craft. There is no price in between, so it stays a
+    //   thing found in the burrow. That also keeps it honest: a larder is a
+    //   colony's cache, not player furniture.
     // * glow_mycelium - likewise found below, and it is the burrow's own light.
     //   Nothing in the overworld it could plausibly be made of, and making it
     //   craftable would let a player light the corridors from a workbench

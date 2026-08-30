@@ -41,6 +41,13 @@ public final class ModModelProvider extends ModelProvider {
     protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
         // Cube with the same texture on all faces; the block item reuses the block model.
         blockModels.createTrivialCube(ModBlocks.LOOSE_SOIL.get());
+        blockModels.createTrivialCube(ModBlocks.ROOT_NODULE.get());
+
+        // Blockstate only: there is no block item, and registerSimpleItemModel would
+        // file the model under Items.AIR. handModelled without its second line.
+        blockModels.blockStateOutput.accept(MultiVariantGenerator.dispatch(
+                ModBlocks.ROOT_LADDER.get(),
+                BlockModelGenerators.variant(new Variant(Moleverse.id("block/root_ladder")))));
 
         registerMoleMound(blockModels);
         registerPreparedMoleMound(blockModels);
@@ -98,12 +105,19 @@ public final class ModModelProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.EARTHWORM.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.FAT_WORM.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GLOW_WORM.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.ROOT_NODULE.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.MOLE_IN_SACK.get(), ModelTemplates.FLAT_ITEM);
 
         // Spawn eggs carry their own texture in this version rather than the
         // old two-layer tinted template, so a flat item model is all it needs.
         itemModels.generateFlatItem(ModItems.MOLE_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.GREAT_WORM_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.EARTHWORM_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SOIL_BEETLE_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.GRUB_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SHREW_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.WEASEL_SPAWN_EGG.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.CHITIN_FLAKE.get(), ModelTemplates.FLAT_ITEM);
     }
 
     /**
@@ -123,11 +137,17 @@ public final class ModModelProvider extends ModelProvider {
         Variant flat = new Variant(Moleverse.id("block/mole_mound_b"));
         Variant open = new Variant(Moleverse.id("block/mole_mound_open"));
 
+        Variant fortress = new Variant(Moleverse.id("block/mole_mound_fortress"));
+
+        // The fortress keeps the ordinary open model: an opened shaft is a hole,
+        // and the heap around a hole is whatever the digging left of it.
         blockModels.blockStateOutput.accept(
                 MultiVariantGenerator.dispatch(ModBlocks.MOLE_MOUND.get())
-                        .with(PropertyDispatch.initial(MoleMound.OPEN)
-                                .select(false, rotations(domed, flat))
-                                .select(true, rotations(open))));
+                        .with(PropertyDispatch.initial(MoleMound.OPEN, MoleMound.FORTRESS)
+                                .select(false, false, rotations(domed, flat))
+                                .select(false, true, rotations(fortress))
+                                .select(true, false, rotations(open))
+                                .select(true, true, rotations(open))));
 
         // The item shows the domed shape; the flat one reads as a smear in hand.
         blockModels.registerSimpleItemModel(ModBlocks.MOLE_MOUND.get(), Moleverse.id("block/mole_mound_a"));
