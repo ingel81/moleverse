@@ -15,8 +15,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FogType;
-import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.sgeht.moleverse.dimension.ModDimensions;
 import net.sgeht.moleverse.registry.ModBlocks;
 import org.jetbrains.annotations.Nullable;
@@ -26,9 +24,28 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>The burrow is solid {@code deep_earth} with corridors cut out of it, no sky
  * and one light source. Left alone that renders as an unlit box: the walls are
- * still, the air is empty and the distance is black. The three layers here -
- * drifting motes, a sparse sound every twenty seconds or so, and brown fog -
- * exist to say that the space is inside something rather than merely dark.</p>
+ * still and the air is empty. The layers here - drifting motes, a drip off a
+ * named ceiling block, spores under the glow mycelium and a sparse sound every
+ * twenty seconds or so - exist to say that the space is inside something rather
+ * than merely dark.</p>
+ *
+ * <p>All of them are weather: a roll per tick, no memory, nothing a player is
+ * meant to look at directly. The one thing down here that is an event rather
+ * than weather lives next door in {@link BurrowScratching}, which this class
+ * drives but does not tune.</p>
+ *
+ * <p>The third layer, the brown distance, used to live here too and no longer
+ * does. It is four attributes on the {@code moleverse:burrow} biome now, which
+ * is where a colour belongs. One of them looks like a mistake and is not: the
+ * biome's {@code visual/sky_color} repeats its {@code visual/fog_color} rather
+ * than staying black, because {@code AtmosphericFogEnvironment.getBaseColor}
+ * lerps the fog colour towards the sky colour by an amount that falls as the
+ * render distance rises - about a sixth of the way at twelve chunks. Repeating
+ * the colour makes that lerp a no-op, so the distance is the same brown at
+ * every render distance. A dimension with a ceiling and {@code skybox: none}
+ * draws no sky, so nothing else reads the attribute. The burrow used to inherit
+ * {@code minecraft:deep_dark}, whose sky colour is a pale blue, and that lerp is
+ * what washed the brown towards mauve and is why this class overrode it.</p>
  *
  * <h2>Sparse on purpose</h2>
  *
@@ -47,29 +64,76 @@ import org.jetbrains.annotations.Nullable;
  * exactly when the atmosphere is looked at, so suppressing it then would remove
  * the effect from the only moment it is visible.</p>
  *
+ * <p>The spores are exempt from the exemption. They come off the glow mycelium,
+ * which is the thing making the light in the first place, so gating them on
+ * light would switch them off exactly where their source is.</p>
+ *
  * <h2>Cost</h2>
  *
  * <p>{@link #tick} leaves on a reference comparison when the player is anywhere
- * else. Inside the burrow the common path is two die rolls and a return; the two
- * probes that do run walk at most {@link #CEILING_REACH} block lookups up a
- * single column, and only after their gate has already fired. Nothing here is
- * held between ticks except one countdown.</p>
+ * else. Inside the burrow the common path is three die rolls, one decrement in
+ * {@link BurrowScratching} and a return; the probes that do run walk at most
+ * {@link #CEILING_REACH} block lookups up a single column, or
+ * {@link #SPORE_PROBES} single lookups, and only after their gate has already
+ * fired. Nothing here is held between ticks except one countdown.</p>
  *
  * <p>Client only, and it stays that way - there is nothing in an ambience the
  * server needs to agree with, so nothing is sent and nothing is asked. Two
  * players in the same corridor see different specks, which is correct: so do two
  * people in the same room.</p>
+ *
+ * <h2>The rates are not final</h2>
+ *
+ * <p>Every rate, radius and delay below is a mutable static rather than a
+ * constant, so that {@code /moleverse burrow panel} can move it while the corridor
+ * is in view - see {@code client.debug.BurrowTunePanel}. Nothing here is held
+ * between ticks except the countdown, so a slider takes effect on the next roll
+ * and there is nothing to rebuild. <b>The value written here is the shipped one.</b>
+ * The panel never writes back: a number settled at the slider is baked in by
+ * editing this file.</p>
  */
 public final class BurrowAmbience {
 
     /** Average ticks between two drifting motes. One roll per tick against this. */
-    private static final int MOTE_ONE_IN = 10;
+    public static int MOTE_ONE_IN = 10;
 
     /** Average ticks between two ceiling drips. Rarer than the motes by design. */
-    private static final int DRIP_ONE_IN = 80;
+    public static int DRIP_ONE_IN = 80;
+
+    /**
+     * Average ticks between two attempts at a spore, and darts per attempt.
+     *
+     * <p>Read these two together with {@link #SPORE_RADIUS}: an attempt throws
+     * {@link #SPORE_PROBES} darts into the box around the player and produces at
+     * most one spore, so the actual rate is the dart rate times the share of
+     * that box that is glow mycelium. That is the whole trick. A corridor with
+     * one patch overhead gets a mote every few seconds, a chamber lined with the
+     * stuff gets a slow steady fall, and bare earth costs three block lookups a
+     * few times a second and produces nothing. No search, no cache, and the
+     * effect is automatically "near the mycelium" without ever asking where the
+     * mycelium is.</p>
+     *
+     * <p>Low on purpose beyond that. A spore lives 500 to 1000 ticks - vanilla's
+     * number, not ours - so one per six seconds still leaves half a dozen of
+     * them hanging in the air at any moment, which is already at the top of what
+     * "occasional" can mean.</p>
+     */
+    public static int SPORE_ONE_IN = 6;
+    public static int SPORE_PROBES = 3;
+
+    /**
+     * Half the edge of the box the spore darts land in.
+     *
+     * <p>Small, and that is the tuning knob that matters most: the dart hit rate
+     * falls with the cube of this, so widening it to catch a distant patch also
+     * thins out the near one. Three and a half blocks is about a corridor's
+     * width, which is the range at which a mote under a ceiling patch is still a
+     * mote rather than a lit pixel.</p>
+     */
+    public static double SPORE_RADIUS = 3.5;
 
     /** How far from the player a mote may appear. Corridors are five blocks wide. */
-    private static final double MOTE_RADIUS = 7.0;
+    public static double MOTE_RADIUS = 7.0;
 
     /**
      * How far from the player a drip may appear.
@@ -78,7 +142,7 @@ public final class BurrowAmbience {
      * only reads if the ceiling it hangs from is identifiable, and past a few
      * blocks it is one pixel of blue.</p>
      */
-    private static final double DRIP_RADIUS = 4.0;
+    public static double DRIP_RADIUS = 4.0;
 
     /**
      * How far up a column is searched for a ceiling.
@@ -87,17 +151,17 @@ public final class BurrowAmbience {
      * ceiling from anywhere a player can stand, and gives up rather than scanning
      * to the build limit when it is pointed into a shaft.</p>
      */
-    private static final int CEILING_REACH = 10;
+    public static int CEILING_REACH = 10;
 
     /** Distance below the ceiling block a mote starts, before a random block on top. */
-    private static final double MOTE_DROP_GAP = 0.2;
+    public static double MOTE_DROP_GAP = 0.2;
 
     /** Block light at eye level from which the motes and drips stop. */
-    private static final int REFUGE_LIGHT = 12;
+    public static int REFUGE_LIGHT = 12;
 
     /** Shortest and longest gap between two ambient sounds, in ticks. */
-    private static final int SOUND_MIN_DELAY = 300;
-    private static final int SOUND_DELAY_SPREAD = 260;
+    public static int SOUND_MIN_DELAY = 300;
+    public static int SOUND_DELAY_SPREAD = 260;
 
     /**
      * Where an ambient sound is placed, relative to the player.
@@ -107,34 +171,9 @@ public final class BurrowAmbience {
      * client delays the sound by its travel time, which is the whole of the
      * "distant" cue and costs nothing.</p>
      */
-    private static final double SOUND_MIN_DISTANCE = 7.0;
-    private static final double SOUND_DISTANCE_SPREAD = 9.0;
-    private static final double SOUND_VERTICAL_SPREAD = 3.0;
-
-    /**
-     * The colour of the burrow's distance: warm, dark, brown.
-     *
-     * <p>The dimension has a fixed time, no sky and {@code sky_light_level: 0.0},
-     * so vanilla's own inputs to the fog colour - daylight, sky tint, void
-     * darkness - carry no information here and the result is very nearly black.
-     * There is nothing worth preserving in it, so it is replaced outright.</p>
-     */
-    private static final float FOG_RED = 0.190F;
-    private static final float FOG_GREEN = 0.135F;
-    private static final float FOG_BLUE = 0.095F;
-
-    /**
-     * How hard a bright incoming fog colour lifts the brown.
-     *
-     * <p>Night vision brightens the fog colour before the event fires. Setting the
-     * brown flat would throw that away and leave a black wall around a lit world,
-     * so the incoming brightness is kept as a multiplier instead.</p>
-     */
-    private static final float FOG_LIFT = 3.0F;
-
-    /** Where the brown starts and where it is total, in blocks. */
-    private static final float FOG_START = 5.0F;
-    private static final float FOG_END = 26.0F;
+    public static double SOUND_MIN_DISTANCE = 7.0;
+    public static double SOUND_DISTANCE_SPREAD = 9.0;
+    public static double SOUND_VERTICAL_SPREAD = 3.0;
 
     /** Ticks until the next ambient sound; negative while the player is elsewhere. */
     private static int soundCountdown = -1;
@@ -155,6 +194,7 @@ public final class BurrowAmbience {
         if (level == null || player == null || !ModDimensions.isBurrow(level)) {
             // Disarm, so that walking back in does not fire a sound on the first tick.
             soundCountdown = -1;
+            BurrowScratching.disarm();
             return;
         }
         if (minecraft.isPaused()) {
@@ -163,6 +203,11 @@ public final class BurrowAmbience {
 
         RandomSource random = level.random;
         ambientSound(level, player, random);
+        BurrowScratching.tick(level, player, random);
+
+        if (random.nextInt(SPORE_ONE_IN) == 0) {
+            sporeMote(level, player, random);
+        }
 
         boolean wantMote = random.nextInt(MOTE_ONE_IN) == 0;
         boolean wantDrip = random.nextInt(DRIP_ONE_IN) == 0;
@@ -190,9 +235,11 @@ public final class BurrowAmbience {
      * and it stays right if those blocks are ever retextured. It also accelerates
      * downwards and caps its speed, which is what a crumb of soil does.
      * {@code WHITE_ASH} and {@code ASH} are basalt-delta particles that drift
-     * sideways and read as open air above a fire, {@code SPORE_BLOSSOM_AIR} is pink
-     * and lit and belongs to lush caves, and {@code MYCELIUM} barely moves at all,
-     * so none of them can say "something fell".</p>
+     * sideways and read as open air above a fire, {@code SPORE_BLOSSOM_AIR} hangs
+     * for most of a minute on almost no gravity, and {@code MYCELIUM} barely moves
+     * at all, so none of them can say "something fell". The spore is the right
+     * particle for something growing, which is what {@link #sporeMote} uses it
+     * for.</p>
      *
      * <p>The velocity handed to {@code addParticle} is ignored for this type - the
      * provider spends those three arguments on the tint - so it is passed as zero
@@ -242,6 +289,50 @@ public final class BurrowAmbience {
         double x = ceiling.getX() + 0.2 + random.nextDouble() * 0.6;
         double z = ceiling.getZ() + 0.2 + random.nextDouble() * 0.6;
         level.addParticle(particle, x, ceiling.getY() - 0.1, z, 0.0, 0.0, 0.0);
+    }
+
+    /**
+     * A spore leaving the glow mycelium, if any of a few darts happens to hit some.
+     *
+     * <p>{@link net.minecraft.core.particles.ParticleTypes#SPORE_BLOSSOM_AIR} is
+     * the right one and its name is misleading: the provider tints it
+     * {@code (0.32, 0.5, 0.22)}, a muted green, and it is the crimson spore next
+     * to it in the registry that is pink. It carries almost no gravity, lives
+     * most of a minute, and vanilla caps the whole type at a thousand particles
+     * at once, so a patch of mycelium sheds a slow steady fall that cannot run
+     * away no matter what the rate above is set to. Its own registry neighbours
+     * are all worse here: {@code MYCELIUM} is grey and barely moves,
+     * {@code FALLING_SPORE_BLOSSOM} is a drip that lands and splashes, and
+     * {@code WARPED_SPORE} is dark blue and sized down to nearly nothing.</p>
+     *
+     * <p>Only mycelium with air under it produces anything, and one spore is
+     * enough per attempt - the loop returns on the first hit rather than
+     * emptying a patch's worth of darts into the same ceiling.</p>
+     */
+    private static void sporeMote(ClientLevel level, LocalPlayer player, RandomSource random) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int probe = 0; probe < SPORE_PROBES; probe++) {
+            cursor.set(
+                    Mth.floor(player.getX() + spread(random, SPORE_RADIUS)),
+                    Mth.floor(player.getEyeY() + spread(random, SPORE_RADIUS)),
+                    Mth.floor(player.getZ() + spread(random, SPORE_RADIUS)));
+            if (!level.getBlockState(cursor).is(ModBlocks.GLOW_MYCELIUM.get())) {
+                continue;
+            }
+            cursor.move(Direction.DOWN);
+            if (!level.getBlockState(cursor).isAir()) {
+                continue;
+            }
+            level.addParticle(
+                    ParticleTypes.SPORE_BLOSSOM_AIR,
+                    cursor.getX() + random.nextDouble(),
+                    cursor.getY() + 0.9,
+                    cursor.getZ() + random.nextDouble(),
+                    0.0,
+                    0.0,
+                    0.0);
+            return;
+        }
     }
 
     /**
@@ -309,16 +400,20 @@ public final class BurrowAmbience {
     }
 
     /**
-     * The first block above eye level in the column through {@code (x, z)}, or null
-     * when the column is walled in at eye level or open past {@link #CEILING_REACH}.
+     * The first block above {@code fromY} in the column through {@code (x, z)}, or
+     * null when that starting point is inside a block or the column stays open past
+     * {@link #CEILING_REACH}.
      *
-     * <p>The eye-level test is what keeps the effects inside the corridor: most of
-     * a sphere around the player is solid earth, and a mote spawned in there is a
-     * particle nobody will ever see.</p>
+     * <p>The test on the starting point is what keeps the effects inside the
+     * corridor: most of a sphere around the player is solid earth, and a mote
+     * spawned in there is a particle nobody will ever see. Every caller here
+     * starts at eye level; {@link BurrowScratching} starts at the height its own
+     * ray happened to run at, which is the only reason this takes the height as
+     * an argument at all.</p>
      */
-    private static @Nullable BlockPos probeCeiling(ClientLevel level, double x, double eyeY, double z) {
+    static @Nullable BlockPos probeCeiling(ClientLevel level, double x, double fromY, double z) {
         BlockPos.MutableBlockPos cursor =
-                new BlockPos.MutableBlockPos(Mth.floor(x), Mth.floor(eyeY), Mth.floor(z));
+                new BlockPos.MutableBlockPos(Mth.floor(x), Mth.floor(fromY), Mth.floor(z));
         if (!level.getBlockState(cursor).isAir()) {
             return null;
         }
@@ -332,50 +427,7 @@ public final class BurrowAmbience {
     }
 
     /** A random offset in {@code [-radius, radius]}. */
-    private static double spread(RandomSource random, double radius) {
+    static double spread(RandomSource random, double radius) {
         return (random.nextDouble() * 2.0 - 1.0) * radius;
-    }
-
-    /**
-     * Paints the burrow's distance brown. Subscribe on {@code NeoForge.EVENT_BUS}.
-     *
-     * <p>Fired once per frame from {@code FogRenderer.computeFogColor}, for every
-     * dimension, so the guard is the first thing it does.</p>
-     */
-    public static void onComputeFogColour(ViewportEvent.ComputeFogColor event) {
-        if (!inBurrow(event)) {
-            return;
-        }
-        float lift = 1.0F + FOG_LIFT * Math.max(event.getRed(), Math.max(event.getGreen(), event.getBlue()));
-        event.setRed(Math.min(FOG_RED * lift, 1.0F));
-        event.setGreen(Math.min(FOG_GREEN * lift, 1.0F));
-        event.setBlue(Math.min(FOG_BLUE * lift, 1.0F));
-    }
-
-    /**
-     * Brings the distance in close. Subscribe on {@code NeoForge.EVENT_BUS}.
-     *
-     * <p>Only the atmospheric fog is touched. Water, lava and powder snow arrive
-     * through the same event with their own environment already applied, and
-     * overwriting those would mean a bucket of water in the burrow looks like a
-     * bug in this class.</p>
-     *
-     * <p>The numbers are read at the scale of the corridor, not of the player: at
-     * a quarter of normal size a haze that closes at {@link #FOG_END} blocks is
-     * felt as a hall fading out about a hundred metres away. It is short enough
-     * that a long straight run disappears into the earth instead of ending at a
-     * visible wall, and long enough that a nine-block chamber is never fogged.</p>
-     */
-    public static void onRenderFog(ViewportEvent.RenderFog event) {
-        if (event.getType() != FogType.ATMOSPHERIC || !inBurrow(event)) {
-            return;
-        }
-        event.setNearPlaneDistance(FOG_START);
-        event.setFarPlaneDistance(FOG_END);
-    }
-
-    /** The camera's entity always has a level, and it is the one being rendered. */
-    private static boolean inBurrow(ViewportEvent event) {
-        return ModDimensions.isBurrow(event.getCamera().entity().level());
     }
 }

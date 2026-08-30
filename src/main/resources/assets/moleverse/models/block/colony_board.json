@@ -30,6 +30,30 @@
         "up": {"uv": [0, 8, 10, 10], "texture": "#0"},
         "down": {"uv": [0, 8, 10, 10], "texture": "#0"}
       }
+    },
+    {
+      "name": "peg_west",
+      "from": [4, 8, 9],
+      "to": [5, 9, 10],
+      "faces": {
+        "east": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "south": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "west": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "up": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "down": {"uv": [12, 0, 13, 1], "texture": "#0"}
+      }
+    },
+    {
+      "name": "peg_east",
+      "from": [11, 8, 9],
+      "to": [12, 9, 10],
+      "faces": {
+        "east": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "south": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "west": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "up": {"uv": [12, 0, 13, 1], "texture": "#0"},
+        "down": {"uv": [12, 0, 13, 1], "texture": "#0"}
+      }
     }
   ]
 }

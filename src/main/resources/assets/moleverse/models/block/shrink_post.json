@@ -30,6 +30,18 @@
         "up": {"uv": [8, 4, 16, 12], "texture": "#0"},
         "down": {"uv": [8, 4, 16, 12], "texture": "#0"}
       }
+    },
+    {
+      "name": "collar_bevel",
+      "from": [5, 13, 5],
+      "to": [11, 14, 11],
+      "faces": {
+        "north": {"uv": [9, 0, 15, 1], "texture": "#0"},
+        "east": {"uv": [9, 0, 15, 1], "texture": "#0"},
+        "south": {"uv": [9, 0, 15, 1], "texture": "#0"},
+        "west": {"uv": [9, 0, 15, 1], "texture": "#0"},
+        "up": {"uv": [9, 5, 15, 11], "texture": "#0"}
+      }
     }
   ]
 }

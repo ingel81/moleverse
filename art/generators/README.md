@@ -22,6 +22,31 @@ than editing a hundred boxes, and a second variant costs nothing.
 | `burrow_textures.py` | The block textures for the burrow, the dimension, the mole trap and the shaft lantern. Writes the shipped files. |
 | `worm_item_textures.py` | `fat_worm.png` and `glow_worm.png`. Writes the shipped files. |
 | `mole_in_sack.py` | `mole_in_sack.png` - the bag from a profile curve, the snout by hand. |
+| `predator_shapes.py` | The shrew and the weasel, from one quadruped builder and two tables of dials. Prints JSON, `--java`, or `--bb <name>` for the Blockbench bridge. |
+| `predator_textures.py` | `shrew.png`, `weasel.png` and their two spawn eggs. Writes the shipped files. |
+
+The critter wave's `critter_shapes.py` and `critter_textures.py` are not in the
+table above and should be; so should `earthworm_texture.py` and
+`root_nodule_item.py`. Left alone here rather than fixed, because the wave that
+wrote them owns them.
+
+## The two predators
+
+Same two-script split as the great worm and the critters, and for the same
+reason: `predator_textures.py` imports `predator_shapes.py` so the texture is
+painted through the exact face rectangles the geometry was packed with.
+
+What is new is `parent`. These are the first models in the mod with a real bone
+tree - the weasel's head has to follow its chest through the spine wave - so a
+bone carries the name of the one it hangs off, and `java()` subtracts the
+parent's pivot on the way out because `PartPose.offset` is relative while
+`addBox` is not.
+
+`blockbench()` also negates X, which nothing before it did. The Modded Entity
+exporter mirrors that axis, so a `.bbmodel` built the way the formula reads comes
+back out of Blockbench with every `_l` part on the right. The flip is applied at
+the bridge, and the check that it worked is that Blockbench's own Java export and
+`--java` now agree line for line - which they did not before it was added.
 
 ## The great worm
 
@@ -149,3 +174,12 @@ difference. Re-run it after regenerating a shape:
 ```
 python art/generators/cull_buried_faces.py "src/main/resources/assets/moleverse/models/block/mole_mound_*.json"
 ```
+
+`critter_shapes.py` computes the segment/leg cuboids for the burrow critters;
+`--bb <name>` emits them in the form the Blockbench MCP bridge takes, so the
+`.bbmodel` in `art/` and the Java export stay two views of one formula.
+`critter_textures.py` paints their skins (CHITIN and LARVA ramps live there,
+not in `texture_kit.py`). `root_nodule_item.py` draws the nodule item icon.
+
+`exchange_gui.py` draws `textures/gui/exchange_station.png` - the exchange
+station's screen plus its two overlay sprites. Writes the shipped file.

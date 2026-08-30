@@ -85,8 +85,13 @@ def band_pixels(spine, girth):
     return stamp(spine[BAND_FROM:BAND_TO], lambda i: girth(i + BAND_FROM))
 
 
-def draw(body, band, palette, extras=()):
-    """Paint a worm from its outline. `palette` is (rim, body, lit, band)."""
+def draw(body, band, palette, extras=(), rings=()):
+    """Paint a worm from its outline. `palette` is (rim, body, lit, band).
+
+    `rings` are cross-sections to push one palette step down - lit becomes
+    body, body becomes rim - without ever touching the outline itself: a ring
+    that cuts the silhouette reads as a worm in pieces.
+    """
     rim, mid, lit_colour, band_colour = palette
     canvas = Canvas()
     for x, y in extras:
@@ -95,6 +100,11 @@ def draw(body, band, palette, extras=()):
     for group, colour in ((interior, mid), (shaded, rim), (lit, lit_colour)):
         for x, y in group:
             canvas.put(x, y, colour, wrap=False)
+    for x, y in rings:
+        if (x, y) in interior:
+            canvas.put(x, y, rim, wrap=False)
+        elif (x, y) in lit:
+            canvas.put(x, y, mid, wrap=False)
     for x, y in band:
         canvas.put(x, y, band_colour, wrap=False)
     return canvas
@@ -111,7 +121,13 @@ def fat_worm():
 
     body = stamp(SPINE, girth)
     band = band_pixels(SPINE, girth) & body
-    return draw(body, band, (WORM_RIM, WORM_BODY, WORM_LIT, WORM_PALE))
+    # Two segment creases, one either side of the clitellum and clear of it.
+    # The earthworm at two pixels wide has no room for them; on three pixels
+    # of girth they are what says "annelid" instead of "sausage", and they are
+    # the second thing after the girth that tells the two items apart.
+    rings = stamp([SPINE[3]], lambda i: 3) | stamp([SPINE[14]], lambda i: 3)
+    return draw(body, band, (WORM_RIM, WORM_BODY, WORM_LIT, WORM_PALE),
+                rings=rings)
 
 
 def glow_worm():

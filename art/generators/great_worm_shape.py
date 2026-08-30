@@ -22,29 +22,71 @@ import math
 
 # --- dials ----------------------------------------------------------------
 
-#: Head, six body segments, tail.
-SEGMENTS = 8
+#: Head, fourteen body segments, tail. Doubled from eight when the sheet's
+#: variant C won with the note "aber viel zu kurz": the old worm ran three
+#: times as long as wide, and a worm is not a shape that stops there. The
+#: length comes from count rather than pitch because every segment is a joint
+#: of the crawl, and the chain reads better the more joints it has.
+SEGMENTS = 16
 
-#: Distance between two segment centres, in model units. 16 units is one block.
-#: Eight of these plus the two end lobes make the worm 66 units, just over four
-#: blocks long.
+#: Distance between two segment centres, in model units. 16 units is one
+#: block. Sixteen of these plus the nose and the paddle make the worm about
+#: 122 units - seven and a half blocks of animal winding down a corridor.
 PITCH = 7
 
 #: How far each cube reaches into its neighbours. Peristalsis scales segments
 #: along Z, and without an overlap a contracting segment tears a gap open.
 OVERLAP = 2
 
-#: Half of the widest segment. 22 units across is a touch under 1.4 blocks.
-#: One unit narrower than the eye would pick was worth it: at 24 the two fattest
-#: segments no longer sit side by side in the UV atlas and the texture needs
-#: 128x256 instead of 128x128, for a difference nobody can see in game.
-MAX_HALF_WIDTH = 11
+#: Half of the widest segment. Narrowed from 11 as the body doubled: eighteen
+#: units across against 122 long is roughly seven to one, worm proportion,
+#: where the old three to one read as a dropped sausage.
+MAX_HALF_WIDTH = 9
 
 #: Height of the widest segment. A worm on the ground is a little wider than tall.
-MAX_HEIGHT = 18
+MAX_HEIGHT = 15
 
 #: Names in the order the model uses them, head first.
-NAMES = ["head", "body1", "body2", "body3", "body4", "body5", "body6", "tail"]
+NAMES = ["head"] + ["body%d" % i for i in range(1, SEGMENTS - 1)] + ["tail"]
+
+#: Which segment carries the clitellum saddle: index 5 of 15 is a third of
+#: the way back, where a worm's clitellum sits. Deliberately an odd index so
+#: the even-indexed annuli never collide with it.
+CLITELLUM_SEGMENT = 5
+
+#: The raised annuli: one ring per body segment, a unit prouder each side and
+#: above, two units deep, on the segment's own bone.
+#:
+#: The texture has painted ring joints on a three unit pitch since the worm was
+#: quantised, and at a distance they carry the segmentation - but up close the
+#: silhouette stayed a smooth loaf. Each geometry ring sits on that same grid,
+#: centred on the bulge *between* two painted joints, which is what an annulus
+#: physically is: the swollen part, not the groove. `great_worm_texture`
+#: paints position-keyed, so the joint pattern simply continues across the
+#: raised box and the two layers cannot disagree. The head and tail lobes get
+#: no ring - the prostomium and the flattened tip are shapes of their own.
+#:
+#: Every *other* segment, not every one - half the annuli read as
+#: segmentation just as well, and the strips they save pay for the doubled
+#: body. Even indices only, so they never collide with the clitellum saddle
+#: on segment five.
+RING_SEGMENTS = (2, 4, 6, 8, 10, 12, 14)
+RING_FLARE = 1
+RING_DEPTH = 2
+
+#: The clitellum saddle: markedly wider and taller than its host segment and
+#: six units deep - variant C's signature feature, the swelling as geometry
+#: where a painted band of even weight reads as a stripe. Saddle-painted in
+#: `great_worm_texture` through its name: clitellum colour above the foot,
+#: skin below, because a real clitellum is open beneath.
+CLITELLUM_FLARE = 1
+CLITELLUM_DEPTH = 6
+
+#: The mouth: a dark box tucked under the prostomium, half its height, one and
+#: a half units proud of the head's front face. An earthworm's mouth is exactly
+#: there - the prostomium is the lip that hangs over it - and without it the
+#: front of a four block animal is a wall with a bump on it.
+MOUTH = [8, 3, 2]
 
 
 def smooth(u: float) -> float:
@@ -58,11 +100,16 @@ def profile(t: float) -> float:
 
     `t` runs 0 at the mouth to 1 at the tail tip. Two clamped ramps multiplied:
     a short one that thickens the head end, and a long one that thins the tail
-    half. Their product peaks around a quarter of the way down, where a worm's
+    half. Their product peaks around a third of the way down, where a worm's
     clitellum sits.
+
+    These are variant C's dials from the comparison sheet, promoted verbatim:
+    a slimmer head, a girth that visibly peaks mid-front, and a harder taper
+    to the tail than the first worm carried. The earthworm samples the same
+    curve, as it always did.
     """
-    head = 0.66 + 0.34 * smooth(t / 0.22)
-    tail = 1.0 - 0.52 * smooth((t - 0.50) / 0.50)
+    head = 0.62 + 0.38 * smooth(t / 0.25)
+    tail = 1.0 - 0.58 * smooth((t - 0.45) / 0.55)
     return head * tail
 
 
@@ -121,23 +168,47 @@ def cubes():
 
     head, tail = body[0], body[-1]
 
+    # The prostomium as a three-step point, variant C's nose: the closest a
+    # box model comes to the cone an earthworm actually burrows with. Each
+    # step is narrower, shorter and a little higher than the one behind it,
+    # and all three ride the head bone.
     hw, hh, _ = head["size"]
-    nose = [even(hw - 6, 4), max(3, hh - 4), 5]
     front = head["from"][2]
+    steps = [(even(hw - 6, 4), max(4, hh - 5), 4), (even(hw - 10, 4), 3, 3), (2, 2, 2)]
+    z = front + 1
+    base = 1
+    for index, (w, h, d) in enumerate(steps):
+        out.append({
+            "bone": "head",
+            "name": "prost%d" % index,
+            "from": [-w / 2, base, z - d],
+            "to": [w / 2, base + h, z],
+            "origin": head["origin"],
+            "size": [w, h, d],
+        })
+        z -= d
+        base += 1
+
+    # The clitellum saddle. See CLITELLUM_FLARE.
+    host = body[CLITELLUM_SEGMENT]
+    cw, ch, _ = host["size"]
     out.append({
-        "bone": "head",
-        "name": "prostomium",
-        "from": [-nose[0] / 2, 1, front - nose[2] + 1],
-        "to": [nose[0] / 2, 1 + nose[1], front + 1],
-        "origin": head["origin"],
-        "size": nose,
+        "bone": host["name"],
+        "name": "clitellum",
+        "from": [-cw / 2 - CLITELLUM_FLARE, 0, host["centre_z"] - CLITELLUM_DEPTH / 2],
+        "to": [cw / 2 + CLITELLUM_FLARE, ch + CLITELLUM_FLARE,
+               host["centre_z"] + CLITELLUM_DEPTH / 2],
+        "origin": host["origin"],
+        "size": [cw + 2 * CLITELLUM_FLARE, ch + CLITELLUM_FLARE, CLITELLUM_DEPTH],
     })
 
-    # Flattened rather than merely smaller. An earthworm's anterior end is a
-    # cone it burrows with, but the posterior is pressed flat, and a tip that
-    # only shrinks in every direction makes both ends of the animal look alike.
+    # Flattened rather than merely smaller, and a little wider than the
+    # segment it follows: an earthworm's anterior end is a cone it burrows
+    # with, but the posterior is pressed flat into a paddle, and a tip that
+    # only shrinks in every direction makes both ends of the animal look
+    # alike.
     tw, th, _ = tail["size"]
-    tip = [even(tw - 2, 4), max(3, th - 3), 5]
+    tip = [even(tw + 2, 4), max(3, round(th * 0.45)), 6]
     back = tail["to"][2]
     out.append({
         "bone": "tail",
@@ -147,6 +218,37 @@ def cubes():
         "origin": tail["origin"],
         "size": tip,
     })
+
+    # The mouth, under the prostomium's overhang. See MOUTH.
+    mw, mh, md = MOUTH
+    mouth_front = head["from"][2] - md + 0.5
+    out.append({
+        "bone": "head",
+        "name": "mouth",
+        "from": [-mw / 2, 0, mouth_front],
+        "to": [mw / 2, mh, mouth_front + md],
+        "origin": head["origin"],
+        "size": MOUTH,
+    })
+
+    # The annuli, one per body segment, centred on the bulge between two
+    # painted ring joints so texture and geometry stay one pattern. The grid
+    # is anchored where the texture anchors it: the front of the whole animal,
+    # which is the prostomium's tip. See RING_FLARE.
+    z_front = min(item["from"][2] for item in out)
+    ring_grid = 3  # mirrors RING_PITCH in great_worm_texture.py
+    for seg in (body[i] for i in RING_SEGMENTS):
+        w, h, d = seg["size"]
+        k = round((seg["centre_z"] - z_front - 2.0) / ring_grid)
+        ring_z = z_front + ring_grid * k + 2.0
+        out.append({
+            "bone": seg["name"],
+            "name": "ring_%s" % seg["name"],
+            "from": [-w / 2 - RING_FLARE, 0, ring_z - RING_DEPTH / 2],
+            "to": [w / 2 + RING_FLARE, h + RING_FLARE, ring_z + RING_DEPTH / 2],
+            "origin": seg["origin"],
+            "size": [w + 2 * RING_FLARE, h + RING_FLARE, RING_DEPTH],
+        })
     return out
 
 
@@ -157,25 +259,32 @@ def box_uv_size(size):
 
 
 def pack(items, canvas_width):
-    """Shelf packer. Returns the UV offsets and the height used.
+    """Shelf packer, first-fit decreasing. Returns the UV offsets and the height used.
 
-    Tallest first, so a row of thin cubes cannot strand a fat one. Nothing
-    clever - the layout only has to be gap-free enough to fit a power-of-two
-    canvas, and auto UV would put every cube in the same corner.
+    Tallest first, so a row of thin cubes cannot strand a fat one, and each item
+    goes onto the first open shelf with room rather than only the newest one.
+    The difference matters once a model grows small parts: closing a shelf the
+    moment one item overflows leaves every earlier remainder empty, and the
+    critter wave's feet and feelers pushed the beetle over a power-of-two
+    boundary on exactly that waste. An item is never taller than a shelf it
+    revisits, because the shelves were opened in falling height order.
     """
-    order = sorted(range(len(items)), key=lambda i: -box_uv_size(items[i]["size"])[1])
+    order = sorted(range(len(items)),
+                   key=lambda i: tuple(-v for v in reversed(box_uv_size(items[i]["size"]))))
     offsets = [None] * len(items)
-    x = y = shelf_height = 0
+    shelves = []  # [y, height, x used]
     for i in order:
         w, h = box_uv_size(items[i]["size"])
-        if x + w > canvas_width:
-            x = 0
-            y += shelf_height
-            shelf_height = 0
-        offsets[i] = [x, y]
-        x += w
-        shelf_height = max(shelf_height, h)
-    return offsets, y + shelf_height
+        for shelf in shelves:
+            if shelf[2] + w <= canvas_width:
+                offsets[i] = [shelf[2], shelf[0]]
+                shelf[2] += w
+                break
+        else:
+            y = shelves[-1][0] + shelves[-1][1] if shelves else 0
+            shelves.append([y, h, w])
+            offsets[i] = [0, y]
+    return offsets, shelves[-1][0] + shelves[-1][1] if shelves else 0
 
 
 def box_faces(uv_offset, size):
@@ -241,11 +350,70 @@ def verify():
     return len(used), width * height
 
 
-if __name__ == "__main__":
-    used, total = verify()
+# --- Java emitter -----------------------------------------------------------
+
+def _f(value):
+    # The `+ 0.0` turns -0.0 into 0.0 before printing, exactly as the sister
+    # emitters in critter_shapes and predator_shapes do.
+    return "%.1FF" % (value + 0.0)
+
+
+def java():
+    """The body of `createBodyLayer()`, in the house multi-line format.
+
+    Written here rather than round-tripped through Blockbench's exporter for
+    the same reason the critters' emitter exists: transcribing a hundred-odd
+    numbers by hand is how a texture ends up subtly wrong on one face of one
+    box. The Blockbench export remains the cross-check, not the source.
+    """
     items, width, height = layout()
-    print(json.dumps({
-        "texture": [width, height],
-        "uv_fill": round(used / total, 3),
-        "cubes": items,
-    }, indent=1))
+
+    bones = {}
+    for item in items:
+        bones.setdefault(item["bone"], []).append(item)
+
+    lines = [
+        "    public static LayerDefinition createBodyLayer() {",
+        "        MeshDefinition meshdefinition = new MeshDefinition();",
+        "        PartDefinition partdefinition = meshdefinition.getRoot();",
+        "",
+        "        PartDefinition root = partdefinition.addOrReplaceChild(\"root\", CubeListBuilder.create(),",
+        "                PartPose.offset(0.0F, 24.0F, 0.0F));",
+        "",
+    ]
+    for bone, cubes_of in bones.items():
+        origin = cubes_of[0]["origin"]
+        out = ["        root.addOrReplaceChild(\"%s\", CubeListBuilder.create()" % bone]
+        for item in cubes_of:
+            u, v = item["uv_offset"]
+            w, h, d = item["size"]
+            bx = item["from"][0] - origin[0]
+            by = item["from"][1] - origin[1]
+            bz = item["from"][2] - origin[2]
+            # Natural space stands on `by`; the model hangs from `-by - h`.
+            out.append(
+                "                .texOffs(%d, %d).addBox(%s, %s, %s, %s, %s, %s, new CubeDeformation(0.0F))"
+                % (u, v, _f(bx), _f(-by - h), _f(bz), _f(w), _f(h), _f(d)))
+        out[-1] += ","
+        out.append("                PartPose.offset(%s, %s, %s));"
+                   % (_f(origin[0]), _f(-origin[1]), _f(origin[2])))
+        lines.extend(out)
+        lines.append("")
+    lines.append("        return LayerDefinition.create(meshdefinition, %d, %d);" % (width, height))
+    lines.append("    }")
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    import sys
+
+    used, total = verify()
+    if "--java" in sys.argv:
+        print(java())
+    else:
+        items, width, height = layout()
+        print(json.dumps({
+            "texture": [width, height],
+            "uv_fill": round(used / total, 3),
+            "cubes": items,
+        }, indent=1))

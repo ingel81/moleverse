@@ -1,0 +1,108 @@
+// Made with Blockbench 5.1.6
+// Exported for Minecraft version 1.17 or later with Mojang mappings
+// Paste this class into your mod and generate all required imports
+
+
+public class earthworm<T extends Entity> extends EntityModel<T> {
+	// This layer location should be baked with EntityRendererProvider.Context in the entity renderer and passed into this model's constructor
+	public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("modid", "earthworm"), "main");
+	private final ModelPart root;
+	private final ModelPart head;
+	private final ModelPart body1;
+	private final ModelPart body2;
+	private final ModelPart body3;
+	private final ModelPart body4;
+	private final ModelPart body5;
+	private final ModelPart body6;
+	private final ModelPart body7;
+	private final ModelPart body8;
+	private final ModelPart body9;
+	private final ModelPart body10;
+	private final ModelPart body11;
+	private final ModelPart body12;
+	private final ModelPart body13;
+	private final ModelPart body14;
+	private final ModelPart body15;
+	private final ModelPart body16;
+	private final ModelPart tail;
+
+	public earthworm(ModelPart root) {
+		this.root = root.getChild("root");
+		this.head = this.root.getChild("head");
+		this.body1 = this.root.getChild("body1");
+		this.body2 = this.root.getChild("body2");
+		this.body3 = this.root.getChild("body3");
+		this.body4 = this.root.getChild("body4");
+		this.body5 = this.root.getChild("body5");
+		this.body6 = this.root.getChild("body6");
+		this.body7 = this.root.getChild("body7");
+		this.body8 = this.root.getChild("body8");
+		this.body9 = this.root.getChild("body9");
+		this.body10 = this.root.getChild("body10");
+		this.body11 = this.root.getChild("body11");
+		this.body12 = this.root.getChild("body12");
+		this.body13 = this.root.getChild("body13");
+		this.body14 = this.root.getChild("body14");
+		this.body15 = this.root.getChild("body15");
+		this.body16 = this.root.getChild("body16");
+		this.tail = this.root.getChild("tail");
+	}
+
+	public static LayerDefinition createBodyLayer() {
+		MeshDefinition meshdefinition = new MeshDefinition();
+		PartDefinition partdefinition = meshdefinition.getRoot();
+
+		PartDefinition root = partdefinition.addOrReplaceChild("root", CubeListBuilder.create(), PartPose.offset(0.0F, 24.0F, 0.0F));
+
+		PartDefinition head = root.addOrReplaceChild("head", CubeListBuilder.create().texOffs(12, 17).addBox(-1.0F, -2.0F, -1.5F, 2.0F, 2.0F, 3.0F, new CubeDeformation(0.0F))
+		.texOffs(56, 0).addBox(-1.0F, -2.5F, -2.5F, 2.0F, 2.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -17.0F));
+
+		PartDefinition body1 = root.addOrReplaceChild("body1", CubeListBuilder.create().texOffs(0, 12).addBox(-1.5F, -2.0F, -1.5F, 3.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -15.0F));
+
+		PartDefinition body2 = root.addOrReplaceChild("body2", CubeListBuilder.create().texOffs(12, 12).addBox(-1.5F, -2.0F, -1.5F, 3.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -13.0F));
+
+		PartDefinition body3 = root.addOrReplaceChild("body3", CubeListBuilder.create().texOffs(0, 0).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -11.0F));
+
+		PartDefinition body4 = root.addOrReplaceChild("body4", CubeListBuilder.create().texOffs(14, 0).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -9.0F));
+
+		PartDefinition body5 = root.addOrReplaceChild("body5", CubeListBuilder.create().texOffs(28, 0).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
+		.texOffs(0, 17).addBox(-2.5F, -4.0F, -0.5F, 5.0F, 4.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -7.0F));
+
+		PartDefinition body6 = root.addOrReplaceChild("body6", CubeListBuilder.create().texOffs(42, 0).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -5.0F));
+
+		PartDefinition body7 = root.addOrReplaceChild("body7", CubeListBuilder.create().texOffs(0, 6).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -3.0F));
+
+		PartDefinition body8 = root.addOrReplaceChild("body8", CubeListBuilder.create().texOffs(14, 6).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, -1.0F));
+
+		PartDefinition body9 = root.addOrReplaceChild("body9", CubeListBuilder.create().texOffs(28, 6).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 1.0F));
+
+		PartDefinition body10 = root.addOrReplaceChild("body10", CubeListBuilder.create().texOffs(42, 6).addBox(-2.0F, -3.0F, -1.5F, 4.0F, 3.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 3.0F));
+
+		PartDefinition body11 = root.addOrReplaceChild("body11", CubeListBuilder.create().texOffs(24, 12).addBox(-1.5F, -2.0F, -1.5F, 3.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 5.0F));
+
+		PartDefinition body12 = root.addOrReplaceChild("body12", CubeListBuilder.create().texOffs(36, 12).addBox(-1.5F, -2.0F, -1.5F, 3.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 7.0F));
+
+		PartDefinition body13 = root.addOrReplaceChild("body13", CubeListBuilder.create().texOffs(48, 12).addBox(-1.5F, -2.0F, -1.5F, 3.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 9.0F));
+
+		PartDefinition body14 = root.addOrReplaceChild("body14", CubeListBuilder.create().texOffs(22, 17).addBox(-1.0F, -2.0F, -1.5F, 2.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 11.0F));
+
+		PartDefinition body15 = root.addOrReplaceChild("body15", CubeListBuilder.create().texOffs(32, 17).addBox(-1.0F, -2.0F, -1.5F, 2.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 13.0F));
+
+		PartDefinition body16 = root.addOrReplaceChild("body16", CubeListBuilder.create().texOffs(42, 17).addBox(-1.0F, -2.0F, -1.5F, 2.0F, 2.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 15.0F));
+
+		PartDefinition tail = root.addOrReplaceChild("tail", CubeListBuilder.create().texOffs(52, 17).addBox(-1.0F, -2.0F, -1.5F, 2.0F, 2.0F, 3.0F, new CubeDeformation(0.0F))
+		.texOffs(0, 22).addBox(-2.0F, -1.0F, 0.5F, 4.0F, 1.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 17.0F));
+
+		return LayerDefinition.create(meshdefinition, 64, 32);
+	}
+
+	@Override
+	public void setupAnim(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+
+	}
+
+	@Override
+	public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+		root.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+	}
+}

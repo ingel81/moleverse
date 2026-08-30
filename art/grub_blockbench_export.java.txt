@@ -1,0 +1,71 @@
+// Made with Blockbench 5.1.6
+// Exported for Minecraft version 1.17 or later with Mojang mappings
+// Paste this class into your mod and generate all required imports
+
+
+public class grub<T extends Entity> extends EntityModel<T> {
+	// This layer location should be baked with EntityRendererProvider.Context in the entity renderer and passed into this model's constructor
+	public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("modid", "grub"), "main");
+	private final ModelPart root;
+	private final ModelPart body0;
+	private final ModelPart body1;
+	private final ModelPart body2;
+	private final ModelPart body3;
+	private final ModelPart body4;
+	private final ModelPart body5;
+
+	public grub(ModelPart root) {
+		this.root = root.getChild("root");
+		this.body0 = this.root.getChild("body0");
+		this.body1 = this.root.getChild("body1");
+		this.body2 = this.root.getChild("body2");
+		this.body3 = this.root.getChild("body3");
+		this.body4 = this.root.getChild("body4");
+		this.body5 = this.root.getChild("body5");
+	}
+
+	public static LayerDefinition createBodyLayer() {
+		MeshDefinition meshdefinition = new MeshDefinition();
+		PartDefinition partdefinition = meshdefinition.getRoot();
+
+		PartDefinition root = partdefinition.addOrReplaceChild("root", CubeListBuilder.create(), PartPose.offset(0.0F, 24.0F, 0.0F));
+
+		PartDefinition body0 = root.addOrReplaceChild("body0", CubeListBuilder.create().texOffs(40, 0).addBox(-2.5F, -5.0F, -2.0F, 5.0F, 5.0F, 4.0F, new CubeDeformation(0.0F))
+		.texOffs(36, 19).addBox(-3.0F, -5.5F, -1.0F, 6.0F, 4.0F, 2.0F, new CubeDeformation(0.0F))
+		.texOffs(52, 10).addBox(-1.5F, -4.0F, -4.0F, 3.0F, 3.0F, 2.0F, new CubeDeformation(0.0F))
+		.texOffs(58, 0).addBox(-1.0F, -3.0F, -4.5F, 2.0F, 2.0F, 1.0F, new CubeDeformation(0.0F))
+		.texOffs(52, 19).addBox(-2.5F, -1.25F, -1.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+		.texOffs(56, 19).addBox(-2.5F, -1.25F, 0.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+		.texOffs(60, 19).addBox(1.5F, -1.25F, -1.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+		.texOffs(46, 26).addBox(1.5F, -1.25F, 0.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 0.0F, -7.5F, 0.0F, -0.2123F, 0.0F));
+
+		PartDefinition body1 = root.addOrReplaceChild("body1", CubeListBuilder.create().texOffs(0, 10).addBox(-2.5F, -5.0F, -2.0F, 5.0F, 5.0F, 4.0F, new CubeDeformation(0.0F))
+		.texOffs(0, 26).addBox(-3.0F, -5.5F, -1.0F, 6.0F, 4.0F, 2.0F, new CubeDeformation(0.0F))
+		.texOffs(50, 26).addBox(-2.5F, -1.25F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F))
+		.texOffs(54, 26).addBox(1.5F, -1.25F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(-0.6466F, 0.0F, -4.5F, 0.0F, -0.1726F, 0.0F));
+
+		PartDefinition body2 = root.addOrReplaceChild("body2", CubeListBuilder.create().texOffs(0, 0).addBox(-3.0F, -6.0F, -2.0F, 6.0F, 6.0F, 4.0F, new CubeDeformation(0.0F))
+		.texOffs(0, 19).addBox(-3.5F, -6.5F, -1.0F, 7.0F, 5.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(-1.0462F, 0.0F, -1.5F, 0.0F, -0.0665F, 0.0F));
+
+		PartDefinition body3 = root.addOrReplaceChild("body3", CubeListBuilder.create().texOffs(20, 0).addBox(-3.0F, -6.0F, -2.0F, 6.0F, 6.0F, 4.0F, new CubeDeformation(0.0F))
+		.texOffs(18, 19).addBox(-3.5F, -6.5F, -1.0F, 7.0F, 5.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(-1.0462F, 0.0F, 1.5F, 0.0F, 0.0665F, 0.0F));
+
+		PartDefinition body4 = root.addOrReplaceChild("body4", CubeListBuilder.create().texOffs(18, 10).addBox(-2.5F, -5.0F, -2.0F, 5.0F, 5.0F, 4.0F, new CubeDeformation(0.0F))
+		.texOffs(16, 26).addBox(-3.0F, -5.5F, -1.0F, 6.0F, 4.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(-0.6466F, 0.0F, 4.5F, 0.0F, 0.1726F, 0.0F));
+
+		PartDefinition body5 = root.addOrReplaceChild("body5", CubeListBuilder.create().texOffs(36, 10).addBox(-2.0F, -4.0F, -2.0F, 4.0F, 4.0F, 4.0F, new CubeDeformation(0.0F))
+		.texOffs(32, 26).addBox(-2.5F, -4.5F, -1.0F, 5.0F, 3.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 0.0F, 7.5F, 0.0F, 0.2123F, 0.0F));
+
+		return LayerDefinition.create(meshdefinition, 64, 32);
+	}
+
+	@Override
+	public void setupAnim(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+
+	}
+
+	@Override
+	public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+		root.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+	}
+}

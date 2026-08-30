@@ -87,12 +87,39 @@ ATLASES = {
         "cage_end": (6, 0, 12, 6),
         "cap_side": (0, 8, 8, 10),
         "cap_top": (8, 6, 16, 14),
+        "knot_side": (12, 0, 14, 2),
     },
 }
 
 #: `WOOD` shifted up a step, for anything that reads as stripped rather than
 #: split. Same ramp, so a trap lid and a trap wall still agree about the wood.
 PALE_WOOD = WOOD[1:]
+
+#: The fill of the dimension, and the one ramp here that is not `SOIL`.
+#:
+#: `SOIL` runs #140E09 to #403325. That is brown by measurement and black by
+#: eye, and the first person to walk down there said so: the walls read as
+#: unlit geometry rather than as earth. A ramp that dark has no hue left to
+#: carry once the dimension's ambient light is applied to it on top.
+#:
+#: So this is derived instead of picked: `TURNED[1:6]` - the mound's own soil,
+#: which `loose_soil` is also cut from - multiplied by 0.66, with `ROOT[0]` on
+#: the bottom for the pockets between clods. One scale factor apart from the
+#: lining means deep earth and loose soil are the same soil at two depths and
+#: cannot drift: same hue, same spacing, and the lining always the lighter of
+#: the two by a fixed and visible margin.
+#:
+#: `SOIL` is left alone. It is the ground the roots, the mycelium and the
+#: larder are drawn against, and those want the darkest thing in the palette
+#: behind them.
+DEEP = [
+    (0x24, 0x19, 0x10),
+    (0x2A, 0x1D, 0x13),
+    (0x32, 0x24, 0x17),
+    (0x3A, 0x2A, 0x1C),
+    (0x43, 0x32, 0x21),
+    (0x4D, 0x39, 0x26),
+]
 
 
 # --- shared drawing -------------------------------------------------------
@@ -130,6 +157,69 @@ def soil_ground(canvas, rng, ramp=SOIL, weights=(1, 2, 2, 2, 2, 3), clods=9, poc
             canvas.put(x + rng.choice([-1, 1]), y, ramp[1])
     for _ in range(crumbs):
         canvas.put(rng.randrange(SIZE), rng.randrange(SIZE), ramp[4])
+
+
+def hair_root(canvas, path, rng, nick=0.25):
+    """A root one pixel wide, drawn as a seam rather than as a body.
+
+    `paint_strand` is the wrong tool below about three pixels. It rims the whole
+    outline in the darkest tone, so a one pixel path comes out as a three pixel
+    black stripe with a brown thread inside it - and four of those on one tile
+    read as cracks in the wall, which was the first version of `root_nodule`.
+
+    So this borrows `deep_earth`'s mineral seam instead: the lit tone on the
+    path, one darker pixel under it, and nothing else. The shadow is on the
+    underside only because that is the light direction everything else here
+    uses, and one-sided shading is what makes a single pixel read as standing
+    proud of the soil rather than as a groove cut into it.
+
+    Both halves have to be picked against the *soil*, not against each other.
+    The root runs at the top of `ROOT` because the middle of that ramp is within
+    a step of the earth it is drawn on and disappears into it; the shadow is
+    broken, for `deep_earth`'s reason, because an unbroken dark line across a
+    tile is a crack whatever is sitting on top of it.
+    """
+    for x, y in path:
+        canvas.put(x, y, ROOT[3] if rng.random() < nick else ROOT[4])
+        if rng.random() < 0.75:
+            canvas.put(x, y + 1, ROOT[0])
+
+
+def nodule(canvas, at, wide=False, keep=frozenset()):
+    """One pale bead swelling off a root, with a socket cut around it.
+
+    The socket is a four-connected ring of the darkest root tone. Ringing the
+    diagonals too was the first attempt and it costs sixteen pixels to say what
+    twelve already say; at this size the corners are most of the tile's budget.
+
+    `keep` is the root the bead grew on, and leaving it out of the ring is the
+    difference between a nodule and a bead glued to a wall. Ringing it too was
+    the second attempt: three beads on one root black out a dozen of its sixteen
+    pixels between them, and the root the whole texture is about disappears
+    under its own sockets. A nodule is a swelling *on* something, so the
+    something has to run into it and out the other side.
+
+    `WOOD` rather than a pale ramp of its own. A nodule is the one thing down
+    here with no colour in the kit already, and inventing a sixth ramp for a
+    four pixel bead is exactly what `texture_kit` exists to prevent. The
+    worked-wood ramp is the right hue and the right value range, and no texture
+    carries both, so there is nothing for them to be confused with.
+    """
+    x, y = at
+    w, h = (3, 2) if wide else (2, 2)
+    body = {((x + ox) % SIZE, (y + oy) % SIZE) for oy in range(h) for ox in range(w)}
+    for px, py in body:
+        for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            ring = ((px + ox) % SIZE, (py + oy) % SIZE)
+            if ring not in body and ring not in keep:
+                canvas.put(*ring, ROOT[0])
+    # Painted outright rather than through `silhouette`: a two by two blob has
+    # no interior, so the split would put every pixel in the lit set and the
+    # bead would come out as a flat pale square.
+    for oy in range(h):
+        for ox in range(w):
+            far = ox + oy
+            canvas.put(x + ox, y + oy, WOOD[5] if far == 0 else WOOD[4] if far < w else WOOD[2])
 
 
 def paint_strand(canvas, body, ramp, rng, nick=0.10):
@@ -246,9 +336,13 @@ def worm_end(canvas, at, rng, sunken=False):
     than as a bead stuck onto it. That is also most of where the unpleasantness
     comes from; a pale shape lying flat on soil looks like a petal.
 
-    Half the ends are cut, a pale tube with the gut a dark dot in the middle,
-    and half are elbows that bend away out of the wall. Two shapes rather than
-    one, because eight copies of the same stamp read as a pattern.
+    Three shapes rather than one, because eight copies of the same stamp read
+    as a pattern: cut ends, a pale tube with the gut a dark dot in the middle;
+    elbows that bend away out of the wall, mirrored at random so no two point
+    the same way; and the odd loop, a worm that came out and went straight
+    back in. The mirroring is most of the "organic" - the first version bent
+    every elbow down and right, and six identical hooks on one wall read as
+    wallpaper however carefully each hook is shaded.
 
     A `sunken` end is the same drawing one ramp step down, so it sits deeper in
     the wall. Without a couple of those every worm looks equally close and the
@@ -259,7 +353,8 @@ def worm_end(canvas, at, rng, sunken=False):
     if sunken:
         pale, lit_tone, mid, rim = WORM_LIT, WORM_BODY, WORM_RIM, SOIL[1]
 
-    if rng.random() < 0.5:
+    roll = rng.random()
+    if roll < 0.4:
         body = {(x + ox, y + oy) for oy in range(3) for ox in range(3)}
         painted = {
             (x, y): pale, (x + 1, y): pale, (x + 2, y): lit_tone,
@@ -267,8 +362,17 @@ def worm_end(canvas, at, rng, sunken=False):
             (x, y + 2): lit_tone, (x + 1, y + 2): mid, (x + 2, y + 2): rim,
         }
     else:
-        # An elbow: two pixels down, then two across, thickened to two wide.
-        spine = [(x, y), (x, y + 1), (x + 1, y + 1), (x + 2, y + 1)]
+        if roll < 0.75:
+            # An elbow: two pixels one way, then two across, mirrored at
+            # random so the bends scatter instead of all hanging one way.
+            sx, sy = rng.choice([1, -1]), rng.choice([1, -1])
+            spine = [(x, y), (x, y + sy), (x + sx, y + sy), (x + 2 * sx, y + sy)]
+        else:
+            # A loop: out, along, and diving back - the longest shape here,
+            # and the one that says the wall is full behind the surface.
+            sx = rng.choice([1, -1])
+            spine = [(x, y), (x + sx, y), (x + sx, y + 1),
+                     (x + 2 * sx, y + 1), (x + 2 * sx, y + 2)]
         body = thicken(spine, 2)
         lit, shaded, interior = silhouette(body)
         painted = {}
@@ -309,6 +413,12 @@ def loose_soil(rng):
     c = Canvas()
     soil_ground(c, rng, ramp=TURNED[1:6], weights=(1, 1, 2, 2, 2, 3),
                 clods=12, pockets=5, crumbs=5)
+    # Three dry crumbs from the top of the mound's own ramp, above the slice
+    # the ground is cut from. The mound has them and this is the same earth a
+    # few paces away, so their absence was the one measurable difference left
+    # between the two files. Three, not five: this surface was raked flat.
+    for _ in range(3):
+        c.put(rng.randrange(SIZE), rng.randrange(SIZE), TURNED[6])
     return c
 
 
@@ -321,17 +431,31 @@ def deep_earth(rng):
     and the only features are three broken mineral seams and a handful of
     pockets. The seams are broken on purpose - an unbroken line reads as a
     crack, and a crack repeats visibly the moment two blocks sit side by side.
+
+    Drawn on `DEEP` rather than on `SOIL`, which is the whole of the fix for a
+    fill that came out black. The drawing itself is unchanged - the same clods,
+    pockets and seams the mound is built from - because the composition was
+    never the complaint.
+
+    Reseeded with it. The two seams are the strongest thing on the tile and a
+    seed whose seams happen to run the width of it puts a visible hook or bar
+    on every block of a wall, which is exactly the failure the `--preview`
+    sheet exists to catch.
     """
     c = Canvas()
-    soil_ground(c, rng, weights=(1, 2, 2, 2, 2, 3), clods=10, pockets=8, crumbs=5)
+    soil_ground(c, rng, ramp=DEEP, weights=(1, 2, 2, 2, 2, 3), clods=10, pockets=8, crumbs=5)
     for _ in range(2):
         start = (rng.randrange(SIZE), rng.randrange(SIZE))
         direction = rng.choice([(1, 0), (0, 1)])
-        for i, (x, y) in enumerate(walk(rng, start, 14, direction, 0.3, min_run=3)):
-            if rng.random() < 0.25:
+        # The seam runs a step above the ground, not two: DEEP[4] with a rare
+        # DEEP[5] glint. At full brightness the seams were the first thing on
+        # the tile, and a fill's features must be findable, never found.
+        for i, (x, y) in enumerate(walk(rng, start, 12, direction, 0.3, min_run=3)):
+            if rng.random() < 0.3:
                 continue
-            c.put(x, y, SOIL[5] if i % 3 else SOIL[4])
-            c.put(x, y + 1, SOIL[1])  # the seam sits proud, so it casts a line
+            c.put(x, y, DEEP[5] if i % 5 == 2 else DEEP[4])
+            if rng.random() < 0.6:  # the seam sits proud, so it casts a line
+                c.put(x, y + 1, DEEP[1])
     return c
 
 
@@ -351,6 +475,7 @@ def root_beam(rng):
     """
     c = Canvas()
     c.noise((0, 0, SIZE, SIZE), SOIL, [0, 0, 1, 1], rng, wrap=True)
+    thick_path = None
     for centre, amplitude, frequency, axis, radius in (
         (13, 2.0, 2, "x", 1),
         (11, 3.0, 1, "x", 2),
@@ -359,6 +484,20 @@ def root_beam(rng):
         phase = rng.uniform(0.0, 2.0 * math.pi)
         path = wave(centre, amplitude, frequency, phase, axis)
         paint_strand(c, thicken(path, radius), ROOT, rng)
+        thick_path = (path, radius)
+
+    # Bark girdles on the thick root only. A woody root is segmented where the
+    # bark cracked as it grew, and the girdle is what says "wood under load"
+    # rather than "hose": a one pixel line across the full width, dark at the
+    # edges and half a step lighter in the middle so it reads as a crease in
+    # the bark rather than as a cut through the root. The thin roots stay
+    # smooth - hair roots have no bark to crack.
+    path, radius = thick_path
+    for i in range(4, len(path) - 3, 7):
+        x, y = path[i]
+        for o in range(radius):
+            c.put(x + o, y, ROOT[2] if o == radius // 2 else ROOT[1])
+
     for _ in range(6):
         c.put(rng.randrange(SIZE), rng.randrange(SIZE), ROOT[0])
     return c
@@ -401,10 +540,29 @@ def glow_mycelium(rng):
             for x, y in walk(rng, start, rng.randint(2, 4), direction, 0.2, min_run=2)
         }
 
-    for x, y in list(threads):
+    # The spill, in two steps and no gradient. Every soil pixel touching a
+    # thread takes the full tint; the ring beyond that - diagonals and second
+    # neighbours - takes it as a dither, roughly every other pixel. A stepped
+    # dither is what falloff looks like inside a five colour budget: the eye
+    # averages it into "dimmer" without a single new colour on the tile.
+    ring = set()
+    for x, y in threads:
         for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            if ((x + ox) % SIZE, (y + oy) % SIZE) not in threads:
-                c.put(x + ox, y + oy, GLOW[0])
+            p = ((x + ox) % SIZE, (y + oy) % SIZE)
+            if p not in threads:
+                ring.add(p)
+    fade = set()
+    for x, y in threads:
+        for ox, oy in ((-1, -1), (1, -1), (-1, 1), (1, 1),
+                       (-2, 0), (2, 0), (0, -2), (0, 2)):
+            p = ((x + ox) % SIZE, (y + oy) % SIZE)
+            if p not in threads and p not in ring:
+                fade.add(p)
+    for p in ring:
+        c.put(*p, GLOW[0])
+    for p in fade:
+        if rng.random() < 0.45:
+            c.put(*p, GLOW[0])
     for x, y in threads:
         c.put(x, y, GLOW[rng.choice([1, 1, 2, 2, 3])])
     for x, y in rng.sample(sorted(threads), min(3, len(threads))):
@@ -415,17 +573,148 @@ def glow_mycelium(rng):
     return c
 
 
+def root_nodule(rng):
+    """A pocket in the lining: hair roots through the soil, beaded with nodules.
+
+    This block's whole job is to be spotted. It sits in a wall of `loose_soil`
+    and it is the only thing in the burrow that says *dig here*, so it is drawn
+    on `loose_soil`'s own ramp - same hue, same range - and everything that
+    distinguishes it is laid over the top. A pocket in a different soil would
+    read as a seam of another material and the player would learn to walk past
+    it; a pocket in the same soil with something in it reads as a find.
+
+    One root across the block and one branch off it, both thinner than
+    `root_beam`'s: that block is a beam a corridor was cut around, this is hair
+    root growing through undisturbed ground. Three nodules, placed on the root
+    rather than scattered, because a nodule that is not attached to anything is
+    a pebble.
+
+    Weighted a step darker than `loose_soil` proper. The nodules are the palest
+    thing on the tile by a wide margin and they need the ground to stay out of
+    their way - which also means the block reads as a shadow in the wall from
+    across a corridor and resolves into roots as you walk up to it.
+    """
+    c = Canvas()
+    soil_ground(c, rng, ramp=TURNED[1:6], weights=(0, 1, 1, 2, 2, 3),
+                clods=10, pockets=6, crumbs=3)
+
+    # One root across the tile and one branch climbing off it. The amplitude is
+    # deliberately under two: `wave` fills its steep runs in, so a taller curve
+    # spends whole columns going vertically and the root arrives as a knot in
+    # the middle of the tile rather than as something crossing it.
+    phase = rng.uniform(0.0, 2.0 * math.pi)
+    trunk = wave(9, 1.8, 1, phase, "x")
+    hair_root(c, trunk, rng)
+
+    fork = trunk[rng.randrange(4, 11)]
+    hair_root(c, [(fork[0] + step // 2, fork[1] - step) for step in range(1, 7)], rng)
+
+    # Placed by column rather than by index into the path. `wave` returns more
+    # points than the tile is wide, so a fraction of the point list is not a
+    # fraction of the way across - and three beads that land in one quadrant are
+    # a lump, when the whole thing the count has to say is "several".
+    columns = {x: y for x, y in trunk}
+    on_root = {(x % SIZE, y % SIZE) for x, y in trunk}
+    for i, column in enumerate((2, 7, 12)):
+        column = (column + rng.randrange(2)) % SIZE
+        nodule(c, (column, columns[column]), wide=i == 1, keep=on_root)
+    return c
+
+
+def root_ladder(rng):
+    """Two roots braided into a rope with rungs lashed between them: the way up
+    out of a chamber.
+
+    The one cutout in this file. Every other block texture here fills its tile
+    and is read as a face; this one is drawn on transparency and hung on a pair
+    of crossed planes, so what is not rope has to be nothing at all rather than
+    soil. It is also why the ladder is twelve pixels wide and not sixteen - the
+    spare columns are the room seen past it, and a rope that filled its tile
+    would read as a plank.
+
+    **It has to tile in y and never meets a copy of itself in x.** Segments hang
+    from the ceiling down to head height, so the braid and the rungs both run on
+    a period of four, which divides sixteen: the twist carries unbroken down a
+    column of seven blocks instead of restarting at every block boundary.
+
+    The braid is the whole trick. A rope drawn in one flat tone with rungs on it
+    reads as wire, and one with per-pixel noise in it reads as string; what makes
+    it turn is a two pixel body with the highlight walking across it on a fixed
+    four row cycle. The cycle is written out rather than computed so that the
+    number of ramp steps it spends on each row is visible in the source.
+
+    The rims are the outer column of each rope and they are not decoration.
+    `ROOT` and the `loose_soil` the chamber is lined with are within a ramp step
+    of each other at the top - the rope is drawn on the wall's own palette, from
+    the ceiling of the wall's own room - so without a dark edge the lit side of a
+    strand lands on the same value as the wall behind it and the ladder
+    disappears from across the chamber. One column, on the outside only: this is
+    `hair_root`'s lit-tone-and-a-shadow turned on its side, not the hard outline
+    that eats a small shape.
+
+    The lashings take the *inner* pixel of each rope at a rung row and leave the
+    outer one to the braid, which is where a rung would actually be tied.
+    Darkening the whole rope there was the first version and it costs the twist:
+    three of every four rows carry it, and the cycle stops reading as rotation.
+
+    Which row of the braid the rungs land on is a decision and not a free choice
+    of phase. On the cycle's own lit row the lashing eats the one pixel that says
+    which way the rope turns, and half the twist goes with it - so the rungs sit
+    on a level row, where the pixel they take is the same tone as the one beside
+    it and costs nothing.
+    """
+    #: The twist, as ramp indices for (outer, inner) over four rows. Both ropes
+    #: run the same way round - mirroring them is symmetrical and reads as a
+    #: pattern, where two lengths cut off one rope read as rope.
+    braid = ((4, 2), (3, 3), (2, 4), (3, 3))
+
+    #: Each rope as (rim column, direction the body runs in). The rim is the
+    #: outer edge of the ladder, so the two ropes are laid inwards from 2 and 13
+    #: and their inner pixels - 4 and 11 - are what the rungs tie to.
+    ropes = ((2, 1), (13, -1))
+
+    c = Canvas()
+    for y in range(SIZE):
+        outer, inner = braid[y % 4]
+        for rim, step in ropes:
+            c.put(rim, y, ROOT[0])
+            c.put(rim + step, y, ROOT[outer])
+            c.put(rim + 2 * step, y, ROOT[inner])
+
+    # The rungs, and the knots holding them. The tone varies by a step from rung
+    # to rung: four identical bars four pixels apart is the one place a
+    # generated texture gives itself away.
+    for y in range(1, SIZE, 4):
+        tone = ROOT[rng.choice([2, 3, 3])]
+        for x in range(5, 11):
+            c.put(x, y, tone)
+        for rim, step in ropes:
+            c.put(rim + 2 * step, y, ROOT[0])
+
+    # Fibres working loose. Five of them, just outside the rims where they break
+    # the silhouette - a rope with two perfectly straight edges is a cable.
+    for _ in range(5):
+        c.put(rng.choice([1, 14]), rng.randrange(SIZE), ROOT[1])
+    return c
+
+
 def worm_larder(rng):
     """Packed earth studded with worm ends. A mole's pantry: the worms are
     alive and put back in the wall head first.
 
-    Damper and a shade darker than `deep_earth` so the pale ends carry. Spacing
+    Damp packed earth, dark enough that the pale ends carry. (It once claimed to
+    be "a shade darker than deep_earth"; deep_earth has since gone browner in
+    the fog rework and the comparison no longer holds - this draws on SOIL and
+    stands on its own.) Spacing
     is rejection sampled around the seam, otherwise two ends meet across the
     tile edge and read as one large pale smear on a wall.
     """
     c = Canvas()
     soil_ground(c, rng, weights=(0, 1, 1, 2, 2, 2), clods=8, pockets=10, crumbs=3)
-    for i, point in enumerate(scatter_points(rng, 6, 5.0)):
+    # Minimum distance up half a pixel from 5.0: the mirrored elbows and the
+    # loop reach further from their anchor than the old stamps did, and two
+    # sockets fusing across a gap is the smear the sampling exists to prevent.
+    for i, point in enumerate(scatter_points(rng, 6, 5.5)):
         worm_end(c, point, rng, sunken=i % 3 == 0)
     return c
 
@@ -497,7 +786,10 @@ def grunting_post(rng):
                 if i % 2:
                     c.put(x, y, WOOD[0], wrap=False)
                 else:
-                    c.put(x, y, WOOD[4] if y == y0 else WOOD[2], wrap=False)
+                    # The ridge tip takes the very top of the ramp: the rasp
+                    # is the working edge of the whole object and its teeth
+                    # should catch light before anything else on the post.
+                    c.put(x, y, WOOD[5] if y == y0 else WOOD[2], wrap=False)
 
     notched(rects["rasp_long"])
     notched(rects["rasp_top"])
@@ -612,7 +904,7 @@ def worm_box(rng):
         for x in range(SIZE):
             c.put(x, y0 + 4, WOOD[0])  # the gap between two slats
         for x in rng.sample(range(1, SIZE - 1), 2):
-            c.put(x, y0 + 1, WOOD[4])  # pegs holding the slat to the frame
+            c.put(x, y0 + 1, WOOD[5])  # pegs holding the slat to the frame
 
     for _ in range(9):
         x, y = rng.randrange(SIZE), rng.randrange(8, SIZE)
@@ -635,9 +927,13 @@ def mole_trap(rng):
     """
     c = Canvas(ground=WOOD[2] + (255,))
     board_run(c, WOOD, rng, vertical=True)
+    # Nail heads at the top of the ramp, a step above the boards' own lit
+    # edges, with a shadow pixel under each. The head is the one thing on the
+    # wall that stands proud of it, and before the shadow it read as grain.
     for y in (4, 11):  # two rows of nails, one per board
         for x in range(1, SIZE, 3):
-            c.put(x, y, WOOD[4])
+            c.put(x, y, WOOD[5])
+            c.put(x, y + 1, WOOD[1])
     for _ in range(6):
         c.put(rng.randrange(SIZE), rng.randrange(SIZE), WOOD[1])
     return c
@@ -657,6 +953,13 @@ def mole_trap_frame(rng):
         for j in range(2, SIZE - 2):
             c.put(i, j, WOOD[1])
             c.put(j, i, WOOD[1])
+    # The frame band sits proud of the boards, so its inner edge casts a
+    # broken shadow - broken, because an unbroken dark ring inset in a pale
+    # face reads as a second frame rather than as depth.
+    for j in range(3, SIZE - 3):
+        if rng.random() < 0.6:
+            c.put(3, j, WOOD[0])
+            c.put(j, 3, WOOD[0])
     for corner in ((3, 3), (SIZE - 4, 3), (3, SIZE - 4), (SIZE - 4, SIZE - 4)):
         c.put(*corner, PALE_WOOD[4])  # pegs at the corners of the frame
     return c
@@ -726,6 +1029,15 @@ def shaft_lantern(rng):
         for x in (x0 + 3, x0 + 4):
             c.put(x, y, ROOT[0], wrap=False)
     c.put(x0 + 3, y0 + 3, ROOT[3], wrap=False)
+
+    # The knot the loop is tied off on: a stub of root standing on the cap,
+    # which the model raises as its own little box. Lit corner up-left, dark
+    # corner down-right, the kit's one light direction at its smallest.
+    x0, y0, x1, y1 = rects["knot_side"]
+    c.put(x0, y0, ROOT[3], wrap=False)
+    c.put(x0 + 1, y0, ROOT[1], wrap=False)
+    c.put(x0, y0 + 1, ROOT[1], wrap=False)
+    c.put(x0 + 1, y0 + 1, ROOT[0], wrap=False)
     return c
 
 
@@ -735,10 +1047,12 @@ def shaft_lantern(rng):
 #: a texture that comes out badly composed is reseeded, not repainted.
 TEXTURES = [
     ("loose_soil", loose_soil, 2318),
-    ("deep_earth", deep_earth, 20260829),
+    ("deep_earth", deep_earth, 17320),
     ("root_beam", root_beam, 4471),
     ("glow_mycelium", glow_mycelium, 90112),
     ("worm_larder", worm_larder, 33107),
+    ("root_nodule", root_nodule, 51236),
+    ("root_ladder", root_ladder, 771),
     ("shrink_post", shrink_post, 8802),
     ("grunting_post", grunting_post, 5410),
     ("colony_board", colony_board, 12244),
@@ -752,8 +1066,11 @@ TEXTURES = [
 ]
 
 #: The ones that tile against copies of themselves, shown as a wall in the
-#: preview sheet.
-TILING = {"loose_soil", "deep_earth", "root_beam", "glow_mycelium", "worm_larder"}
+#: preview sheet. `root_ladder` tiles in y only - it hangs as a column and never
+#: meets a copy sideways - and is in the set anyway, because the vertical seam is
+#: the one thing about it worth checking and the sheet is where that shows.
+TILING = {"loose_soil", "deep_earth", "root_beam", "glow_mycelium", "worm_larder",
+          "root_nodule", "root_ladder"}
 
 
 def paint_all():

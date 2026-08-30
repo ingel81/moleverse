@@ -57,12 +57,24 @@ RING_PITCH = 3
 #: as segmented rather than as striped.
 RING_WIDTH = 1.0
 
-#: Where the clitellum sits along the body, as a fraction of the total length.
-CLITELLUM_FROM, CLITELLUM_TO = 0.26, 0.40
+#: Where the painted clitellum band sits along the body: exactly under the
+#: geometry saddle on segment five. The band is buried by the saddle, but a
+#: rule that quietly depends on another box hiding its output is a trap for
+#: the next resize, so the two are kept aligned rather than one deleted.
+CLITELLUM_FROM, CLITELLUM_TO = 0.35, 0.40
 
 #: How far up the flank the clitellum reaches. A band of even weight all the
 #: way round reads as a painted stripe rather than as a swelling.
 CLITELLUM_FOOT = 0.28
+
+#: The wet reflection: a hard band riding the upper flank, promoted from
+#: variant C of the comparison sheet. Below the spine, not on it - the spine
+#: faces the sky, the reflection faces the viewer - and hard-edged, because
+#: at one texel per model unit a soft gleam is a smudge. It stacks on the
+#: ramp like every other effect and rounds once at the end, so it costs no
+#: new colours.
+SHEEN_UP = (0.66, 0.84)
+SHEEN = 1.4
 
 CUBES, SIZE, TEXTURE_HEIGHT = shape.layout()
 
@@ -127,9 +139,25 @@ def surface(cube, face, x, y, z):
     until the end is what lets four separate effects stack without any of them
     having to know about the others.
     """
+    # The mouth is a cavity, not a surface, and a cavity is the bottom of the
+    # ramp with nothing painted on it.
+    if cube["name"] == "mouth":
+        return 0.0, None
+
     along = (z - Z_FRONT) / (Z_BACK - Z_FRONT)
     up = flank_height(cube, face, y)
     on_clitellum = CLITELLUM_FROM <= along < CLITELLUM_TO
+
+    # The saddle is painted off its own box, not off the band: clitellum
+    # colour above the foot, skin below, because a real clitellum is open
+    # beneath. The prostomium steps are darker working flesh all over.
+    if cube["name"] == "clitellum":
+        level = 7.0 - 4.4 * smooth(up)
+        if up > CLITELLUM_FOOT:
+            return level, WORM_CLITELLUM
+        return level, None
+    if cube["name"].startswith("prost"):
+        return 7.0 - 4.4 * smooth(up) - 1.9, None
 
     # Pale ventral side at the top of the ramp, dark red-brown dorsal at the
     # bottom of it. Smoothstepped so the belly and the back each get a band of
@@ -140,6 +168,9 @@ def surface(cube, face, x, y, z):
     # blood vessel nowhere to go - both subtract, both clamp, and the whole
     # back comes out as one flat darkest tone with the pattern gone.
     level = 7.0 - 4.4 * smooth(up)
+
+    if SHEEN_UP[0] < up < SHEEN_UP[1]:
+        level += SHEEN
 
     # The head end is darker and browner, the tail end paler and greyer. Both
     # narrow enough to leave the middle of the animal alone.
@@ -157,7 +188,14 @@ def surface(cube, face, x, y, z):
     # where this segment meets the next. Taking it as a joint outright is both
     # the true answer and the safe one: off a ring it would come out as a pale
     # band around the joint, which is the one place a worm never has one.
-    joint = face in ("north", "south") or (z - Z_FRONT) % RING_PITCH < RING_WIDTH
+    #
+    # The raised annuli are the exception: their ends sit mid-bulge by
+    # construction, between two joints, so only the z-keyed pattern applies to
+    # them - which then runs unbroken from the segment onto the ring and back,
+    # because both are functions of the same z.
+    annulus = cube["name"].startswith("ring_")
+    joint = (not annulus and face in ("north", "south")) \
+        or (z - Z_FRONT) % RING_PITCH < RING_WIDTH
     if joint and not on_clitellum:
         level -= 1.6
 
