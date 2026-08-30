@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -205,6 +206,73 @@ public final class BurrowRoute {
             return Progress.LIQUID;
         }
         return state.isSolid() ? Progress.TRAVELLING : Progress.NOT_SOLID;
+    }
+
+    /**
+     * How finely {@link #firstLiquid} walks the line.
+     *
+     * <p>Half a block, against the fifteen hundredths {@link #advance} moves in a
+     * tick. Coarser on purpose: this runs before a trip rather than during one and
+     * may run several times over for one decision, and what it is looking for is a
+     * body of water. A pond, a river or an ocean is many blocks across and cannot
+     * hide between two samples this close together; a single block of water
+     * threaded exactly through the corner of the line can, and the travel check is
+     * still there behind this one to catch it.</p>
+     */
+    private static final double LIQUID_PROBE_STEP = 0.5;
+
+    /**
+     * Walks the whole route looking for water or lava, before anybody commits to
+     * it.
+     *
+     * <p>{@link #advance} already refuses a wet route, but it refuses it from
+     * <em>inside the ground, halfway along</em>: the mole has dug in, opened a
+     * mound, travelled a few blocks and now has to surface again with nothing to
+     * show for it. On flat ground that is a rare recovery. On a peninsula it is
+     * every trip, because every bearing from there reaches the sea, and the mole
+     * loops - dig in, find water, come up, get bored, dig in - for the life of the
+     * world. Asking the same question a few ticks earlier turns that from a
+     * behaviour into a refusal with a name.</p>
+     *
+     * <p><strong>Liquid only</strong>, and not the other two things
+     * {@link #validate} rejects. Open air and an unloaded chunk are both statements
+     * about a moment - the ground ahead may be loaded by the time the mole gets to
+     * it, and refusing every long trip because its far end is not ticking yet would
+     * be a worse bug than the one this fixes. Water does not arrive and leave like
+     * that.</p>
+     *
+     * <p>An unloaded position reads as dry here, because {@code getBlockState}
+     * answers void air for one and there is no honest way to tell that from
+     * stone. That is the right way round: this check may only ever <em>refuse</em>
+     * a trip it is sure about.</p>
+     *
+     * @return the first wet block on the line, or null when the whole route is dry
+     */
+    public @Nullable BlockPos firstLiquid(LevelReader level) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int lastX = Integer.MIN_VALUE;
+        int lastY = Integer.MIN_VALUE;
+        int lastZ = Integer.MIN_VALUE;
+
+        for (double travelled = 0.0; travelled <= this.totalLength; travelled += LIQUID_PROBE_STEP) {
+            Vec3 at = positionAt(travelled);
+            int x = Mth.floor(at.x);
+            int y = Mth.floor(at.y);
+            int z = Mth.floor(at.z);
+            // Two samples half a block apart usually land in the same block, and
+            // a block state lookup is the expensive half of this loop.
+            if (x == lastX && y == lastY && z == lastZ) {
+                continue;
+            }
+            lastX = x;
+            lastY = y;
+            lastZ = z;
+
+            if (!level.getBlockState(cursor.set(x, y, z)).getFluidState().isEmpty()) {
+                return cursor.immutable();
+            }
+        }
+        return null;
     }
 
     private Vec3 positionAt(double distance) {

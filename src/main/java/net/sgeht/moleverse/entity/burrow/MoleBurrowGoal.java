@@ -2,7 +2,9 @@ package net.sgeht.moleverse.entity.burrow;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +44,44 @@ import net.sgeht.moleverse.tag.ModTags;
  * step.</p>
  */
 public class MoleBurrowGoal extends Goal {
+
+    /**
+     * How many exits one decision tries before it gives up on finding a dry route.
+     *
+     * <p>Six, against a network capped at thirty-two members. It is not meant to
+     * be exhaustive - it is meant to be enough that a spit of land with one wet
+     * bearing and two dry ones almost never reads as landlocked, while a genuine
+     * peninsula still reaches an answer inside one decision rather than searching
+     * the whole colony every ten seconds.</p>
+     */
+    private static final int DRY_ROUTE_ATTEMPTS = 6;
+
+    /**
+     * How long wet ground is shunned once every route from it came back wet, in
+     * ticks. Thirty seconds.
+     *
+     * <p>Three times the loop it replaces, which is the point: the old behaviour
+     * repeated about every ten seconds and the mole never got anywhere between
+     * two attempts. Long enough to walk out of a bay, short enough that a mole
+     * whose sea was a two-block puddle a player has since filled in is not
+     * standing about for a minute over it.</p>
+     *
+     * <p>These three would sit better in {@code BurrowConstants} with the rest of
+     * the mechanic's tuning. They are here because that file belongs to work in
+     * flight elsewhere in this package; moving them is a three-line follow-up.</p>
+     */
+    private static final int WET_GROUND_COOLDOWN = 600;
+
+    /**
+     * How far the mole has to get from the wet spot for the shun to lift early,
+     * in blocks.
+     *
+     * <p>Sixteen is {@code NEW_TRAVEL_MAX}, and deliberately the same number: it
+     * is the farthest a mole ever digs for fresh ground, so having walked that far
+     * means every site it could now reach is one it could not reach before. Less
+     * than that and it would lift the shun without having changed the question.</p>
+     */
+    private static final int WET_ESCAPE_DISTANCE = 16;
 
     private final Mole mole;
     private final RandomSource random;
@@ -118,6 +158,25 @@ public class MoleBurrowGoal extends Goal {
      * clears this long before the rescue in {@link #canUse()} looks at it.
      */
     private int strandedSinceTick = -1;
+
+    /**
+     * Where the mole stood when the water beat it, or null while nothing is being
+     * shunned.
+     *
+     * <p>The same shape as the grub's shunned larder, and for the same reason: a
+     * refusal that is not remembered is a refusal that repeats. Deliberately a
+     * <em>place</em> and not merely a timer, because the answer to "everywhere
+     * from here is wet" is to be somewhere else, and only a position can tell
+     * whether that has happened yet.</p>
+     *
+     * <p>Not saved. A mole reloaded on a peninsula rediscovers the sea within one
+     * decision, and a shun that outlived the world would be a mole refusing to dig
+     * over a pond somebody drained an hour ago.</p>
+     */
+    private @Nullable BlockPos wetGroundAt;
+
+    /** Tick the shun above lifts on its own, whether or not the mole has walked. */
+    private int wetGroundUntilTick;
 
     /**
      * How long this particular stay above ground lasts, drawn fresh each time it
@@ -267,6 +326,15 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
+        // Only the bored path honours the shun, and that ordering is the whole
+        // safety of it. Fright and a typed command both have to get through: a
+        // mole that will not escape because the sea is in the way would be a
+        // worse animal than the one that looped.
+        if (!forced && !fleeingNow && this.shunningWetGround(now)) {
+            this.delayNextAttempt();
+            return false;
+        }
+
         BlockPos origin = this.mole.blockPosition();
         BlockState ground = level.getBlockState(origin.below());
         boolean diggable = ground.is(ModTags.Blocks.MOLE_DIGGABLE);
@@ -363,6 +431,11 @@ public class MoleBurrowGoal extends Goal {
     @Override
     public void stop() {
         BurrowState state = this.mole.getBurrowState();
+        // Also said here, and deliberately twice. beginEmerging covers the trip
+        // ending; this covers the goal being taken away while the mole is still
+        // in the ground, which is the path that reaches nothing else. It is a
+        // no-op the second time.
+        BurrowTraversal.tripEnded(this.mole);
 
         if (this.mole.level() instanceof ServerLevel level) {
             if (state.isBelowGround()) {
@@ -403,7 +476,13 @@ public class MoleBurrowGoal extends Goal {
         // the strolling goal switched on for the whole of the next trip and the
         // stay above ground after it - which is the mole wandering the meadow
         // again, the very thing the goal was written to stop.
-        this.refusing = false;
+        //
+        // Unless the water is being shunned, and then it has to stand. Otherwise
+        // a trip that ended in liquid leaves the mole standing on its mound for
+        // the whole of the next dwell - up to eight seconds - before canUse gets
+        // as far as the shun and switches walking back on. The walk away is the
+        // fix; starting it a dwell late is most of the loop still being there.
+        this.refusing = this.wetGroundAt != null;
         this.surfacedTick = this.mole.tickCount;
         this.nextAttemptTick = this.mole.tickCount + cooldown;
         // Only a trip that really happened clears the retry throttle. An
@@ -495,6 +574,65 @@ public class MoleBurrowGoal extends Goal {
         this.report("refused - " + why);
     }
 
+    /**
+     * Writes off the ground the mole is standing on and sends it walking.
+     *
+     * <p>Called from the two places the water can win: a decision where every
+     * route drawn was wet, and a trip that met water anyway because the world
+     * changed under it. One log line, here, and none for the refusals the shun
+     * goes on to make - those say nothing the first one did not, and burying the
+     * real refusals under a repeat every three seconds is exactly what the
+     * refusal log exists not to do.</p>
+     *
+     * <p>The anchor is the entry mound rather than wherever the mole happens to
+     * be. On the trip path it is underground when this runs, and the surface point
+     * it is about to be put back at is a stride from the entry anyway - that being
+     * the shape of the bug, a route that meets water almost at once and comes
+     * straight back up. The entry is the spot the loop restarts from, so the entry
+     * is the spot to get away from.</p>
+     */
+    private void shunWetGround(String why) {
+        this.wetGroundAt = this.entry != null ? this.entry : this.mole.blockPosition();
+        this.wetGroundUntilTick = this.mole.tickCount + WET_GROUND_COOLDOWN;
+        this.refuseAndMoveOn(why + " - walking on");
+    }
+
+    /**
+     * Whether the mole is still under the shun, and keeps it walking while it is.
+     *
+     * <p>Two ways out and either will do. Walking {@link #WET_ESCAPE_DISTANCE}
+     * clear is the real one - it is the answer the mechanic actually wants, and on
+     * a peninsula it means the mole has gone back inland - and the cooldown is
+     * there because walking is not guaranteed to get anywhere. A mole hemmed into
+     * a cove by its own pathfinding would otherwise never dig again.</p>
+     *
+     * <p>{@code refusing} is set on every call and not once, because
+     * {@code stop()} clears it at the end of any trip and
+     * {@code MoleSurfaceStrollGoal} reads it as the licence to walk at all. The
+     * trigger alongside it only asks the stroll goal to want a walk on its next
+     * evaluation; one already under way is left to finish.</p>
+     */
+    private boolean shunningWetGround(int now) {
+        BlockPos from = this.wetGroundAt;
+        if (from == null) {
+            return false;
+        }
+
+        boolean walkedClear = this.mole.blockPosition().distSqr(from)
+                >= WET_ESCAPE_DISTANCE * WET_ESCAPE_DISTANCE;
+        if (walkedClear || now >= this.wetGroundUntilTick) {
+            this.wetGroundAt = null;
+            BurrowLog.recovered(this.mole, walkedClear
+                    ? "walked clear of the wet ground - digging again"
+                    : "waited out the wet ground - digging again");
+            return false;
+        }
+
+        this.refusing = true;
+        this.mole.wanderNow();
+        return true;
+    }
+
     /** True while this mole has been told its colony is full and has nowhere to dig. */
     public boolean wantsToLeave() {
         return this.leaveWish;
@@ -562,90 +700,177 @@ public class MoleBurrowGoal extends Goal {
         return this.chooseExitAndRoute(level, network, threat, scan.densityCapReached());
     }
 
+    /** One exit on offer, and whether taking it would mean digging a fresh hole. */
+    private record Target(BlockPos site, boolean isNew) {
+    }
+
+    /**
+     * Picks an exit whose route is dry, trying several before giving up.
+     *
+     * <p>The retry is the fix for the peninsula. One draw and one route used to be
+     * the whole of this method, and where the water is on three sides that route
+     * is wet more often than not - so the mole dug in, met the sea a few blocks
+     * along, surfaced, and did it again about every ten seconds for ever. Drawing
+     * again is nearly free next to what it saves, because a rejected route costs
+     * one walk over a line that was going to be walked anyway.</p>
+     *
+     * <p>Targets already found wet are remembered for the length of this decision
+     * and a repeat draw is skipped rather than re-probed - {@code chooseExit}
+     * weights its pick and will happily offer the same mound twice - but it still
+     * costs an attempt, because a network with one dry option and one wet one must
+     * not be able to spin here for ever.</p>
+     *
+     * <p>Every draw re-rolls the explore chance rather than settling it once for
+     * the cycle. That is what makes the attempts different from one another
+     * instead of six draws from the same hat: an attempt that asks the network and
+     * an attempt that looks for fresh ground search different parts of the
+     * compass, and on a peninsula the difference is the whole question.</p>
+     */
     private boolean chooseExitAndRoute(ServerLevel level, MoundNetwork.Members network, @Nullable Vec3 threat,
             boolean crowded) {
-        // Now and then, strike out for somewhere new even though the network has
-        // an exit to offer. Preferring what exists is right most of the time -
-        // it is what stops a meadow filling with holes - but always preferring
-        // it means a territory freezes at two mounds and never grows again.
+        boolean mayDig = this.mole.tickCount >= this.nextNewHoleTick;
+        Set<BlockPos> alreadyWet = new HashSet<>();
+        BlockPos firstWater = null;
+        Target wetFallback = null;
+        BurrowRoute wetRoute = null;
+
+        for (int attempt = 0; attempt < DRY_ROUTE_ATTEMPTS; attempt++) {
+            Target target = this.drawTarget(level, network, threat, crowded, mayDig);
+            if (target == null) {
+                break;
+            }
+            if (!alreadyWet.add(target.site())) {
+                continue;
+            }
+
+            // routeTo settles this.run as a side effect, so it is called
+            // speculatively here. Harmless: the accepted target is always the
+            // last one asked, and a cycle that accepts nothing never travels.
+            BurrowRoute candidate = this.routeTo(level, target.site());
+            BlockPos water = candidate.firstLiquid(level);
+            if (water == null) {
+                this.exit = target.site();
+                this.exitIsNew = target.isNew();
+                this.route = candidate;
+                BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, this.exitIsNew,
+                        this.route.length(), this.route.waypointCount());
+                return true;
+            }
+            if (firstWater == null) {
+                firstWater = water;
+                wetFallback = target;
+                wetRoute = candidate;
+            }
+        }
+
+        if (firstWater != null) {
+            // A frightened mole takes the wet route rather than none. Refusing
+            // here would be a new bug in place of the old one: the mole would
+            // stay on the surface with whatever scared it, and a trip cut short
+            // by water still surfaces it a few blocks off, which is an escape.
+            // This is exactly what every trip used to do, kept for the one case
+            // where it was the right answer.
+            if (threat != null) {
+                this.exit = wetFallback.site();
+                this.exitIsNew = wetFallback.isNew();
+                this.route = wetRoute;
+                BurrowLog.recovered(this.mole, "fleeing over a wet route - no dry bearing from here");
+                BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, this.exitIsNew,
+                        this.route.length(), this.route.waypointCount());
+                return true;
+            }
+
+            // One line for the batch and not one per bearing. Six lines saying
+            // the same thing every ten seconds is how a log stops being read,
+            // and the count is the part that carries the information.
+            this.shunWetGround("every route from here runs into water ("
+                    + alreadyWet.size() + " target(s) tried, first at " + firstWater.getX()
+                    + "," + firstWater.getY() + "," + firstWater.getZ() + ")");
+            return false;
+        }
+
+        // The wish to leave is guarded by there being no target at all, and that
+        // makes it far narrower than "the colony is full". It means full *and* no
+        // trip available at all - and a full colony is the least likely place to
+        // run out of trips, because being full is having thirty-two destinations.
         //
-        // Under threat that goes the other way round, and mostly new ground
-        // wins: bolting to a hole the pursuer is standing beside is no escape,
-        // and a mole chased between two known mounds is a mole that never got
-        // away. Only the density cap still says no.
+        // Measured: two moles, one colony, eight hours of game time. The colony
+        // reached the cap inside the first hour and then made 2578 trips without
+        // a single refusal, so this branch was never entered and no mole ever
+        // wanted to leave. The full-colony half of MoleEmigrateGoal has therefore
+        // never run; only the band half has. Whether a full colony *should* push
+        // somebody out is an open design question rather than a bug, and it is
+        // recorded as one in docs/WORKLOG.md.
+        boolean full = network.mounds().size() >= BurrowConstants.NETWORK_MAX_MEMBERS;
+        if (full) {
+            this.leaveWish = true;
+        }
+
+        // The crowded case: mounds all around but every one of them too close to
+        // be worth the trip, and no room for a fifth anywhere in reach. He wanders
+        // off and tries again from somewhere else, which is what spreads a
+        // territory out instead of stacking it.
+        this.refuseAndMoveOn((full ? "colony is full: "
+                : crowded ? "density cap reached: "
+                : !mayDig ? "still resting from the last new hole: "
+                : "no valid exit: ")
+                + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE
+                + " blocks and no fresh site was available");
+        return false;
+    }
+
+    /**
+     * One draw at somewhere to come up, in the order the mechanic prefers them.
+     *
+     * <p>Lifted out of {@link #chooseExitAndRoute} unchanged so that it can be
+     * asked more than once. The order is the argument: now and then, strike out
+     * for somewhere new even though the network has an exit to offer. Preferring
+     * what exists is right most of the time - it is what stops a meadow filling
+     * with holes - but always preferring it means a territory freezes at two
+     * mounds and never grows again.</p>
+     *
+     * <p>Under threat that goes the other way round, and mostly new ground wins:
+     * bolting to a hole the pursuer is standing beside is no escape, and a mole
+     * chased between two known mounds is a mole that never got away. Only the
+     * density cap still says no.</p>
+     *
+     * <p>And exploring is a preference, not a demand. If no fresh site is free,
+     * fall back to the network rather than refusing a trip that was perfectly
+     * possible.</p>
+     */
+    private @Nullable Target drawTarget(ServerLevel level, MoundNetwork.Members network,
+            @Nullable Vec3 threat, boolean crowded, boolean mayDig) {
         float chance = threat != null
                 ? BurrowConstants.FLEE_EXPLORE_CHANCE
                 : BurrowConstants.EXPLORE_CHANCE;
-        boolean mayDig = this.mole.tickCount >= this.nextNewHoleTick;
         boolean explore = mayDig && !crowded && this.random.nextFloat() < chance;
 
-        BlockPos chosen = explore
-                ? null
-                : MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
-        if (chosen != null) {
-            this.exit = chosen;
-            this.exitIsNew = false;
-        } else {
-            // Also gated: this is the fallback when the network offers nothing,
-            // and without the check it would dig the very hole the timer is
-            // there to ration.
-            this.exit = mayDig
-                    ? MoundNetwork.findFreshSite(level, this.random, this.entry, this.colony, threat)
-                    : null;
-
-            // Exploring is a preference, not a demand. If no fresh site is free,
-            // fall back to the network rather than refusing a trip that was
-            // perfectly possible.
-            if (this.exit == null && explore) {
-                this.exit = MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
-                if (this.exit != null) {
-                    this.exitIsNew = false;
-                    this.route = this.routeTo(level, this.exit);
-                    BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, false,
-                            this.route.length(), this.route.waypointCount());
-                    return true;
-                }
+        if (!explore) {
+            BlockPos chosen =
+                    MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
+            if (chosen != null) {
+                return new Target(chosen, false);
             }
-
-            if (this.exit == null) {
-                // The wish to leave is guarded by the `exit == null` above, and
-                // that makes it far narrower than "the colony is full". It means
-                // full *and* no trip available at all - and a full colony is the
-                // least likely place to run out of trips, because being full is
-                // having thirty-two destinations.
-                //
-                // Measured: two moles, one colony, eight hours of game time.
-                // The colony reached the cap inside the first hour and then made
-                // 2578 trips without a single refusal, so this branch was never
-                // entered and no mole ever wanted to leave. The full-colony half
-                // of MoleEmigrateGoal has therefore never run; only the band half
-                // has. Whether a full colony *should* push somebody out is an
-                // open design question rather than a bug, and it is recorded as
-                // one in docs/WORKLOG.md.
-                boolean full = network.mounds().size() >= BurrowConstants.NETWORK_MAX_MEMBERS;
-                if (full) {
-                    this.leaveWish = true;
-                }
-
-                // The crowded case: mounds all around but every one of them too
-                // close to be worth the trip, and no room for a fifth anywhere in
-                // reach. He wanders off and tries again from somewhere else,
-                // which is what spreads a territory out instead of stacking it.
-                this.refuseAndMoveOn((full ? "colony is full: "
-                        : crowded ? "density cap reached: "
-                        : !mayDig ? "still resting from the last new hole: "
-                        : "no valid exit: ")
-                        + "no network member beyond " + BurrowConstants.MIN_EXIT_DISTANCE
-                        + " blocks and no fresh site was available");
-                return false;
-            }
-            this.exitIsNew = true;
         }
 
-        this.route = this.routeTo(level, this.exit);
-        BurrowLog.targetChosen(this.mole, this.entry, this.entryIsNew, this.exit, this.exitIsNew,
-                this.route.length(), this.route.waypointCount());
-        return true;
+        // Gated: this is the fallback when the network offers nothing, and
+        // without the check it would dig the very hole the timer is there to
+        // ration.
+        BlockPos fresh = mayDig
+                ? MoundNetwork.findFreshSite(level, this.random, this.entry, this.colony, threat)
+                : null;
+        if (fresh != null) {
+            return new Target(fresh, true);
+        }
+
+        if (explore) {
+            BlockPos chosen =
+                    MoundNetwork.chooseExit(level, this.random, network, this.entry, this.colony, threat);
+            if (chosen != null) {
+                return new Target(chosen, false);
+            }
+        }
+        return null;
     }
 
     // --- the states -----------------------------------------------------------
@@ -703,9 +928,21 @@ public class MoleBurrowGoal extends Goal {
             return false;
         }
 
+        // The same probe the planning path makes, because this is a second
+        // planning path: the exit was chosen against a route from the old entry,
+        // and a line drawn from here to it is a different line that can meet
+        // water the first one missed. routeTo reads this.entry, so the move has
+        // to happen first and be taken back when the answer is no.
+        BlockPos was = this.entry;
         this.entry = here;
+        BurrowRoute candidate = this.routeTo(level, this.exit);
+        if (candidate.firstLiquid(level) != null) {
+            this.entry = was;
+            return false;
+        }
+
         this.entryIsNew = true;
-        this.route = this.routeTo(level, this.exit);
+        this.route = candidate;
         return true;
     }
 
@@ -729,6 +966,9 @@ public class MoleBurrowGoal extends Goal {
         this.mole.beginUnderground();
         this.mole.snapTo(this.route.position());
         this.travelStartTick = this.mole.tickCount;
+        // The burrow below is told, and decides for itself whether there is a
+        // corridor to mirror this in and anybody down there to see it.
+        BurrowTraversal.tripStarted(level, this.mole, this.entry, this.exit);
         this.wentUnder = true;
         this.mole.setBurrowState(BurrowState.UNDERGROUND, "burrow animation finished");
     }
@@ -740,6 +980,7 @@ public class MoleBurrowGoal extends Goal {
         // is supposed to end up.
         this.mole.snapTo(this.route.position());
         this.surfaceTrace(level);
+        BurrowTraversal.tripProgressed(this.mole, this.route);
 
         switch (progress) {
             case TRAVELLING -> {
@@ -758,6 +999,12 @@ public class MoleBurrowGoal extends Goal {
             }
             case LIQUID -> {
                 BurrowLog.recovered(this.mole, "liquid on the route");
+                // Rare now that the route is probed before the mole commits to
+                // it: getting here means the water was not visible then - an
+                // unloaded chunk that has since loaded, or a player with a
+                // bucket. Shunned all the same, because a trip that ends this way
+                // ends where it started and would be tried again in ten seconds.
+                this.shunWetGround("a trip met water the planning probe could not see");
                 this.beginEmerging(level, "route ran into liquid");
             }
         }
@@ -787,6 +1034,11 @@ public class MoleBurrowGoal extends Goal {
     }
 
     private void beginEmerging(ServerLevel level, String reason) {
+        // Every way the underground phase can end comes through here, which is
+        // why the apparition below is told to dig out here and not at stop():
+        // the emerge animation is most of a second, and a giant mole standing
+        // still in a corridor for it would read as a mole that had noticed you.
+        BurrowTraversal.tripEnded(this.mole);
         BurrowLog.travelFinished(this.mole, this.mole.tickCount - this.travelStartTick,
                 this.route.travelled(), this.route.estimatedTicks());
 
@@ -929,11 +1181,44 @@ public class MoleBurrowGoal extends Goal {
         }
 
         this.openedMound = this.entry;
+        raiseFortress(level, this.entry);
         // The entity keeps its own copy because the goal is thrown away when the
         // chunk unloads, and a shaft left open is a change to the world that has
         // to be undone even if this trip never finishes.
         this.mole.setOpenShaft(this.entry);
         return true;
+    }
+
+    /**
+     * Raises the heap when this mound is the one at the middle of the colony.
+     *
+     * <p>The fortress mound: real moles pile a single oversized heap over the nest,
+     * and the colony's core is where {@code NestCarver} puts that nest. Marking it
+     * on the surface is what lets a player pick the one heap in a meadow that is
+     * worth going down - see {@link MoleMound#FORTRESS} for why it is a model on one
+     * block rather than the stack the plan asked for.</p>
+     *
+     * <p><strong>At mound time, and never on a tick.</strong> Every trip opens a
+     * mound and closes another, so the core is looked at whenever a mole actually
+     * uses it and the flag costs one comparison per event. A sweep over the colony
+     * looking for a heap to raise would be the same answer arrived at by polling,
+     * and it would go on asking about colonies nobody has visited for hours. It also
+     * needs no migration: an existing world raises its heaps on the first trip
+     * through each core.</p>
+     *
+     * <p>x and z only, which is {@link Colony#contains}'s convention and for its
+     * reason. The core is stored as the mound position it was founded at, and the
+     * ground under a mound can be dug out and filled back a block lower; territory
+     * is a question about the surface, not about a height.</p>
+     */
+    private void raiseFortress(ServerLevel level, BlockPos mound) {
+        if (this.colony == null) {
+            return;
+        }
+        BlockPos core = this.colony.core();
+        if (core.getX() == mound.getX() && core.getZ() == mound.getZ()) {
+            MoleMound.setFortress(level, mound, true);
+        }
     }
 
     private void closeOpenedMound(ServerLevel level) {
@@ -958,6 +1243,7 @@ public class MoleBurrowGoal extends Goal {
         if (MoleMound.isMound(level, this.emergeAt)) {
             // The reused exit is still standing. Nothing to dig, only to shut.
             MoleMound.setOpen(level, this.emergeAt, false);
+            raiseFortress(level, this.emergeAt);
             return;
         }
 
@@ -987,6 +1273,7 @@ public class MoleBurrowGoal extends Goal {
         BlockState replaced = level.getBlockState(this.emergeAt);
         if (MoleMound.tryPlace(level, this.emergeAt, false)) {
             BurrowLog.moundPlaced(this.mole, this.emergeAt, support, replaced);
+            raiseFortress(level, this.emergeAt);
             this.placedMound = true;
         } else {
             BurrowLog.recovered(this.mole, this.emergeAt.equals(this.exit)

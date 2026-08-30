@@ -9,13 +9,24 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
-import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.sgeht.moleverse.client.render.TravellingMoleRenderer;
+import net.sgeht.moleverse.client.render.ShrewModel;
+import net.sgeht.moleverse.client.render.ShrewRenderer;
+import net.sgeht.moleverse.client.render.WeaselModel;
+import net.sgeht.moleverse.client.render.WeaselRenderer;
+import net.sgeht.moleverse.client.render.EarthwormModel;
+import net.sgeht.moleverse.client.render.EarthwormRenderer;
+import net.sgeht.moleverse.client.render.GrubModel;
+import net.sgeht.moleverse.client.render.GrubRenderer;
+import net.sgeht.moleverse.client.render.SoilBeetleModel;
+import net.sgeht.moleverse.client.render.SoilBeetleRenderer;
 import net.sgeht.moleverse.client.BurrowAmbience;
 import net.sgeht.moleverse.client.screen.ExchangeStationScreen;
 import net.sgeht.moleverse.registry.ModMenus;
+import net.sgeht.moleverse.client.debug.BurrowTuneCommand;
 import net.sgeht.moleverse.client.debug.MoleDebugCommand;
 import net.sgeht.moleverse.client.debug.MoleNetworkOverlay;
 import net.sgeht.moleverse.client.render.GreatWormModel;
@@ -63,18 +74,30 @@ public final class MoleverseClient {
     static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(MoleModel.LAYER, MoleModel::createBodyLayer);
         event.registerLayerDefinition(GreatWormModel.LAYER, GreatWormModel::createBodyLayer);
+        event.registerLayerDefinition(EarthwormModel.LAYER, EarthwormModel::createBodyLayer);
+        event.registerLayerDefinition(SoilBeetleModel.LAYER, SoilBeetleModel::createBodyLayer);
+        event.registerLayerDefinition(GrubModel.LAYER, GrubModel::createBodyLayer);
+        event.registerLayerDefinition(ShrewModel.LAYER, ShrewModel::createBodyLayer);
+        event.registerLayerDefinition(WeaselModel.LAYER, WeaselModel::createBodyLayer);
     }
 
     @SubscribeEvent
     static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.MOLE.get(), MoleRenderer::new);
         event.registerEntityRenderer(ModEntities.GREAT_WORM.get(), GreatWormRenderer::new);
+        event.registerEntityRenderer(ModEntities.EARTHWORM.get(), EarthwormRenderer::new);
+        event.registerEntityRenderer(ModEntities.SOIL_BEETLE.get(), SoilBeetleRenderer::new);
+        event.registerEntityRenderer(ModEntities.GRUB.get(), GrubRenderer::new);
+        event.registerEntityRenderer(ModEntities.SHREW.get(), ShrewRenderer::new);
+        event.registerEntityRenderer(ModEntities.WEASEL.get(), WeaselRenderer::new);
+        event.registerEntityRenderer(ModEntities.TRAVELLING_MOLE.get(), TravellingMoleRenderer::new);
     }
 
     /** Development aid, see {@link MoleDebugCommand}. Runs entirely on the client. */
     @SubscribeEvent
     static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
         MoleDebugCommand.register(event.getDispatcher());
+        BurrowTuneCommand.register(event.getDispatcher());
     }
 
     /**
@@ -87,19 +110,5 @@ public final class MoleverseClient {
     static void onClientTick(ClientTickEvent.Post event) {
         MoleNetworkOverlay.tick();
         BurrowAmbience.tick();
-    }
-
-    /**
-     * The burrow's own fog. Both hooks return immediately anywhere else, so this
-     * costs one dimension check per frame in the overworld.
-     */
-    @SubscribeEvent
-    static void onComputeFogColour(ViewportEvent.ComputeFogColor event) {
-        BurrowAmbience.onComputeFogColour(event);
-    }
-
-    @SubscribeEvent
-    static void onRenderFog(ViewportEvent.RenderFog event) {
-        BurrowAmbience.onRenderFog(event);
     }
 }
